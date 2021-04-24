@@ -16,7 +16,8 @@ typedef void (*actionPtr)(char *input);
 // This structure contains the details of a single location.
 //
 // Our "game world" is made up of a collection of these locations.
-typedef struct location {
+typedef struct location
+{
     // one-line description of the light-house
     char desc[100];
 
@@ -35,7 +36,8 @@ typedef struct location {
 
 
 // This structure contains all the properties and details of a single item.
-typedef struct object {
+typedef struct object
+{
     // The name of the item
     char name[17];
 
@@ -47,7 +49,8 @@ typedef struct object {
 
 
 // Word contains a command the user can type
-typedef struct word {
+typedef struct word
+{
     // The name of the command the user will enter
     char name[10];
 
@@ -88,29 +91,29 @@ extern word_t dictionary[];
 // Forward declarations
 
 // handlers.c
-void call_fn( char *input );
+void call_fn(char *input);
 void down_fn(char *input);
 void drop_fn(char *input);
 void examine_fn(char *input);
 void get_fn(char *input);
-void help_fn(char *input );
+void help_fn(char *input);
 void inventory_fn(char *input);
 void language_fn(char *input);
-void look_fn(char *input );
+void look_fn(char *input);
 void open_fn(char *input);
-void quit_fn(char *input );
+void quit_fn(char *input);
 void up_fn(char *input);
 void use_fn(char *input);
 
 
 // items.c
-int is_object_present( char *name );
-void add_item( char *name, int location );
-void remove_item( char *name, int location );
+int is_object_present(char *name);
+void location_add_item(char *name, int location);
+void location_remove_item(char *name, int location);
 
 // inventory.c
-int inventory_has_item( char *name );
-void inventory_take_item( char *name );
-void inventory_drop_item( char *name );
+int inventory_has_item(char *name);
+void inventory_take_item(char *name);
+void inventory_drop_item(char *name);
 
 #endif

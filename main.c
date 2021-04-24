@@ -26,87 +26,106 @@ int inv[MAX_INV] = {0};
 
 
 
-int main( int argc, char *argv[] ) {
+int main(int argc, char *argv[])
+{
     srand(time(NULL));
     char line[1024];
 
     // all rooms are empty
-    for ( int r = 0 ; r<= MAX_ROOMS; r++ ) {
-        for ( int i = 0; i < MAX_ITEMS_PER_ROOM; i++ ) {
-            world[r].items[i]=-1;
+    for (int r = 0 ; r <= MAX_ROOMS; r++)
+    {
+        for (int i = 0; i < MAX_ITEMS_PER_ROOM; i++)
+        {
+            world[r].items[i] = -1;
         }
     }
 
     // The play is carrying nothing
-    for (int i = 0; i < MAX_INV; i++ ) {
+    for (int i = 0; i < MAX_INV; i++)
+    {
         inv[i] = -1;
     }
 
     // add the rug to the ground-floor,
     // and the torch to the top-floor.
-    add_item("torch", 0);
-    add_item("mirror", 1);
-    add_item("telephone", 1);
-    add_item("rug", 2);
-    add_item("generator", 3);
+    location_add_item("torch", 0);
+    location_add_item("mirror", 1);
+    location_add_item("telephone", 1);
+    location_add_item("rug", 2);
+    location_add_item("generator", 3);
 
     look_fn("LOOK");
 
-    while (( won == 0 ) && ( dead == 0 ) ){
+    while ((won == 0) && (dead == 0))
+    {
 
         // show prompt
         printf(">");
         fflush(stdout);
 
         // read line
-        if ( fgets (line, sizeof(line)-1, stdin) == NULL ) {
+        if (fgets(line, sizeof(line) - 1, stdin) == NULL)
+        {
             printf("Ctrl-D pressed; aborting\n");
             return 0;
         }
 
         // strip newlines
-        for( int i = 0; i < sizeof(line)-1;i++ ) {
-            if ( line[i] == '\n' ||
-                 line[i] == '\r' ) {
+        for (int i = 0; i < sizeof(line) - 1; i++)
+        {
+            if (line[i] == '\n' ||
+                    line[i] == '\r')
+            {
                 line[i] = '\0';
             }
         }
-        if ( strlen(line) < 1 ) {
+
+        if (strlen(line) < 1)
+        {
             goto ok;
         }
 
         // upper-case for consistency
         size_t len = strlen(line);
-        for ( size_t i = 0; i < len; i++ ) {
+
+        for (size_t i = 0; i < len; i++)
+        {
             line[i] = toupper(line[i]);
         }
 
         // Can we split this into a word?
         int dict = 0;
-        while( strlen(dictionary[dict].name) > 0) {
+
+        while (strlen(dictionary[dict].name) > 0)
+        {
 
             // If we got a match on this word
-            if (strncmp( dictionary[dict].name, line, strlen(dictionary[dict].name) ) == 0 ) {
+            if (strncmp(dictionary[dict].name, line, strlen(dictionary[dict].name)) == 0)
+            {
                 // Call the handler
                 (*dictionary[dict].ptr)(line);
 
                 // And prepare for more input
                 goto end;
             }
+
             dict++;
         }
+
         // handlers now ..
         printf("I'm sorry, I did not understand: %s\n", line);
-    end:
+end:
 
-                turn ++;
+        turn ++;
 
-                if ( turn % 10 == 0 ) {
-                    printf("\nThe ship is coming closer, you had best hurry up!\n\n");
-                }
-                printf("\n");
-    ok:
-                memset(line, '\0', sizeof(line));
+        if (turn % 10 == 0)
+        {
+            printf("\nThe ship is coming closer, you had best hurry up!\n\n");
+        }
+
+        printf("\n");
+ok:
+        memset(line, '\0', sizeof(line));
     }
 
     printf("Game over in %d turns\n", turn);
