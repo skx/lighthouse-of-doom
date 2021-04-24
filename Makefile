@@ -9,3 +9,9 @@ clean:
 
 format:
 	astyle --style=allman -A1 --indent=spaces=4   --break-blocks --pad-oper --pad-header --unpad-paren --max-code-length=200 *.c *.h
+
+game: game.z80
+	pasmo  game.z80 game.com
+
+run-game: game
+	~/cpm/cpm game

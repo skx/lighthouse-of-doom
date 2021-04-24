@@ -1,0 +1,125 @@
+;
+; LIGHTHOUSE OF DOOM!!!
+;
+; Steve Kemp
+; -
+; https://steve.kemp.fi/
+;
+; https://github.com/skx/lighthouse-of-doom
+;
+
+
+;
+; This is a work-in-progress porting the game to Z80 assembly, such
+; that it will run under CP/M 2.x
+;
+; The current state is minimal:
+;
+;   1.  We prompt for input, continuously
+;   2.  Then we output it
+;
+; We have no map/world, we have no items, we have no movement, and
+; we have no real implementation.
+;
+; However this can be extended over time.
+;
+
+
+; BIOS entry-point
+BDOS_ENTRY_POINT:    EQU 5
+
+; BIOS functions we call
+BDOS_OUTPUT_STRING:  EQU 0x09
+BDOS_READ_INPUT:     EQU 0x0A
+BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
+
+        ORG 100h
+
+        ld de, usage_message
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        ; Game Loop
+        ;
+        ;  1.  Show prompt.
+        ;  2.  Read a line of input.
+        ;  3.  Upper-case the input.
+        ;  4.  Show the input.
+        ;  5.  Goto 1.
+game_loop:
+
+        ; 1. show the prompt
+        ld de, prompt_message
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        ; 2. read the line of input
+        ld de, input_buffer
+        ld c, BDOS_READ_INPUT
+        call BDOS_ENTRY_POINT
+
+        ; 3. upper-case the input
+        ld hl, input_buffer+1
+        ld b,(hl)
+        inc hl
+game_loop_uc_loop:
+        ld a, (hl)
+        cp 'a'
+        jr c, game_loop_uc_nc
+        cp 'z'
+        jr nc, game_loop_uc_nc
+        sub 32
+game_loop_uc_nc:
+        ld (hl),a
+        inc hl
+        djnz game_loop_uc_loop
+
+
+        ;  4.  Show the input
+        ld de, you_entered_message
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        ld hl, input_buffer+1
+        ld b,(hl)
+        inc hl
+show_char_loop:
+        ld e, (hl)
+
+        push bc
+        push hl
+        ld c, BDOS_OUTPUT_SINGLE_CHARACTER
+        call BDOS_ENTRY_POINT
+        pop hl
+        pop bc
+        inc hl
+        djnz show_char_loop
+
+        ;  5.  Goto 1
+        jp game_loop              ; restart
+
+
+;
+; Data-Area
+;
+prompt_message:
+        db 0x0a, 0x0d,">$"
+
+you_entered_message:
+        db 0x0a, 0x0d, "You entered: $"
+
+usage_message:
+        db  "This is a demo for lighthouse of doom!"
+        db 0x0a, 0x0d, "$"
+
+;
+; This is the buffer which is used for reading a line of text from the
+; CP/M BIOS.
+;
+; The way this works is you pass the address of a region of memory, the
+; first byte is the length of the buffer, the second byte will be populated
+; by the amount of text which was read.
+;
+; After that goes the input itself, obviously.
+input_buffer:
+        db 0xff, 0x00

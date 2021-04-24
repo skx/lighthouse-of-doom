@@ -3,8 +3,8 @@
 This repository contain a simple text-based adventure game.
 
 Currently this is implemented in portable C, however the intention is
-to allow it to run upon a CP/M system - it might be possible to do that
-via a C-compiler onboard, or it might require a port to assembly language.
+to re-implement the game to run on a CP/M system.
+
 
 
 ## Plot
@@ -19,7 +19,8 @@ If you do not achieve victory in 100 turns the boat runs aground, and
 death will consume you all.  (It is a _very_ big boat!)
 
 
-## Implementation
+
+## C Implementation
 
 My goal behind this game is to write something simple, which can then be ported
 to run upon a CP/M system.  That mostly means that we should store as much
@@ -52,21 +53,22 @@ The game-state will contain:
 * Whether you won/lost.
 
 
-## Vocabulary
+### Running The Game
 
-Since we're in a lighthouse we're going to be concerned with "floors" rather
-than "locations".  That means we'll have two movement commands:
+Build the game by running `make`, and then launch it.
 
-* (GO) UP.
-* (GO) DOWN.
+If you get stuck you can see command by entering `help`.
 
-We'll have to have a "LOOK" command to see the long description of our location.
 
-Other commands will be added as they occur to me.
 
-You can type `HELP` to see the available commands - although note that some
-are hidden and *not* displayed by default.  That's partly to avoid spoilers,
-and partly to allow synonyms and easter-eggs.
+## Z80 Implementation
+
+There is not yet a complete implementation of the game written in z80
+assembly language, however there is a basic stub.
+
+The C-code will not be literally ported over, however the same text will
+be used and the idea of using tables and structures will be maintained.
+
 
 
 ## Bugs
