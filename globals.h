@@ -135,6 +135,7 @@ void use_fn(char *input);
 int  is_object_present(char *name);
 void location_add_item(char *name, int location);
 void location_remove_item(char *name, int location);
+void get_book(int id);
 void get_torch(int id);
 void get_torch_lit(int id);
 void use_torch(char *txt);
@@ -146,7 +147,7 @@ void get_generator(int id);
 void use_generator(char *txt);
 void use_generator_carried(char *txt);
 void use_telephone(char *txt);
-
+void drop_book(int id);
 void drop_mirror(int id) ;
 void drop_mirror_broken(int id) ;
 void drop_torch(int id) ;

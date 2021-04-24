@@ -16,6 +16,7 @@ object_t items[] =
     {name: "mirror", desc: "A small mirror.", use: use_mirror, get_fn: get_mirror, drop_fn: drop_mirror},
     {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror, get_fn: get_mirror_broken, drop_fn: drop_mirror_broken},
     {name: "rug", desc: "A small rug."},
+    {name: "book", desc: "A small black book.", get_fn: get_book, drop_fn: drop_book},
     {name: "telephone", desc: "A telephone, wired to the wall.", use: use_telephone },
     {name: "torch", desc: "A small torch.", use: use_torch, use_carried: use_torch_carried,     get_fn: get_torch, drop_fn: drop_torch },
 
@@ -115,6 +116,13 @@ void location_remove_item(char *name, int location)
 }
 
 
+void drop_book(int id)
+{
+    printf("You drop the small black book.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item("mirror-broken", location);
+}
+
 void drop_mirror(int id)
 {
     printf("You drop the mirror, which cracks and breaks.\n");
@@ -147,6 +155,10 @@ void drop_generator(int id)
 }
 
 
+void get_book(int id)
+{
+    printf("You pickup the book\n");
+}
 void get_torch(int id)
 {
     printf("You pickup the torch.\n");

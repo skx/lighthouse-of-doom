@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
     location_add_item("torch", 0);
     location_add_item("mirror", 1);
     location_add_item("telephone", 1);
+    location_add_item("book", 1);
     location_add_item("rug", 2);
     location_add_item("generator", 3);
 

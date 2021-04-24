@@ -29,6 +29,7 @@ word_t dictionary[] =
     // Synonyms
     { name: "TAKE", hidden: 1, ptr: get_fn },
     { name: "PICKUP", hidden: 1, ptr: get_fn },
+    { name: "READ", hidden: 1, ptr: examine_fn },
 
     // Easter-Eggs
     { name: "CALL", hidden: 1, ptr: call_fn},
@@ -349,6 +350,27 @@ void examine_fn(char *input)
         }
 
         printf("I see no mirror here!\n");
+        return;
+    }
+
+    if (strstr(input, "BOOK") != NULL)
+    {
+        if (is_object_present("book") || inventory_has_item("book"))
+        {
+            printf("The little black book seems to contain names and addresses.\n");
+            printf("Unfortunately the writing is faded and illegible except\n");
+            printf("for some standard entries:\n\n");
+            printf("\t   Police    - 999\n");
+            printf("\tAmbulance    - 999\n");
+            printf("\tFire Service - 999\n");
+            printf("\tPaw Patrol   - 999\n\n");
+
+            printf("\nToo bad there are no instructions on getting the lighthouse\n");
+            printf("light going again, perhaps with helpful diagrams?\n");
+            return;
+        }
+
+        printf("I see no book here!\n");
         return;
     }
 
