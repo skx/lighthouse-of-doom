@@ -16,7 +16,9 @@
 ; The current state is minimal:
 ;
 ;   1.  We prompt for input, continuously
-;   2.  Then we output it
+;   2.  If the input matches a known word we execute it.
+;   3.  Otherwise we echo the input
+;   4.  GOTO 1.
 ;
 ; We have no map/world, we have no items, we have no movement, and
 ; we have no real implementation.
@@ -33,6 +35,9 @@ BDOS_OUTPUT_STRING:  EQU 0x09
 BDOS_READ_INPUT:     EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
+
+
+
         ORG 100h
 
         ld de, usage_message
@@ -44,8 +49,9 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
         ;  1.  Show prompt.
         ;  2.  Read a line of input.
         ;  3.  Upper-case the input.
-        ;  4.  Show the input.
-        ;  5.  Goto 1.
+        ;  4.  Look for a handler, if found call it
+        ;  5.    Otherwise echo the input
+        ;  6.  Goto 1.
 game_loop:
 
         ; 1. show the prompt
@@ -74,8 +80,20 @@ game_loop_uc_nc:
         inc hl
         djnz game_loop_uc_loop
 
+        ;  4.  Look for a handler, if found call it
+        ld hl, input_buffer+2
+        call find_command
+        cp 255
+        jp z, no_handler
 
-        ;  4.  Show the input
+        ; Restart the input-loop
+        call JP_HL
+        jp game_loop
+
+
+no_handler:
+
+        ;  5.  Otherwise echo the input
         ld de, you_entered_message
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
@@ -99,18 +117,164 @@ show_char_loop:
         jp game_loop              ; restart
 
 
+
+
+; This will be a major part of our code so it is perhaps a little more
+; verbose than it wants to be.
+;
+; Find the entry in the command-table.  If we find it return the address
+; of the routine to call in `HL`.
+;
+; On entry `HL` should contain the pointer to the input buffer to look
+; for.
+;
+; On exit A contains 0 on success, with HL pointing to the handler to invoke,
+; or A contains 255 on failure.
+find_command:
+        ld de,command_table
+
+        ; get the length of the entry in the command table
+        ;
+        ; Entries are arranged like so:
+        ;   LENGTH "ASCII" ADDR1 ADDR2
+        ;
+        ; Where LENGTH is the length of the ASCII command-name.
+        ;
+        ; So:
+        ;
+        ;   4, "QUIT", quit_fn_ptr
+        ;   3, "CLS", cls_fn_ptr
+        ;   0,
+        ;
+find_command_again:
+        push de
+        ld a, (de) ; length of string
+        cp 0x00
+        jr nz, cont
+        pop de
+        ld a,255
+        ret
+cont:
+        ld b, a    ; B will contain the length
+        inc de     ; DE point to the string itself
+
+        push hl
+        call CompareStringsWithLength
+        jp z,find_command_found
+        pop hl
+
+        ; ok we didn't find
+        pop de
+        ld a, (de)
+        inc de
+        ld b,a
+find_command_skip:
+        inc de
+        djnz find_command_skip
+        inc de ; jump past the address
+        inc de
+
+        ; next entry - might be zero-terminated
+        jp  find_command_again
+
+find_command_found:
+        pop hl
+        pop de ; points to the length before the entry
+
+        ld a, (de)
+        inc de
+        ld b,a
+find_command_skip2:
+        inc de
+        djnz find_command_skip2
+
+        ld a, (de)
+        ld l,a
+        inc de
+        ld a, (de)
+        ld h,a
+        ld a,0
+        ret
+
+
+; compare strings stored in HL + DE for equality.  Length is stored in B
+; Returns NZ if they're not equal.
+CompareStringsWithLength:
+    ld a,(de)
+    cp (hl)
+    ret nz     ;nz means they are not equal
+    inc hl
+    inc de
+    djnz CompareStringsWithLength
+    ld a,0
+    ret
+
+
+;
+; Command-Handlers - stubs
+;
+quit_function:
+        ld de, QUIT_MSG
+        call show_msg
+        jp 0x0000
+help_function:
+        ld de, HELP_MSG
+        jp show_msg
+cls_function:
+        ld de, CLS_MSG
+        jp show_msg
+inventory_function:
+        ld de, INVENTORY_MSG
+        jp show_msg
+show_msg:
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        ret
+
 ;
 ; Data-Area
 ;
+CLS_MSG:
+        db 27, "[2J"            ; "clear"
+        db 27, "[H"             ; "home"
+        db "$"
+QUIT_MSG:
+        db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
+HELP_MSG:
+        db 0x0a, 0x0d, "You entered the magic HELP command$"
+INVENTORY_MSG:
+        db 0x0a, 0x0d, "You entered the magic INVENTORY command$"
 prompt_message:
         db 0x0a, 0x0d,">$"
-
 you_entered_message:
         db 0x0a, 0x0d, "You entered: $"
-
 usage_message:
         db  "This is a demo for lighthouse of doom!"
+        db 0x0a, 0x0d
+        db "Pretend we paused for the game to start here."
         db 0x0a, 0x0d, "$"
+
+
+;
+; Stub command-table
+;
+command_table:
+        DEFB 4, 'QUIT'
+          DEFW quit_function
+        DEFB 4, 'HELP'
+          DEFW help_function
+        DEFB 3, 'CLS'
+          DEFW cls_function
+        DEFB 9, 'INVENTORY'
+          DEFW inventory_function
+        DEFB 0
+
+JP_HL:
+        ld bc, ret_obj
+        push bc
+	push hl
+ret_obj:
+        ret
 
 ;
 ; This is the buffer which is used for reading a line of text from the
@@ -122,4 +286,16 @@ usage_message:
 ;
 ; After that goes the input itself, obviously.
 input_buffer:
-        db 0xff, 0x00
+        db 100, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
