@@ -2,7 +2,7 @@
 all: lighthouse
 
 lighthouse: handlers.c  inventory.c  items.c  main.c  world.c util.c
-	gcc -o lighthouse -Wall -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
+	gcc -o lighthouse -Os -Wall -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
 
 clean:
 	rm lighthouse
