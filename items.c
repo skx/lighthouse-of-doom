@@ -12,13 +12,14 @@
 
 object_t items[] =
 {
-    {name: "generator", desc: "A small generator.", use: use_generator, use_carried: use_generator_carried},
-    {name: "mirror", desc: "A small mirror.", use: use_mirror},
-    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror},
+    {name: "generator", desc: "A small generator.", use: use_generator, use_carried: use_generator_carried, get_fn: get_generator, drop_fn: drop_generator},
+    {name: "mirror", desc: "A small mirror.", use: use_mirror, get_fn: get_mirror, drop_fn: drop_mirror},
+    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror, get_fn: get_mirror_broken, drop_fn: drop_mirror_broken},
     {name: "rug", desc: "A small rug."},
     {name: "telephone", desc: "A telephone, wired to the wall.", use: use_telephone },
-    {name: "torch", desc: "A small torch.", use: use_torch, use_carried: use_torch_carried},
-    {name: "torch-lit", desc: "A small torch, which is lit." },
+    {name: "torch", desc: "A small torch.", use: use_torch, use_carried: use_torch_carried,     get_fn: get_torch, drop_fn: drop_torch },
+
+    {name: "torch-lit", desc: "A small torch, which is lit.", get_fn: get_torch_lit, drop_fn: drop_torch_lit  },
     {name: "trapdoor-closed", desc: "A closed trapdoor."},
     {name: "trapdoor-open", desc: "An open trapdoor."},
     {name: "", desc: ""},
@@ -114,6 +115,47 @@ void location_remove_item(char *name, int location)
 }
 
 
+void drop_mirror(int id)
+{
+    printf("You drop the mirror, which cracks and breaks.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item("mirror-broken", location);
+}
+void drop_mirror_broken(int id)
+{
+    printf("You drop the broken mirror, more carefully this time.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item(items[id].name, location);
+}
+void drop_torch(int id)
+{
+    printf("You drop the torch.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item(items[id].name, location);
+}
+void drop_torch_lit(int id)
+{
+    printf("You drop the torch.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item(items[id].name, location);
+}
+void drop_generator(int id)
+{
+    printf("You place the generator down on the ground.\n");
+    inventory_drop_item(items[id].name);
+    location_add_item(items[id].name, location);
+}
+
+
+void get_torch(int id)
+{
+    printf("You pickup the torch.\n");
+}
+void get_torch_lit(int id)
+{
+    printf("You pickup the lit torch.\n");
+}
+
 // When the user "USES TORCH" it becomes lit
 void use_torch(char *txt)
 {
@@ -139,6 +181,10 @@ void use_torch_carried(char *txt)
     }
 }
 
+void get_generator(int id)
+{
+    printf("You take the generator, struggling under the weight.\n");
+}
 void use_generator(char *txt)
 {
     printf("You study the diagram drawn on the side of the generator,\n"
@@ -158,6 +204,14 @@ void use_generator_carried(char *txt)
            "you're still carrying it.");
 }
 
+void get_mirror(int id)
+{
+    printf("You pickup the mirror.\n");
+}
+void get_mirror_broken(int id)
+{
+    printf("You pickup the broken mirror.\n");
+}
 void use_mirror(char *txt)
 {
     printf("USE_MIRROR");

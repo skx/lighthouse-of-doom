@@ -16,6 +16,12 @@ typedef void (*actionPtr)(char *input);
 // Handler for "using" an object
 typedef void (*usePtr)(char *item);
 
+// Handler to use to "take" an object
+typedef void (*takePtr)(int id);
+
+// Handler to use to "drop" an object
+typedef void (*dropPtr)(int id);
+
 // This structure contains the details of a single location.
 //
 // Our "game world" is made up of a collection of these locations.
@@ -52,6 +58,12 @@ typedef struct object
 
     // function to call when this item is carried.
     usePtr use_carried;
+
+    // Handler to pickup an object
+    takePtr get_fn;
+
+    // Handler to drop an object
+    dropPtr drop_fn;
 
 } object_t;
 
@@ -122,12 +134,23 @@ void use_fn(char *input);
 int  is_object_present(char *name);
 void location_add_item(char *name, int location);
 void location_remove_item(char *name, int location);
+void get_torch(int id);
+void get_torch_lit(int id);
 void use_torch(char *txt);
 void use_torch_carried(char *txt);
+void get_mirror(int id);
+void get_mirror_broken(int id);
 void use_mirror(char *txt);
+void get_generator(int id);
 void use_generator(char *txt);
 void use_generator_carried(char *txt);
 void use_telephone(char *txt);
+
+void drop_mirror(int id) ;
+void drop_mirror_broken(int id) ;
+void drop_torch(int id) ;
+void drop_torch_lit(int id) ;
+void drop_generator(int id);
 
 // inventory.c
 int inventory_has_item(char *name);

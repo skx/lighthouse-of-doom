@@ -364,152 +364,107 @@ void examine_fn(char *input)
     printf("You notice nothing special.\n");
 }
 
-// get <torch>
+// get <object>
 void get_fn(char *input)
 {
 
-    if (strstr(input, "TORCH") != NULL)
+    // Get the object the user wants to take
+    char *itm = object_from_input(input);
+
+    if (itm == NULL)
     {
-        if (is_object_present("torch"))
-        {
-            printf("You take the torch.\n");
-            location_remove_item("torch", location);
-            inventory_take_item("torch");
-            return ;
-        }
-
-        if (is_object_present("torch-lit"))
-        {
-            printf("You take the torch.\n");
-            location_remove_item("torch-lit", location);
-            inventory_take_item("torch-lit");
-            return ;
-        }
-
-        printf("The torch is not here, and cannot be taken!");
+        printf("You need to tell me what to take!\n");
         return;
     }
 
-    if (strstr(input, "MIRROR") != NULL)
+    //
+    // Right we need to look over all the items in the location,
+    // and see if there is a match.
+    //
+    // We need to match "TORCH" with "TORCH" and "TORCH-LIT", for example
+    //
+    for (int i = 0; i < MAX_ITEMS_PER_ROOM; i++)
     {
-        if (is_object_present("mirror"))
-        {
-            printf("You take the mirror.\n");
-            location_remove_item("mirror", location);
-            inventory_take_item("mirror");
-            return ;
-        }
+        int item = world[location].items[i];
 
-        if (is_object_present("mirror-broken"))
+        // Does the name match?
+        //
+        //  torch matches "torch" and "torch-lit"
+        //  mirror matches "mirror" and "mirror-broken"
+        if (strncmp(items[item].name, itm, strlen(itm)) == 0)
         {
-            printf("You take the broken mirror.\n");
-            location_remove_item("mirror-broken", location);
-            inventory_take_item("mirror-broken");
-            return ;
-        }
+            // Is the item collectible?  If so call the handler
+            if (items[item].get_fn != NULL)
+            {
 
-        printf("The mirror is not here, and cannot be taken!");
-        return;
-    }
+                // Call the handler.
+                (*items[item].get_fn)(item);
 
-    if (strstr(input, "RUG") != NULL)
-    {
-        if (is_object_present("rug"))
-        {
-            printf("The rug is too heavy to carry, but you can push it aside.\n");
-            location_add_item("trapdoor-closed", location);
-            location_remove_item("rug", location);
-            return;
-        }
-        else
-        {
-            printf("I see no rug here.\n");
-            return;
-        }
-    }
+                // add to inventory
+                inventory_take_item(items[item].name);
 
-    if (strstr(input, "GENERATOR") != NULL)
-    {
-        if (is_object_present("generator"))
-        {
-            printf("You take the generator, struggling under the weight.\n");
-            location_remove_item("generator", location);
-            inventory_take_item("generator");
-            return ;
-        }
-        else
-        {
-            printf("The generator is not here, and cannot be taken!");
+                // remove from world
+                location_remove_item(items[item].name, location);
+            }
+            else
+            {
+                printf("You cannot take that!\n");
+            }
+
+            free(itm);
             return;
         }
     }
 
-    printf("You cannot %s\n", input);
+    printf("That item doesn't seem to be here.\n");
 }
 
 // drop <torch>
 void drop_fn(char *input)
 {
+    // Get the object the user wants to drop
+    char *itm = object_from_input(input);
 
-    if (strstr(input, "TORCH") != NULL)
+    if (itm == NULL)
     {
-        if (inventory_has_item("torch"))
-        {
-            inventory_drop_item("torch");
-            location_add_item("torch", location);
-            printf("You drop the torch.\n");
-            return;
-        }
-
-        if (inventory_has_item("torch-lit"))
-        {
-            inventory_drop_item("torch-lit");
-            location_add_item("torch-lit", location);
-            printf("You drop the torch.\n");
-            return;
-        }
-
-        printf("You're not carrying a torch!");
-        return ;
+        printf("You need to tell me what to drop!\n");
+        return;
     }
 
-    if (strstr(input, "MIRROR") != NULL)
+    //
+    // Right we need to look over all the items in the users'
+    // inventory and see if there is a match.
+    //
+    // We need to match "TORCH" with "TORCH" and "TORCH-LIT", for example
+    //
+    for (int i = 0; i < MAX_INV; i++)
     {
-        if (inventory_has_item("mirror"))
+        int item = inv[i];
+
+        // Does the name match?
+        //
+        //  torch matches "torch" and "torch-lit"
+        //  mirror matches "mirror" and "mirror-broken"
+        if (strncmp(items[item].name, itm, strlen(itm)) == 0)
         {
-            inventory_drop_item("mirror");
-            location_add_item("mirror-broken", location);
-            printf("You drop the mirror, which cracks and breaks.\n");
+            // Is the item droppable?  If so call the handler
+            if (items[item].drop_fn != NULL)
+            {
+                // Call the handler.
+                (*items[item].drop_fn)(item);
+            }
+            else
+            {
+                printf("You cannot drop that!\n");
+            }
+
+            free(itm);
             return;
         }
-
-        if (inventory_has_item("mirror-broken"))
-        {
-            inventory_drop_item("mirror-broken");
-            location_add_item("mirror-broken", location);
-            printf("You drop the broken mirror, but luckily it doesn't break any more.\n");
-            return;
-        }
-
-        printf("You're not carrying a mirror!");
-        return ;
     }
 
-    if (strstr(input, "GENERATOR") != NULL)
-    {
-        if (inventory_has_item("generator"))
-        {
-            inventory_drop_item("generator");
-            location_add_item("generator", location);
-            printf("You place the generator down on the ground.\n");
-            return;
-        }
-
-        printf("You're not carrying the generator!");
-        return ;
-    }
-
-    printf("You can't %s\n", input);
+    free(itm);
+    printf("You're not carrying that!\n");
 }
 
 void open_fn(char *input)
