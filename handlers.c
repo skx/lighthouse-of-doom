@@ -370,6 +370,12 @@ void drop_fn(char *input) {
             printf("You drop the mirror, which cracks and breaks.\n");
             return;
         }
+        if ( inventory_has_item( "broken-mirror") ) {
+            inventory_drop_item("broken-mirror");
+            add_item("broken-mirror", location);
+            printf("You drop the broken mirror, but luckily it doesn't break any more.\n");
+            return;
+        }
         printf("You're not carrying a mirror!");
         return ;
     }
