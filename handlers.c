@@ -377,11 +377,15 @@ void get_fn(char *input)
             inventory_take_item("torch");
             return ;
         }
-        else
+        if (is_object_present("torch-lit"))
         {
-            printf("The torch is not here, and cannot be taken!");
-            return;
+            printf("You take the torch.\n");
+            location_remove_item("torch-lit", location);
+            inventory_take_item("torch-lit");
+            return ;
         }
+        printf("The torch is not here, and cannot be taken!");
+        return;
     }
 
     if (strstr(input, "MIRROR") != NULL)
@@ -451,6 +455,13 @@ void drop_fn(char *input)
         {
             inventory_drop_item("torch");
             location_add_item("torch", location);
+            printf("You drop the torch.\n");
+            return;
+        }
+        if (inventory_has_item("torch-lit"))
+        {
+            inventory_drop_item("torch-lit");
+            location_add_item("torch-lit", location);
             printf("You drop the torch.\n");
             return;
         }
