@@ -46,14 +46,14 @@ int main(int argc, char *argv[])
         inv[i] = -1;
     }
 
-    // add the rug to the ground-floor,
-    // and the torch to the top-floor.
+    // add items to the world, in the appropriate location.
     location_add_item("torch", 0);
     location_add_item("mirror", 1);
     location_add_item("telephone", 1);
     location_add_item("rug", 2);
     location_add_item("generator", 3);
 
+    // Show the opening location
     look_fn("LOOK");
 
     while ((won == 0) && (dead == 0))

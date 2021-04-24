@@ -22,9 +22,6 @@ edesc:
         "there's a problem with the power.\n"
         ""
         ,
-        seen: 0,
-items:
-        { -1 },
     },
 
     // 1
@@ -36,9 +33,6 @@ edesc:
         "you see some comfy chairs, a work-desk, as well as various odds and.\n"
         "ends.\n"
         ,
-        seen: 0,
-items:
-        { -1 },
     },
 
     // 2
@@ -48,9 +42,6 @@ desc: "the ground floor of the lighthouse."
 edesc: "The ground floor seems very crowded, with most of the room\n"
         "taken up by a coat-rack, boots, and similar things\n"
         ,
-        seen: 0,
-items:
-        { -1 },
     },
 
     // 3
@@ -60,9 +51,6 @@ desc: "the lighthouse basement."
 edesc: "This seems to be a graveyard for discarded machinery, and\n"
         "oddly enough old children's toys.\n"
         ,
-        seen: 0,
-items:
-        { -1 },
     },
 
     // 4
@@ -73,8 +61,5 @@ edesc: "You cannot see anything, but you can hear a snarling.\n"
         "There is also a strong smell, a feral smell, could it be that this\n"
         "is the haunt of a grue?"
         ,
-        seen: 0,
-items:
-        { -1 },
     },
 };

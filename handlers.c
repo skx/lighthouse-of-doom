@@ -36,6 +36,7 @@ word_t dictionary[] =
     { name: "PHONE", hidden: 1, ptr: call_fn},
     { name: "FUCK", hidden: 1, ptr: language_fn},
     { name: "SHIT", hidden: 1, ptr: language_fn},
+    { name: "XYZZY", hidden: 1, ptr: magic_fn},
 
     // Abbreviations
     { name: "L", hidden: 1, ptr: look_fn },
@@ -112,6 +113,33 @@ void inventory_fn(char *input)
 void language_fn(char *input)
 {
     printf("Such bad language!\n");
+}
+
+void magic_fn(char *input)
+{
+    static int count = 0;
+    count++;
+
+    if (count == 1)
+    {
+        printf("Magic happens.\n");
+    }
+    else if (count == 2)
+    {
+        printf("Magic intensifies.\n");
+    }
+    else if (count == 3)
+    {
+        printf("The sensation of magic screaming through your veins gives you a heady rush.\n");
+    }
+    else if (count == 4)
+    {
+        printf("You couldn't draw the line, could you?\n");
+        printf("The magic flooding your body is too powerful, and you're finding it impossible\n"
+               "to breath.  With a wail of frustration you topple backwards.\n"
+               "\nYou're dead.\n");
+        dead = 1;
+    }
 }
 
 void look_fn(char *input)

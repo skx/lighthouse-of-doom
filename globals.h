@@ -124,6 +124,7 @@ void help_fn(char *input);
 void inventory_fn(char *input);
 void language_fn(char *input);
 void look_fn(char *input);
+void magic_fn(char *input);
 void open_fn(char *input);
 void quit_fn(char *input);
 void up_fn(char *input);
