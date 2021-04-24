@@ -582,7 +582,7 @@ void use_fn(char *input)
         // Here we cap the comparison length to allow "mirror" to
         // match both "mirror" and "mirror-broken".
         //
-        if (carried != -1 && strncmp(itm, items[carried].name, strlen(items[carried].name)) == 0)
+        if (carried != -1 && strncmp(itm, items[carried].name, strlen(itm)) == 0)
         {
             if (items[carried].use_carried != NULL)
             {
@@ -612,7 +612,7 @@ void use_fn(char *input)
         {
             // Here we cap the comparison length to allow "mirror" to
             // match both "mirror" and "mirror-broken".
-            if (strncmp(itm, items[present].name, strlen(items[present].name)) == 0)
+            if (strncmp(itm, items[present].name, strlen(itm)) == 0)
             {
                 if (items[present].use != NULL)
                 {

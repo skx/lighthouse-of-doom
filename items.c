@@ -13,8 +13,8 @@
 object_t items[] =
 {
     {name: "generator", desc: "A small generator.", use: use_generator, use_carried: use_generator_carried, get_fn: get_generator, drop_fn: drop_generator},
-    {name: "mirror", desc: "A small mirror.", use: use_mirror, get_fn: get_mirror, drop_fn: drop_mirror},
-    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror, get_fn: get_mirror_broken, drop_fn: drop_mirror_broken},
+    {name: "mirror", desc: "A small mirror.", use: use_mirror, use_carried: use_mirror, get_fn: get_mirror, drop_fn: drop_mirror},
+    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror_broken, use_carried: use_mirror_broken, get_fn: get_mirror_broken, drop_fn: drop_mirror_broken},
     {name: "rug", desc: "A small rug."},
     {name: "book", desc: "A small black book.", get_fn: get_book, drop_fn: drop_book},
     {name: "telephone", desc: "A telephone, wired to the wall.", use: use_telephone },
@@ -120,7 +120,7 @@ void drop_book(int id)
 {
     printf("You drop the small black book.\n");
     inventory_drop_item(items[id].name);
-    location_add_item("mirror-broken", location);
+    location_add_item(items[id].name, location);
 }
 
 void drop_mirror(int id)
@@ -157,7 +157,7 @@ void drop_generator(int id)
 
 void get_book(int id)
 {
-    printf("You pickup the book\n");
+    printf("You pickup the book.\n");
 }
 void get_torch(int id)
 {
@@ -226,7 +226,15 @@ void get_mirror_broken(int id)
 }
 void use_mirror(char *txt)
 {
-    printf("USE_MIRROR");
+    printf("The mirror doesn't seem to be anything special.\n"
+           "But your reflection?  It looks fabulous.\n");
+}
+void use_mirror_broken(char *txt)
+{
+    printf("The mirror looks like it was once small and delicate.\n"
+           "But now it shows a distorted reflection of yourself,\n"
+           "which is oddly unsettling.\n");
+
 }
 
 void use_telephone(char *txt)

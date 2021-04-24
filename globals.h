@@ -143,6 +143,7 @@ void use_torch_carried(char *txt);
 void get_mirror(int id);
 void get_mirror_broken(int id);
 void use_mirror(char *txt);
+void use_mirror_broken(char *txt);
 void get_generator(int id);
 void use_generator(char *txt);
 void use_generator_carried(char *txt);
