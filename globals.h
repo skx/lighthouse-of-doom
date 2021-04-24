@@ -99,6 +99,9 @@ extern word_t dictionary[];
 
 // Forward declarations
 
+// utils.c
+char *object_from_input(char *input);
+
 // handlers.c
 void call_fn(char *input);
 void down_fn(char *input);

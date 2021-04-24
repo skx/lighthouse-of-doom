@@ -1,8 +1,8 @@
 
 all: lighthouse
 
-lighthouse: handlers.c  inventory.c  items.c  main.c  world.c
-	gcc -o lighthouse -Wall -Werror handlers.c  inventory.c  items.c  main.c  world.c
+lighthouse: handlers.c  inventory.c  items.c  main.c  world.c util.c
+	gcc -o lighthouse -Wall -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
 
 clean:
 	rm lighthouse

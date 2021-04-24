@@ -119,6 +119,8 @@ void use_torch(char *txt)
 {
     location_remove_item("torch", location);
     location_add_item("torch-lit", location);
+
+    printf("The torch turns on.\n");
 }
 
 // This is invoked when the user "USE TORCH", when carrying the torch.
@@ -126,6 +128,8 @@ void use_torch_carried(char *txt)
 {
     inventory_drop_item("torch");
     inventory_take_item("torch-lit");
+
+    printf("The torch turns on.\n");
 
     // If we're in the dark room move to the lit basement
     if (location == 4)

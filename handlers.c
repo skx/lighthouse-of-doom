@@ -377,6 +377,7 @@ void get_fn(char *input)
             inventory_take_item("torch");
             return ;
         }
+
         if (is_object_present("torch-lit"))
         {
             printf("You take the torch.\n");
@@ -384,6 +385,7 @@ void get_fn(char *input)
             inventory_take_item("torch-lit");
             return ;
         }
+
         printf("The torch is not here, and cannot be taken!");
         return;
     }
@@ -458,6 +460,7 @@ void drop_fn(char *input)
             printf("You drop the torch.\n");
             return;
         }
+
         if (inventory_has_item("torch-lit"))
         {
             inventory_drop_item("torch-lit");
@@ -552,30 +555,13 @@ void use_fn(char *input)
     //
     // We'll be called with "USE XXXX" - so we need to find
     // the item.
-    char *itm = strstr(input, " ");
+    char *itm = object_from_input(input);
 
     if (itm == NULL)
     {
         printf("You need to tell me what to use!\n");
         return;
     }
-
-    // Point past the space.
-    //
-    // TODO: This is flaky
-    itm++;
-
-    if (itm - input >= strlen(input))
-    {
-        printf("You need to tell me what to use!\n");
-        return;
-    }
-
-
-    // Downcase the name, because we've upper-cased all our user-input,
-    // but we refer to items in lower-case form.
-    for (int i = 0; i < strlen(itm); i++)
-        itm[i] = tolower(itm[i]);
 
     //
     // Right see if this item is in the user's possession
@@ -602,6 +588,7 @@ void use_fn(char *input)
                 printf("Nothing happens\n");
             }
 
+            free(itm);
             return;
         }
     }
@@ -631,11 +618,13 @@ void use_fn(char *input)
                     printf("Nothing happens\n");
                 }
 
+                free(itm);
                 return;
             }
         }
     }
 
     printf("It doesn't look like that item is present, or in your inventory!\n");
+    free(itm);
     return;
 }
