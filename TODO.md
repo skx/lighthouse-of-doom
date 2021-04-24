@@ -25,7 +25,12 @@
 //
 // 9. [x] Items should be invisible - i.e. present but not shown in the room
 //        e.g. Painting, Desk.
-
+//
+// 10. [ ] "OPEN" is the last of our handlers with hardcoded behaviour
+//         (If we ignore "UP" and "DOWN").
+//
+// 11. [ ] GO UP | GO DOWN should be synonyms
+//
 //
 // Additions:
 //

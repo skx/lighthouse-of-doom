@@ -3,9 +3,8 @@
  */
 
 #include <string.h>
-#include <ctype.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <ctype.h>
 
 // Get the name of the object from input such as:
 //

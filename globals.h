@@ -50,22 +50,23 @@ typedef struct object
     // The name of the item
     char name[17];
 
-    // A one-line description of the item
+    // A one-line description of the item, shown when a room is entered.
     char desc[100];
 
-    // Extended description
+    // Extended description, used for the output of "EXAMINE XXX".
     char edesc[255];
 
     // function to call when this item is used.
     usePtr use;
 
-    // function to call when this item is carried.
+    // function to call when this item is used, while in the player's
+    // possession.  (`use` is only when an item is used in the same location.)
     usePtr use_carried;
 
-    // Handler to pickup an object
+    // Function to call when the play picks up this object.
     takePtr get_fn;
 
-    // Handler to drop an object
+    // Function to call when the play drops up this object.
     dropPtr drop_fn;
 
 } object_t;
@@ -81,7 +82,8 @@ typedef struct word
     // Help information for this command, if present.
     char txt[32];
 
-    // Is this hidden?
+    // Is this hidden?  If so it is not shown in the output
+    // of the help-command.
     int hidden;
 
     // The handler to invoke when that is typed
