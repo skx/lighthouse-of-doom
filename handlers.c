@@ -210,7 +210,7 @@ void down_fn(char *input) {
 
         // we're on the ground floor
         // if the trapdoor is open you can go down
-        if ( is_object_present("open-trapdoor") ) {
+        if ( is_object_present("trapdoor-open") ) {
 
             if ( inventory_has_item("torch") ) {
                 location = 3;
@@ -249,7 +249,7 @@ void examine_fn(char *input) {
             printf("But your reflection?  It looks fabulous.\n");
             return;
         }
-        if ( is_object_present("broken-mirror") || inventory_has_item("broken-mirror") ) {
+        if ( is_object_present("mirror-broken") || inventory_has_item("mirror-broken") ) {
             printf("The mirror looks like it was once small and delicate.\n");
             printf("But now it shows a distorted reflection of yourself,\n");
             printf("which is oddly unsettling.\n");
@@ -266,7 +266,7 @@ void examine_fn(char *input) {
             printf("The rug on the floor seems to be covering a trapdoor\n");
             printf("You move it out of the way..\n");
 
-            add_item( "closed-trapdoor", location);
+            add_item( "trapdoor-closed", location);
             remove_item( "rug", location);
 
             return ;
@@ -277,11 +277,11 @@ void examine_fn(char *input) {
     }
 
     if ( strstr( input, "TRAPDOOR" ) != NULL ){
-        if ( is_object_present("open-trapdoor") ) {
+        if ( is_object_present("trapdoor-open") ) {
             printf("The trapdoor is an average trapdoor.\n");
             return;
         }
-        if ( is_object_present("closed-trapdoor") ) {
+        if ( is_object_present("trapdoor-closed") ) {
             printf("The trapdoor is an average trapdoor.\n"
                    "Perhaps you should open it to learn more?\n");
             return;
@@ -312,10 +312,10 @@ void get_fn(char *input) {
             inventory_take_item("mirror");
             return ;
         }
-        if ( is_object_present( "broken-mirror" ) ) {
+        if ( is_object_present( "mirror-broken" ) ) {
             printf("You take the broken mirror.\n");
-            remove_item( "broken-mirror", location);
-            inventory_take_item("broken-mirror");
+            remove_item( "mirror-broken", location);
+            inventory_take_item("mirror-broken");
             return ;
         }
         printf("The mirror is not here, and cannot be taken!");
@@ -325,7 +325,7 @@ void get_fn(char *input) {
     if ( strstr( input, "RUG" ) != NULL ) {
         if ( is_object_present( "rug" ) ) {
             printf("The rug is too heavy to carry, but you can push it aside.\n");
-            add_item( "closed-trapdoor", location);
+            add_item( "trapdoor-closed", location);
             remove_item( "rug", location);
             return;
         } else {
@@ -366,13 +366,13 @@ void drop_fn(char *input) {
     if ( strstr( input, "MIRROR" ) != NULL ) {
         if ( inventory_has_item( "mirror") ) {
             inventory_drop_item("mirror");
-            add_item("broken-mirror", location);
+            add_item("mirror-broken", location);
             printf("You drop the mirror, which cracks and breaks.\n");
             return;
         }
-        if ( inventory_has_item( "broken-mirror") ) {
-            inventory_drop_item("broken-mirror");
-            add_item("broken-mirror", location);
+        if ( inventory_has_item( "mirror-broken") ) {
+            inventory_drop_item("mirror-broken");
+            add_item("mirror-broken", location);
             printf("You drop the broken mirror, but luckily it doesn't break any more.\n");
             return;
         }
@@ -398,13 +398,13 @@ void open_fn(char *input) {
 
     if ( strstr(input, "TRAPDOOR" ) != NULL ) {
 
-        if ( is_object_present("closed-trapdoor") ) {
+        if ( is_object_present("trapdoor-closed") ) {
 
             printf("The trapdoor opens, and you see a shadowy set of stairs\n"
                    "leading downward into what is obviously a basement.\n");
 
-            add_item( "open-trapdoor", location);
-            remove_item( "closed-trapdoor", location);
+            add_item( "trapdoor-open", location);
+            remove_item( "trapdoor-closed", location);
         } else {
             printf("I see no trapdoor here.\n");
         }

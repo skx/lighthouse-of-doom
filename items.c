@@ -11,14 +11,14 @@
 #include "globals.h"
 
 object_t items[] = {
-    {name: "rug", desc: "A small rug."},
-    {name: "closed-trapdoor", desc: "A closed trapdoor."},
-    {name: "telephone", desc: "A telephone, wired to the wall."},
-    {name: "mirror", desc: "A small mirror."},
-    {name: "broken-mirror", desc: "A small mirror, which is cracked and broken."},
-    {name: "open-trapdoor", desc: "An open trapdoor."},
-    {name: "torch", desc: "A small torch."},
     {name: "generator", desc: "A small generator."},
+    {name: "mirror", desc: "A small mirror."},
+    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken."},
+    {name: "rug", desc: "A small rug."},
+    {name: "telephone", desc: "A telephone, wired to the wall."},
+    {name: "torch", desc: "A small torch."},
+    {name: "trapdoor-closed", desc: "A closed trapdoor."},
+    {name: "trapdoor-open", desc: "An open trapdoor."},
     {name: "", desc: ""},
 };
 
