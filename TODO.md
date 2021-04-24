@@ -16,14 +16,15 @@
 //
 // 5. [x] The game is not winnable.
 //
+// 6. [x] Allow the torch to be turned on and off
+//        "USE TORCH" will turn it into a lit torch.
+//
+// 7. [x] Allow "USE TORCH" while in basement.
 
 
 //
 // Additions:
 //
 //   Allow the trapdoor to be closed
-//     If the trapdoor is opened the grue might escape
-//
-//   Allow the torch to be turned on and off
-//     // Fake it via "torch" and "torch-lit"
+//     If the trapdoor is opened the grue might escape?
 //

@@ -10,8 +10,11 @@
 // The number of rooms
 #define MAX_ROOMS 4
 
-// Handler for a function
+// Handler for an input/command function.
 typedef void (*actionPtr)(char *input);
+
+// Handler for "using" an object
+typedef void (*usePtr)(char *item);
 
 // This structure contains the details of a single location.
 //
@@ -43,6 +46,12 @@ typedef struct object
 
     // A one-line description of the item
     char desc[100];
+
+    // function to call when this item is used.
+    usePtr use;
+
+    // function to call when this item is carried.
+    usePtr use_carried;
 
 } object_t;
 
@@ -107,9 +116,15 @@ void use_fn(char *input);
 
 
 // items.c
-int is_object_present(char *name);
+int  is_object_present(char *name);
 void location_add_item(char *name, int location);
 void location_remove_item(char *name, int location);
+void use_torch(char *txt);
+void use_torch_carried(char *txt);
+void use_mirror(char *txt);
+void use_generator(char *txt);
+void use_generator_carried(char *txt);
+void use_telephone(char *txt);
 
 // inventory.c
 int inventory_has_item(char *name);

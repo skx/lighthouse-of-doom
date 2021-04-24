@@ -262,7 +262,7 @@ void down_fn(char *input)
         if (is_object_present("trapdoor-open"))
         {
 
-            if (inventory_has_item("torch"))
+            if (inventory_has_item("torch-lit"))
             {
                 location = 3;
                 look_fn(input);
@@ -526,51 +526,105 @@ void open_fn(char *input)
 
 void use_fn(char *input)
 {
+    //
+    // OK when this is called we'll be "USE XXXX"
+    //
+    // We want to find the item, if it exists.
+    //
+    // If the item is not found we say "We can't use XXXX"
+    //
+    // If the item is found it either needs to be:
+    //
+    //   A.  IN the location
+    //
+    //   B.  In the inventory
+    //
+    // We'll be called with "USE XXXX" - so we need to find
+    // the item.
+    char *itm = strstr(input, " ");
 
-    if (strstr(input, "TORCH") != NULL)
+    if (itm == NULL)
     {
-
-        if (is_object_present("torch") || inventory_has_item("torch"))
-        {
-            printf("The torch turns on.\n");
-
-        }
-        else
-        {
-            printf("I see no torch here.\n");
-        }
-
+        printf("You need to tell me what to use!\n");
         return;
     }
 
-    if (strstr(input, "GENERATOR") != NULL)
+    // Point past the space.
+    //
+    // TODO: This is flaky
+    itm++;
+
+    if (itm - input >= strlen(input))
+    {
+        printf("You need to tell me what to use!\n");
+        return;
+    }
+
+
+    // Downcase the name, because we've upper-cased all our user-input,
+    // but we refer to items in lower-case form.
+    for (int i = 0; i < strlen(itm); i++)
+        itm[i] = tolower(itm[i]);
+
+    //
+    // Right see if this item is in the user's possession
+    //
+    for (int i = 0; i < MAX_INV; i++)
     {
 
-        if (is_object_present("generator"))
-        {
+        // The item
+        int carried  = inv[i];
 
-            printf("You study the diagram drawn on the side of the generator,\n"
-                   "and connect it to the side of the lighting console.\n");
-            printf("With a mighty pull of the starting mechanism the machine\n"
-                   "comes to life, and power returns to the console\n\n");
-            printf("The lighthouse beam of light starts to rotate, and in the\n"
-                   "distance you hear a horn from the approaching boat.\n");
-            printf("It obviously sees you, and starts to turn.  It looks like\n"
-                   "everything is going to be OK!\n");
-            won = 1;
+        // Is the item present?  With the same name?
+        //
+        // Here we cap the comparison length to allow "mirror" to
+        // match both "mirror" and "mirror-broken".
+        //
+        if (carried != -1 && strncmp(itm, items[carried].name, strlen(items[carried].name)) == 0)
+        {
+            if (items[carried].use_carried != NULL)
+            {
+                (*items[carried].use_carried)(itm);
+            }
+            else
+            {
+                printf("Nothing happens\n");
+            }
+
             return;
         }
-
-        if (inventory_has_item("generator"))
-        {
-            printf("You cannot use the generator while you're still carrying it.\n");
-        }
-        else
-        {
-            printf("I see no generator here.\n");
-        }
-
-        return;
     }
 
+    //
+    // Look for the item in the environment
+    //
+    for (int i = 0; i < MAX_ITEMS_PER_ROOM; i++)
+    {
+
+        // The item
+        int present = world[location].items[i];
+
+        // Is this slot full of something?
+        if (present != -1)
+        {
+            // Here we cap the comparison length to allow "mirror" to
+            // match both "mirror" and "mirror-broken".
+            if (strncmp(itm, items[present].name, strlen(items[present].name)) == 0)
+            {
+                if (items[present].use != NULL)
+                {
+                    (*items[present].use)(itm);
+                }
+                else
+                {
+                    printf("Nothing happens\n");
+                }
+
+                return;
+            }
+        }
+    }
+
+    printf("It doesn't look like that item is present, or in your inventory!\n");
+    return;
 }
