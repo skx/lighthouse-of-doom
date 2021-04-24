@@ -1,6 +1,10 @@
 # The Lighthouse of Doom
 
-This repository is designed to contain a simple text-based adventure game.
+This repository contain a simple text-based adventure game.
+
+Currently this is implemented in portable C, however the intention is
+to allow it to run upon a CP/M system - it might be possible to do that
+via a C-compiler onboard, or it might require a port to assembly language.
 
 
 ## Plot
@@ -18,7 +22,9 @@ death will consume you all.  (It is a _very_ big boat!)
 ## Implementation
 
 My goal behind this game is to write something simple, which can then be ported
-to run upon a CP/M system.
+to run upon a CP/M system.  That mostly means that we should store as much
+logic as possible in a series of lookup-tables, or array of items - rather
+than writing complex logic within our handlers.
 
 The implementation will mostly be concerned with a series of data-structures,
 which are essentially arrays of objects.
@@ -28,7 +34,8 @@ The obvious structures we're going to need are:
 * A location.
   * This has a short description and a long one.
     * The long one will be displayed the first time you enter the location.
-    * The short one otherwise. Though "LOOK" will display the long one.
+    * The short one otherwise.
+      * Though "LOOK" will display the long one.
   * Since we're a vertical game we're not going to focus upon entrances/exits.
   * A location can contain objects, some of which can be taken and dropped.
 * An object
@@ -42,6 +49,7 @@ The game-state will contain:
 * A list of any items you're carrying.
 * The number of turns you've taken.
   * Incremented by one each time you enter a command, be it recognized or not.
+* Whether you won/lost.
 
 
 ## Vocabulary
@@ -54,14 +62,16 @@ than "locations".  That means we'll have two movement commands:
 
 We'll have to have a "LOOK" command to see the long description of our location.
 
-We'll also want some obvious commands:
+Other commands will be added as they occur to me.
 
-* EXAMINE <object>
-* HELP
-* INVENTORY
-* TAKE <object>
-* Puzzle-specific commands.
-  * These will depend upon the puzzles I actual implement.
+You can type `HELP` to see the available commands - although note that some
+are hidden and *not* displayed by default.  That's partly to avoid spoilers,
+and partly to allow synonyms and easter-eggs.
 
-* Easter Eggs
-  * We will not name the protagonist..
+
+## Bugs
+
+Report them as you see them :)
+
+
+Steve
