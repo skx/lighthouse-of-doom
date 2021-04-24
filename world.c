@@ -30,8 +30,9 @@ desc: "the middle floor of the lighthouse."
         ,
 edesc:
         "The middle floor of the lighthouse seems to be a relaxation-room,\n"
-        "you see some comfy chairs, a work-desk, as well as various odds and.\n"
-        "ends.\n"
+        "you see some comfy chairs, a work-desk, as well as various odds and\n"
+        "ends.\n\n"
+        "An impressive painting hangs over the desk.\n"
         ,
     },
 

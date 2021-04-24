@@ -13,16 +13,56 @@
 object_t items[] =
 {
     {name: "generator", desc: "A small generator.", use: use_generator, use_carried: use_generator_carried, get_fn: get_generator, drop_fn: drop_generator},
-    {name: "mirror", desc: "A small mirror.", use: use_mirror, use_carried: use_mirror, get_fn: get_mirror, drop_fn: drop_mirror},
-    {name: "mirror-broken", desc: "A small mirror, which is cracked and broken.", use: use_mirror_broken, use_carried: use_mirror_broken, get_fn: get_mirror_broken, drop_fn: drop_mirror_broken},
-    {name: "rug", desc: "A small rug."},
-    {name: "book", desc: "A small black book.", get_fn: get_book, drop_fn: drop_book},
+    {
+name: "mirror"
+, desc: "A small mirror."
+        ,
+edesc: "The mirror doesn't seem to be anything special.\n"
+        "But your reflection?  It looks fabulous.\n"
+        ,
+use:
+use_mirror, use_carried:
+use_mirror, get_fn:
+get_mirror, drop_fn:
+        drop_mirror
+    },
+    {
+name: "mirror-broken"
+, desc: "A small mirror, which is cracked and broken."
+, edesc: "The mirror looks like it was once small and delicate.\n"
+        "But now it shows a distorted reflection of yourself,\n"
+        "which is oddly unsettling.\n"
+        ,
+use:
+use_mirror_broken, use_carried:
+use_mirror_broken, get_fn:
+get_mirror_broken, drop_fn:
+        drop_mirror_broken
+    },
+    {name: "rug", desc: "A small rug.", get_fn: get_rug},
+    {
+name: "book"
+, desc: "A small black book."
+, edesc:
+        "The little black book seems to contain names and phone numbers:\n\n"
+        "\t   Police    - 999\n"
+        "\tAmbulance    - 999\n"
+        "\tFire Service - 999\n"
+        "\tPaw Patrol   - 999\n"
+        "\nToo bad there are no instructions on powering the main light.\n"
+        ,
+get_fn:
+get_book, drop_fn:
+        drop_book
+    },
+    {name: "desk", desc: "", edesc: "The desk looks solid, but old."},
+    {name: "painting", desc: "", edesc: "The painting shows a teenager with spiky hair, surrounded by a group of dogs."},
     {name: "telephone", desc: "A telephone, wired to the wall.", use: use_telephone },
     {name: "torch", desc: "A small torch.", use: use_torch, use_carried: use_torch_carried,     get_fn: get_torch, drop_fn: drop_torch },
 
     {name: "torch-lit", desc: "A small torch, which is lit.", get_fn: get_torch_lit, drop_fn: drop_torch_lit  },
-    {name: "trapdoor-closed", desc: "A closed trapdoor."},
-    {name: "trapdoor-open", desc: "An open trapdoor."},
+    {name: "trapdoor-closed", desc: "A closed trapdoor.", edesc: "You cannot see anything special about the trapdoor.\nPerhaps you should open it to explore further?"},
+    {name: "trapdoor-open", desc: "An open trapdoor.", edesc: "You cannot see anything special about the open trapdoor.\n"},
     {name: "", desc: ""},
 };
 
@@ -166,6 +206,12 @@ void get_torch(int id)
 void get_torch_lit(int id)
 {
     printf("You pickup the lit torch.\n");
+}
+
+void get_rug(int id)
+{
+    printf("You pickup the rug, and as you do so you notice a trapdoor underneath it.\n");
+    location_add_item("trapdoor-closed", location);
 }
 
 // When the user "USES TORCH" it becomes lit

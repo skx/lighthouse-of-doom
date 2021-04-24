@@ -49,6 +49,8 @@ int main(int argc, char *argv[])
     // add items to the world, in the appropriate location.
     location_add_item("torch", 0);
     location_add_item("mirror", 1);
+    location_add_item("desk", 1);
+    location_add_item("painting", 1);
     location_add_item("telephone", 1);
     location_add_item("book", 1);
     location_add_item("rug", 2);

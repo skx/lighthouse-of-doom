@@ -53,6 +53,9 @@ typedef struct object
     // A one-line description of the item
     char desc[100];
 
+    // Extended description
+    char edesc[255];
+
     // function to call when this item is used.
     usePtr use;
 
@@ -142,6 +145,7 @@ void use_torch(char *txt);
 void use_torch_carried(char *txt);
 void get_mirror(int id);
 void get_mirror_broken(int id);
+void get_rug(int id);
 void use_mirror(char *txt);
 void use_mirror_broken(char *txt);
 void get_generator(int id);

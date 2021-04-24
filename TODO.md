@@ -20,7 +20,11 @@
 //        "USE TORCH" will turn it into a lit torch.
 //
 // 7. [x] Allow "USE TORCH" while in basement.
-
+//
+// 8. [x] Examine should show the `edesc` attribute from an object
+//
+// 9. [x] Items should be invisible - i.e. present but not shown in the room
+//        e.g. Painting, Desk.
 
 //
 // Additions:

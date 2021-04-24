@@ -186,7 +186,8 @@ void look_fn(char *input)
 
             if (id != -1)
             {
-                printf("\t%s\n", items[id].desc);
+                if (strlen(items[id].desc) > 0)
+                    printf("\t%s\n", items[id].desc);
             }
         }
     }
@@ -328,90 +329,84 @@ void down_fn(char *input)
     printf("You cannot go down from here!\n");
 }
 
-// examine floor|rug
+// examine an object
 void examine_fn(char *input)
 {
+    // We'll be called with "EXAMINE XXXX" - so we need to find
+    // the item.
+    char *itm = object_from_input(input);
 
-    if (strstr(input, "MIRROR") != NULL)
+    if (itm == NULL)
     {
-        if (is_object_present("mirror") || inventory_has_item("mirror"))
-        {
-            printf("The mirror doesn't seem to be anything special.\n");
-            printf("But your reflection?  It looks fabulous.\n");
-            return;
-        }
-
-        if (is_object_present("mirror-broken") || inventory_has_item("mirror-broken"))
-        {
-            printf("The mirror looks like it was once small and delicate.\n");
-            printf("But now it shows a distorted reflection of yourself,\n");
-            printf("which is oddly unsettling.\n");
-            return;
-        }
-
-        printf("I see no mirror here!\n");
+        printf("You need to tell me what to examine!\n");
         return;
     }
 
-    if (strstr(input, "BOOK") != NULL)
+    //
+    // Right see if this item is in the user's possession
+    //
+    for (int i = 0; i < MAX_INV; i++)
     {
-        if (is_object_present("book") || inventory_has_item("book"))
+
+        // The item
+        int carried  = inv[i];
+
+        // Is the item present?  With the same name?
+        //
+        // Here we cap the comparison length to allow "mirror" to
+        // match both "mirror" and "mirror-broken".
+        //
+        if (carried != -1 && strncmp(itm, items[carried].name, strlen(itm)) == 0)
         {
-            printf("The little black book seems to contain names and addresses.\n");
-            printf("Unfortunately the writing is faded and illegible except\n");
-            printf("for some standard entries:\n\n");
-            printf("\t   Police    - 999\n");
-            printf("\tAmbulance    - 999\n");
-            printf("\tFire Service - 999\n");
-            printf("\tPaw Patrol   - 999\n\n");
+            if (strlen(items[carried].edesc) > 0)
+            {
+                printf("%s\n", items[carried].edesc);
+            }
+            else
+            {
+                printf("You see nothing special.\n");
+            }
 
-            printf("\nToo bad there are no instructions on getting the lighthouse\n");
-            printf("light going again, perhaps with helpful diagrams?\n");
-            return;
-        }
-
-        printf("I see no book here!\n");
-        return;
-    }
-
-    // ground-floor
-    if ((strstr(input, "RUG") != NULL)  ||
-            (strstr(input, "FLOOR") != NULL))
-    {
-        if (is_object_present("rug"))
-        {
-            printf("The rug on the floor seems to be covering a trapdoor\n");
-            printf("You move it out of the way..\n");
-
-            location_add_item("trapdoor-closed", location);
-            location_remove_item("rug", location);
-
-            return ;
-        }
-        else
-        {
-            printf("I see no rug here.\n");
+            free(itm);
             return;
         }
     }
 
-    if (strstr(input, "TRAPDOOR") != NULL)
+    //
+    // Look for the item in the environment
+    //
+    for (int i = 0; i < MAX_ITEMS_PER_ROOM; i++)
     {
-        if (is_object_present("trapdoor-open"))
-        {
-            printf("The trapdoor is an average trapdoor.\n");
-            return;
-        }
 
-        if (is_object_present("trapdoor-closed"))
+        // The item
+        int present = world[location].items[i];
+
+        // Is this slot full of something?
+        if (present != -1)
         {
-            printf("The trapdoor is an average trapdoor.\n"
-                   "Perhaps you should open it to learn more?\n");
-            return;
+            // Here we cap the comparison length to allow "mirror" to
+            // match both "mirror" and "mirror-broken".
+            if (strncmp(itm, items[present].name, strlen(itm)) == 0)
+            {
+                if (strlen(items[present].edesc) > 0)
+                {
+                    printf("%s\n", items[present].edesc);
+                }
+                else
+                {
+                    printf("You see nothing special.\n");
+                }
+
+                free(itm);
+                return;
+            }
         }
     }
 
-    printf("You notice nothing special.\n");
+    printf("It doesn't look like that item is present, or in your inventory!\n");
+    free(itm);
+    return;
+
 }
 
 // get <object>
