@@ -27,26 +27,21 @@ to run upon a CP/M system.  That mostly means that we should store as much
 logic as possible in a series of lookup-tables, or array of items - rather
 than writing complex logic within our handlers.
 
-The implementation will mostly be concerned with a series of data-structures,
-which are essentially arrays of objects.
+The implementation is mostly concerned with creating the correct series of
+data-structures, which are essentially arrays of objects.  Because if we
+can make the game table-based that simplifies the coding that needs to be
+done - we don't need to write per-object handlers anywhere, we can just
+add pointers to tables/structures.
 
-The obvious structures we're going to need are:
+The C implementation defines most of the important things in the file [globals.h](globals.h) such as:
 
-* A location.
-  * This has a short description and a long one.
-    * The long one will be displayed the first time you enter the location.
-    * The short one otherwise.
-      * Though "LOOK" will display the long one.
-  * Since we're a vertical game we're not going to focus upon entrances/exits.
-  * A location can contain objects, some of which can be taken and dropped.
-* An object
-  * An object has a name and a description.
-  * Objects need to have a "collectible" property, if this is not set they are immobile.
-  * Objects have no state, so we fake actions via "duplicate" objects.
+* The structure to define a location.
+* The structure to define an object.
 
-The game-state will contain:
+The game-state itself is stored in a couple of global variables, there isn't
+too much state to care about:
 
-* Your current location (i.e. index into location-table).
+* The current location (i.e. index into location-table).
 * A list of any items you're carrying.
 * The number of turns you've taken.
   * Incremented by one each time you enter a command, be it recognized or not.
