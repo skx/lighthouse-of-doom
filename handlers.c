@@ -28,6 +28,11 @@ word_t dictionary[] =
     { name: "TAKE", hidden: 1, ptr: get_fn },
     { name: "PICKUP", hidden: 1, ptr: get_fn },
     { name: "READ", hidden: 1, ptr: examine_fn },
+    { name: "EXIT", hidden: 1, ptr: quit_fn },
+    { name: "BYE", hidden: 1, ptr: quit_fn },
+
+    // Hidden-commands
+    { name: "CLS", hidden: 1, ptr: cls_fn},
 
     // Easter-Eggs
     { name: "CALL", hidden: 1, ptr: call_fn},
@@ -46,6 +51,11 @@ word_t dictionary[] =
     { name: "", ptr: NULL },
 };
 
+
+void cls_fn(char *input)
+{
+    printf("\e[1;1H\e[2J");
+}
 
 void call_fn(char *input)
 {

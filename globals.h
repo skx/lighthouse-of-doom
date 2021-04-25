@@ -120,6 +120,7 @@ extern word_t dictionary[];
 char *object_from_input(char *input);
 
 // handlers.c
+void cls_fn(char *input);
 void call_fn(char *input);
 void down_fn(char *input);
 void drop_fn(char *input);
