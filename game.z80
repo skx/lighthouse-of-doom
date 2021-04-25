@@ -114,6 +114,17 @@ erase_input_buffer:
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
 
+        ; (debug) show the input-text
+        ld hl,DEBUG_STORE
+        ld a,(hl)
+        cp 0
+        jp z, continue1
+
+        ld de,DEBUG_YOU_ENTERED_MSG
+        call show_msg
+        call show_input_buffer
+
+continue1:
         ; 3. upper-case the input
         ld hl, input_buffer+1
         ld b,(hl)
@@ -130,6 +141,17 @@ game_loop_uc_nc:
         inc hl
         djnz game_loop_uc_loop
 
+        ; (debug) show the result of the upper-casing
+        ld hl,DEBUG_STORE
+        ld a,(hl)
+        cp 0
+        jp z, continue2
+
+        ld de,DEBUG_AFTER_CASE_CHANGE
+        call show_msg
+        call show_input_buffer
+
+continue2:
         ;  4.  Look for a handler, if found call it
         ld hl, input_buffer+2
         call find_command
@@ -152,17 +174,20 @@ no_handler:
         ld hl, TURN_COUNT
         inc (hl)
 
-        ;  5.  Otherwise echo the input
-        ld de, you_entered_message
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+        ;  5.  Goto 1
+        jp game_loop              ; restart
 
+
+
+;
+; Called only as part of the debugging routine
+;
+show_input_buffer:
         ld hl, input_buffer+1
         ld b,(hl)
         inc hl
 show_char_loop:
         ld e, (hl)
-
         push bc
         push hl
         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
@@ -171,11 +196,7 @@ show_char_loop:
         pop bc
         inc hl
         djnz show_char_loop
-
-        ;  5.  Goto 1
-        jp game_loop              ; restart
-
-
+        ret
 
 
 ; This will be a major part of our code so it is perhaps a little more
@@ -422,6 +443,28 @@ show_turn_count:
 cls_function:
         ld de, CLS_MSG
         jp show_msg
+
+
+;
+; Command-Handler DEBUG
+;
+debug_function:
+        ld hl,DEBUG_STORE
+        ld a,(hl)
+        cp 0
+        jr z, debug_turn_on
+        ld a,0
+        ld (hl),a
+        ld de, debug_off_msg
+        call show_msg
+        ret
+
+debug_turn_on:
+        ld a,1
+        ld (hl),a
+        ld de, debug_on_msg
+        call show_msg
+        ret
 
 ;
 ; Command-Handler DOWN
@@ -733,6 +776,8 @@ PLAYER_DEAD:
         db 0
 PLAYER_WON:
         db 0
+DEBUG_STORE:
+        db 0
 
 ;********************************************************************
 ; Data Area
@@ -740,6 +785,11 @@ PLAYER_WON:
 
 NEWLINE:
         db 0x0a, 0x0d, "$"
+
+debug_off_msg:
+        db 0x0a, 0x0d, "Debugging turned off.", 0x0a, 0x0d, "$"
+debug_on_msg:
+        db 0x0a, 0x0d, "Debugging turned on.", 0x0a, 0x0d, "$"
 
 CLS_MSG:
         db 27, "[2J"            ; "clear"
@@ -755,8 +805,10 @@ unimplemented_command_str:
         db 0x0a, 0x0d, "That command is not yet implemented$"
 prompt_message:
         db 0x0a, 0x0d,">$"
-you_entered_message:
+DEBUG_YOU_ENTERED_MSG:
         db 0x0a, 0x0d, "You entered: $"
+DEBUG_AFTER_CASE_CHANGE:
+        db 0x0a, 0x0d, "After upper-casing: $"
 inventory_empty_message:
         db 0x0a, 0x0d, "You are carrying nothing.", 0x0a, 0x0d, "$"
 you_carrying_message:
@@ -865,6 +917,8 @@ command_table:
         DEFB 3, 'USE', 0
           DEFW unimplemented_command
         ;; synonyms
+        DEFB 5, 'DEBUG', 1
+          DEFW debug_function
         DEFB 4, 'TAKE', 1
           DEFW unimplemented_command
         DEFB 6, 'PICKUP', 1
@@ -876,9 +930,9 @@ command_table:
           DEFW unimplemented_command
         DEFB 4, 'DIAL', 1
           DEFW unimplemented_command
-        DEFB 5, 'PHONE', 1
-          DEFW unimplemented_command
         DEFB 4, 'FUCK', 1
+          DEFW unimplemented_command
+        DEFB 5, 'PHONE', 1
           DEFW unimplemented_command
         DEFB 4, 'SHIT', 1
           DEFW unimplemented_command
