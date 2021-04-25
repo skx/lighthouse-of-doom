@@ -34,9 +34,6 @@
 ;
 ;   HELP command doesn't show description next to command.
 ;
-;   Command-table should be alphabetized.
-;
-;
 ;
 
 ; BIOS entry-point
@@ -105,6 +102,14 @@ not_won:
         call BDOS_ENTRY_POINT
 
         ; 2. read the line of input
+        ld b, 0xff
+        ld hl,input_buffer+2
+        ld a,0
+erase_input_buffer:
+        ld (hl),a
+        inc hl
+        djnz erase_input_buffer
+
         ld de, input_buffer
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
@@ -275,6 +280,43 @@ ret_obj:
         ret
 
 
+;
+; Helper function - get pointer to second command-line word
+;
+; e.g. The user enters "GET TORCH", "EXAMINE BOOK", etc, we want to
+; get the start of second-word "TORCH", "BOOK"
+;
+input_second_term:
+        ld hl, input_buffer+2
+
+        ; start be incrementing the pointer until we find a space
+input_second_term_loop1:
+        ld a,(hl)
+        cp 0
+        jp z,input_second_term_end
+        cp ' '
+        jp z, input_second_term_found_space
+        inc hl
+        jp input_second_term_loop1
+
+        ; At this point HL points to " "
+input_second_term_found_space:
+        ld a,(hl)
+        cp 0
+        jp z,input_second_term_end
+        cp ' '
+        jp nz, input_second_term_found_word
+        inc hl
+        jp input_second_term_found_space
+
+input_second_term_found_word:
+        ; HL points to the word
+        ld a,0
+        ret
+
+input_second_term_end:
+        ld a, 0xff
+        ret
 
 ; INPUT: THE VALUES IN REGISTER B EN C
 ; OUTPUT: HL = B * C
@@ -370,6 +412,35 @@ down_function:
         ld hl, CURRENT_LOCATION
         inc (hl)
         call look_function
+        ret
+
+;
+; Command-Handler EXAMINE
+;
+; Examine either:
+;
+;   1.  An item in the current location.
+;
+;   2.  An item in the users' inventory.
+;
+; Examination means:
+;
+;   1.  Identify the object from the input-buffer
+;   2.  Check if the object exists, and if so
+;   3.  Show the extended-description
+;
+examine_function:
+        call input_second_term
+        cp 0
+        jp z, examine_object
+
+        ld DE, EXAMINE_WHAT_MSG
+        call show_msg
+        ret
+examine_object:
+        push hl
+        pop de
+        call show_msg
         ret
 
 ;
@@ -652,6 +723,8 @@ QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
 HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
+EXAMINE_WHAT_MSG:
+        db 0x0a, 0x0d, "Examine what?", 0x0a, 0x0d, "$"
 unimplemented_command_str:
         db 0x0a, 0x0d, "That command is not yet implemented$"
 prompt_message:
@@ -746,7 +819,7 @@ command_table:
         DEFB 4, 'DROP', 0
           DEFW unimplemented_command
         DEFB 7, 'EXAMINE', 0
-          DEFW unimplemented_command
+          DEFW examine_function
         DEFB 3, 'GET', 0
           DEFW unimplemented_command
         DEFB 4, 'HELP', 0
