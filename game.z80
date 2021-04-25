@@ -54,6 +54,29 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
         ;  6.  Goto 1.
 game_loop:
 
+        ; 0. Is the player dead?  Did the player win?
+        ld hl, PLAYER_DEAD
+        ld a, (hl)
+        cp 1
+        jp nz,not_dead
+
+        ld de, PLAYER_DEAD_MESSAGE
+        call show_msg
+        call show_turn_count
+        jp 0x0000
+
+not_dead:
+        ld hl, PLAYER_WON
+        ld a, (hl)
+        cp 1
+        jp nz, not_won
+
+        ld de, PLAYER_WON_MESSAGE
+        call show_msg
+        call show_turn_count
+        jp 0x0000
+
+not_won:
         ; 1. show the prompt
         ld de, prompt_message
         ld c, BDOS_OUTPUT_STRING
@@ -86,12 +109,21 @@ game_loop_uc_nc:
         cp 255
         jp z, no_handler
 
-        ; Restart the input-loop
+        ; Call the handler
         call JP_HL
+
+        ; Valid command - increase turn count
+        ld hl, TURN_COUNT
+        inc (hl)
+
+        ; And restart the command-loop
         jp game_loop
 
 
 no_handler:
+        ; Invalid command, but this is still a turn
+        ld hl, TURN_COUNT
+        inc (hl)
 
         ;  5.  Otherwise echo the input
         ld de, you_entered_message
@@ -211,12 +243,90 @@ CompareStringsWithLength:
 
 
 ;
+; Helper function, used by our dispatch function.
+;
+JP_HL:
+        ld bc, ret_obj
+        push bc
+	push hl
+ret_obj:
+        ret
+
+
+;
+; Output numbers
+;
+DispHL:
+	ld	bc,-10000
+	call	Num1
+	ld	bc,-1000
+	call	Num1
+	ld	bc,-100
+	call	Num1
+	ld	c,-10
+	call	Num1
+	ld	c,-1
+Num1:	ld	a,'0'-1
+Num2:	inc	a
+	add	hl,bc
+	jr	c,Num2
+	sbc	hl,bc
+        push hl
+        push de
+        push bc
+        push af
+
+        ld c, BDOS_OUTPUT_SINGLE_CHARACTER
+        ld e, a
+        call BDOS_ENTRY_POINT
+
+        pop af
+        pop bc
+        pop de
+        pop hl
+	ret
+
+show_a_register:
+        ld h,0
+	ld l,a
+	jp DispHL
+
+show_turn_count:
+        ld de, PLAYER_TURN_COUNT
+        call show_msg
+        ld hl, TURN_COUNT
+        ld a, (hl)
+        inc a
+        call show_a_register
+        ld de, PLAYER_TURN_COUNT_END
+        call show_msg
+        ret
+
+
+
+
+;********************************************************************
+; Command Handlers
+;********************************************************************
+
+
+;
+; Command-Handler CLS
+;
+;  Clear the screen
+cls_function:
+        ld de, CLS_MSG
+        jp show_msg
+
+;
 ; Command-Handler QUIT
 ;
 ; Terminate the game
 quit_function:
         ld de, QUIT_MSG
         call show_msg
+        call show_turn_count
+
         jp 0x0000
 
 ;
@@ -233,7 +343,7 @@ help_function_again: ; have we run out of commands?
         ld a, (de) ; length of string
         cp 0x00
         ret z
-        ld hl, help_function_cmd_buffer
+        ld hl, tmp_buffer
         ld b, a    ; B will contain the length
         inc de     ; DE point to the string itself
 help_func_loop:  ; copy the command-name to the buffer
@@ -253,7 +363,7 @@ help_func_loop:  ; copy the command-name to the buffer
         ld a,(de)
         cp 1
         jr z, help_skip_this
-        ld de, help_function_cmd_buffer
+        ld de, tmp_buffer
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 help_skip_this:
@@ -263,17 +373,7 @@ help_skip_this:
         inc de  ; skip addr2
         jp  help_function_again
 
-help_function_cmd_buffer:
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
-
-;
-; Command-Handler CLS
-;
-;  Clear the screen
-cls_function:
-        ld de, CLS_MSG
-        jp show_msg
 
 
 ;
@@ -287,9 +387,29 @@ show_msg:
         call BDOS_ENTRY_POINT
         ret
 
-;
-; Data-Area
-;
+
+
+
+;********************************************************************
+; Data Storage
+;********************************************************************
+
+
+TURN_COUNT:
+        db 0
+CURRENT_LOCATION:
+        db 0
+CURRENT_INVENTORY:
+        db 0, 0, 0, 0, 0
+PLAYER_DEAD:
+        db 0
+PLAYER_WON:
+        db 0
+
+;********************************************************************
+; Data Area
+;********************************************************************
+
 CLS_MSG:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
@@ -310,6 +430,17 @@ usage_message:
         db "Pretend we paused for the game to start here."
         db 0x0a, 0x0d, "$"
 
+PLAYER_DEAD_MESSAGE:
+        db "Game over - you're dead."
+        db 0x0a, 0x0d,"$"
+PLAYER_WON_MESSAGE:
+        db "Game over - you won!"
+        db 0x0a, 0x0d,"$"
+PLAYER_TURN_COUNT:
+        db "You've played $"
+PLAYER_TURN_COUNT_END:
+        db " turns."
+        db 0x0a, 0x0d,"$"
 
 ;
 ; Our command-table contains the commands we accept, a pointer to their
@@ -377,12 +508,12 @@ command_table:
           DEFW unimplemented_command
         DEFB 0
 
-JP_HL:
-        ld bc, ret_obj
-        push bc
-	push hl
-ret_obj:
-        ret
+; Temporary buffer, available to all handlers.
+; 30 bytes long
+tmp_buffer:
+        db 0,0, 0,0, 0,0, 0,0, 0,0
+        db 0,0, 0,0, 0,0, 0,0, 0,0
+        db 0,0, 0,0, 0,0, 0,0, 0,0
 
 ;
 ; This is the buffer which is used for reading a line of text from the
