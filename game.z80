@@ -20,29 +20,36 @@
 ;   3.  Otherwise we echo the input
 ;   4.  GOTO 1.
 ;
-; We have declared a complete list of command-handlers, but most of them
-; are not implemented.
+; We have declared a complete list of command-handlers, but not all
+; of them are implemented.
 ;
 ; We've defined our location-map but the movement commands are broken,
-; because we don't sanity-check and while we can manually place items
-; in our map and inventory there are no working commands for operating
-; with/upon them.
+; because we don't sanity-check.
+;
+; Items can be taken and dropped, but they cannot yet be used which is
+; one of the reasons that the game has no real puzzle at the moment.
 ;
 
 ;
 ; Deviations from the C-code
-;   Rather than having slots in the locations, and the player, for
-;  storing objects we instead make the location a property of each
-;  item.
+;   Rather than having a global player-inventory store, and a place
+;  in each location for object storage we've instead make the location
+;  a property of each item.
 ;
 ;   An item will have location "FF" if the player is carrying it,
-;  otherwise the location will be the room it is stored within.
+;  otherwise the location will be the room it is stored within.  We
+;  can hide objects by setting their room to 0xfe or similar - a room
+;  that doesn't exist.
 ;
 ;
 ;
 ; Deficiencies
 ;
 ;   HELP command doesn't show description next to command.
+;
+;   When we change the item-size we have to mess around a lot with pointer
+;   changes.  Lack of real structures hurt here - but I'm too invested now
+;   to look for a new compiler
 ;
 ;
 
@@ -63,7 +70,7 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
         ; Clear the screen
         call cls_function
 
-        ; Opening banner
+        ; Present the game intro-text.
         ld de, usage_message
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
@@ -231,7 +238,6 @@ show_char_loop:
 find_command:
         ld de,command_table
 
-        ; get the length of the entry in the command table
         ;
         ; Entries are arranged like so:
         ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
@@ -244,11 +250,14 @@ find_command:
         ;   3, "CLS",  1, cls_fn_ptr
         ;   0,
         ;
+        ; "HIDDEN" is used solely to decide whether the command should be
+        ; included in the output of "HELP".
+        ;
 find_command_again:
         push de
-        ld a, (de) ; length of string
-        cp 0x00
-        jr nz, cont
+        ld a, (de)  ; length of string
+        cp 0x00     ; zero?  We've hit the end of the table and not found
+        jr nz, cont ; a match - return failure
         pop de
         ld a,255
         ret
@@ -279,20 +288,20 @@ find_command_found:
         pop hl
         pop de ; points to the length before the entry
 
-        ld a, (de)
-        inc de
+        ld a, (de) ; get the length
+        inc de     ; move to the start of the string
         ld b,a
-find_command_skip2:
+find_command_skip2:    ; skip length-bytes
         inc de
         djnz find_command_skip2
         inc de ; skip the hidden-flag
-        ld a, (de)
+        ld a, (de)  ; set l
         ld l,a
         inc de
-        ld a, (de)
+        ld a, (de)  ; set h
         ld h,a
-        ld a,0
-        ret
+        ld a,0      ; indicate success
+        ret         ; return with the function-pointer in HL
 
 
 ; compare strings stored in HL + DE for equality.  Length is stored in B
@@ -309,7 +318,7 @@ CompareStringsWithLength:
 
 
 ;
-; Helper function, used by our dispatch function.
+; Helper function, to allow indirection.
 ;
 JP_HL:
         ld bc, ret_obj
@@ -320,10 +329,11 @@ ret_obj:
 
 
 ;
-; Helper function.  Are items present in this room?
+; Helper function.  Are ANY items present in this room?
+;
+; This is just used to know whether to print the "You can see .." message
 ;
 ; Return "A == 0" if so.
-;
 ; Return "A == FF" if not
 ;
 items_are_present:
@@ -365,9 +375,8 @@ item_not_present_loop:
 ;
 ; Name will be stored in HL
 ;
-; On exit A will be 00 if all is OK, and HL will point to the item
-;
-; On exit A will be ff if there was a failure
+; On exit A will be 00 if all is OK, and HL will point to the item.
+; On exit A will be ff if there was a failure.
 ;
 get_item_by_name:
 
@@ -460,8 +469,8 @@ gibn_found_it:
         pop bc
         pop hl
 
-        dec hl
-        dec hl
+        dec hl ; yeah this is bad.
+        dec hl ; we're decreasing HL to point back to the start of this item.
 
         dec hl
         dec hl
@@ -479,9 +488,11 @@ gibn_found_it:
 ;
 ; Helper function.  Is the player carrying something?
 ;
-; Return "A == 0" if so.
+; This is used in the inventory function to decide whether to show the list
+; of items, with header, or "You're carrying nothing".
 ;
-; Return "A == FF" if not
+; Return "A == 0" if so.
+; Return "A == FF" if not.
 ;
 player_has_objects:
         ld hl, items
@@ -505,35 +516,14 @@ player_has_objects_loop:
         ld a,(hl)
         cp 255
         jr nz, player_not_carrying_loop
-           xor a
-           ret
+        xor a
+        ret
 player_not_carrying_loop:
         inc hl
         djnz player_has_objects_loop
         ld a, 0xff
         ret
 
-
-
-; Helper function - get length of string pointed to by HL
-;
-; Return length in b
-;
-strlen:
-        push hl
-        push af
-        xor b
-strlen_loop:
-        ld a,(hl)
-        cp 0
-        jp z,strlen_end
-        inc hl
-        inc b
-        jp strlen_loop
-strlen_end:
-        pop af
-        pop hl
-        ret
 
 ;
 ; Helper function - get pointer to second command-line word
@@ -573,6 +563,10 @@ input_second_term_end:
         ld a, 0xff
         ret
 
+
+
+
+; Multiply two 8-bit values together.
 ; INPUT: THE VALUES IN REGISTER B EN C
 ; OUTPUT: HL = B * C
 ; CHANGES: AF,DE,HL,B
@@ -589,7 +583,10 @@ LOOP:	ADD HL,DE
 	RET
 
 ;
-; Output numbers
+; Output number helpers - used solely for reporting the number of turns
+; you have taken.
+;
+; (Either at victory/death, or via the TURNS command.)
 ;
 DispHL:
 	ld	bc,-10000
@@ -662,6 +659,9 @@ cls_function:
 ;
 ; Command-Handler DEBUG
 ;
+; Toggles the debug-flag, which can be used to see some parsing/input details
+; but not much more than that.
+;
 debug_function:
         ld hl,DEBUG_STORE
         ld a,(hl)
@@ -672,7 +672,6 @@ debug_function:
         ld de, debug_off_msg
         call show_msg
         ret
-
 debug_turn_on:
         ld a,1
         ld (hl),a
@@ -869,6 +868,7 @@ drop_invoke_handler:
         pop hl
         call JP_HL
 
+
 ;
 ; Command-Handler QUIT
 ;
@@ -878,8 +878,8 @@ quit_function:
         ld de, QUIT_MSG
         call show_msg
         call show_turn_count
-
         jp 0x0000
+
 
 ;
 ; Command-Handler HELP
@@ -1130,6 +1130,11 @@ show_newline:
 ; CUSTOM OBJECT HOOKS
 ;********************************************************************
 
+; when you drop the mirror it cracks.
+;
+;  remove the "mirror" item from the current location.
+;  add the "mirror-broken" item to the current location.
+;
 drop_mirror_fn:
         ; find the mirror
         ld hl, item_1_name
