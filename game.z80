@@ -448,10 +448,9 @@ inventory_loop:
         push bc
         push hl
 
-        ; a contains the item we're carrying
-        ; items are 6 bytes long
+        ; A contains the item-number we're carrying, show it.
         ld b,a
-        ld c, 6
+        ld c, ITEM_ENTRY_LENGTH
         call multiply
         ld de, items
         add hl,de
@@ -485,8 +484,8 @@ look_function:
         call show_msg
         ld hl, CURRENT_LOCATION  ; get current location
         ld a, (hl)
-        ld b, a                  ; multiply by five
-        ld c, 10
+        ld b, a                  ; multiply by the length of each entry
+        ld c, LOCATION_ENTRY_LENGTH
         call multiply
         ld de, location_table ; add to base of location table
         add hl,de
@@ -528,7 +527,57 @@ look_show_extended:
         ld a, 1
         ld (hl), a    ; set the seen-flag
 
-        ; TODO - show items in this room.
+        ; Can we see anything here?
+        inc hl ; point to the inventory
+        push hl
+        ld b,5
+look_item_loop_test:
+        ld a, (hl)
+        cp 255
+        jp nz, look_has_items
+        inc hl
+        djnz look_item_loop_test
+        pop hl
+        ret
+
+look_has_items:
+        ld de, you_see_message
+        call show_msg
+        pop hl
+        ld b,5
+look_item_loop:
+        ld a, (hl)
+        cp 255
+        jp z, skip_empty_item_slot
+
+        ; a contains the item index
+        push bc
+        push hl
+
+        ; A contains the item-number we're carrying, show it.
+        ld b,a
+        ld c, ITEM_ENTRY_LENGTH
+        call multiply
+        ld de, items
+        add hl,de
+
+        ; hl now points to the item
+        inc hl
+        inc hl ; skip the name
+
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        call show_msg
+        call show_newline
+        ; show it
+        pop hl
+        pop bc
+
+skip_empty_item_slot:
+        inc hl
+        djnz look_item_loop
+
         ret
 
 
@@ -601,6 +650,8 @@ inventory_empty_message:
         db 0x0a, 0x0d, "You are carrying nothing.", 0x0a, 0x0d, "$"
 you_carrying_message:
         db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
+you_see_message:
+        db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
 BUG_MSG:
         db 0x0a, 0x0d, "BUG DETECTED!", 0x0a, 0x0d, "$"
 usage_message:
@@ -748,12 +799,12 @@ location_table:
         DEFW location_0_short
         DEFW location_0_long
         DB 0 ; seen-flag
-        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
-
+        DB 0x03, 0xff, 0xff, 0xff, 0xff  ; items in this location
+location_first:
         DEFW location_1_short
         DEFW location_1_long
         DB 0 ; seen-flag
-        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
+        DB 0x02, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_2_short
         DEFW location_2_long
@@ -770,7 +821,7 @@ location_table:
         DB 0 ; seen-flag
         DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
-
+LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
 item_0_name: db "generator"
 item_0_desc: db "A small generator.$"
@@ -782,28 +833,60 @@ item_1_desc:  db "A small mirror.$"
 item_1_long:  db "The mirror doesn't seem to be anything special.\n"
               db "But your reflection?  It looks fabulous.\n"
               db "$"
+
+item_2_name:  db "mirror-broken"
+item_2_desc:  db "A small mirror, which is cracked and broken.$"
+item_2_long:  db "The mirror was once small and delicate.\n"
+              db "But now it shows a distored reflection of yourself,\n"
+              db "which is oddly unsettling.\n"
+              db "$"
+
+item_3_name:  db "torch"
+item_3_desc:  db "A small torch.$"
+item_3_long:  db "The torch doesn't seem to be anything special.\n"
+              db "$"
+
+item_4_name:  db "torch-lit"
+item_4_desc:  db "A small torch, which is turned on.$"
+item_4_long:  db "The torch doesn't seem to be anything special.\n"
+              db "$"
+
 ;
 ; Item table
 ;
 ; Each item contains:
 ;
-;   1. A pointer to a short description
-;   2. A pointer to a long description
+;   1. A pointer to the (internal) name.
+;   2. A pointer to a short description - this will be empty for "hidden" items.
+;   3. A pointer to a long description
 ;
 ;  TODO:
 ;
 ;    ptr for get, drop, use, and examine
 ;
 items:
-        DEFW item_0_name
+        DEFW item_0_name  ; generator
         DEFW item_0_desc
         DEFW item_0_long
-
-        DEFW item_1_name
+item_first:
+        DEFW item_1_name  ; mirror
         DEFW item_1_desc
         DEFW item_1_long
 
+        DEFW item_2_name  ; mirror-broken
+        DEFW item_2_desc
+        DEFW item_2_long
 
+        DEFW item_3_name  ; torch
+        DEFW item_3_desc
+        DEFW item_3_long
+
+        DEFW item_4_name  ; torch-lit
+        DEFW item_4_desc
+        DEFW item_4_long
+
+; length of an entry in the item table.
+ITEM_ENTRY_LENGTH: EQU item_first - items
 
 ; Temporary buffer, available to all handlers.
 ; 30 bytes long
