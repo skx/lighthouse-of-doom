@@ -419,6 +419,62 @@ help_skip_this:
 
 
 ;
+; Command-handler INVENTORY
+;
+inventory_function:
+        ; is the inventory empty:
+        ld hl, CURRENT_INVENTORY
+        ld b, 5
+inventory_empty_test:
+        ld a, (hl)
+        cp 0xff
+        jp nz,inventory_non_empty
+        inc hl
+        djnz inventory_empty_test
+        ; OK if we reached here then we're empty
+        ld de,inventory_empty_message
+        call show_msg
+        ret
+inventory_non_empty:
+        ld de,you_carrying_message
+        call show_msg
+        ld b, 5 ;max items
+        ld hl, CURRENT_INVENTORY
+inventory_loop:
+        ld a, (hl)
+        cp 0xff
+        jp z,inventory_slot_empty
+
+        push bc
+        push hl
+
+        ; a contains the item we're carrying
+        ; items are 6 bytes long
+        ld b,a
+        ld c, 6
+        call multiply
+        ld de, items
+        add hl,de
+
+        ; hl now points to the item
+        inc hl
+        inc hl ; skip the name
+
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        call show_msg
+        call show_newline
+        ; show it
+        pop hl
+        pop bc
+inventory_slot_empty:
+        inc hl
+        djnz inventory_loop
+        ret
+
+
+;
 ; Command-Handler LOOK
 ;
 ; Show the current location.  If the seen-flag has not been set then
@@ -514,7 +570,7 @@ TURN_COUNT:
 CURRENT_LOCATION:
         db 0
 CURRENT_INVENTORY:
-        db 0, 0, 0, 0, 0
+        db 0xff, 0xff, 0xff, 0xff, 0xff
 PLAYER_DEAD:
         db 0
 PLAYER_WON:
@@ -541,6 +597,10 @@ prompt_message:
         db 0x0a, 0x0d,">$"
 you_entered_message:
         db 0x0a, 0x0d, "You entered: $"
+inventory_empty_message:
+        db 0x0a, 0x0d, "You are carrying nothing.", 0x0a, 0x0d, "$"
+you_carrying_message:
+        db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
 BUG_MSG:
         db 0x0a, 0x0d, "BUG DETECTED!", 0x0a, 0x0d, "$"
 usage_message:
@@ -625,7 +685,7 @@ command_table:
         DEFB 3, 'CLS', 1
           DEFW cls_function
         DEFB 9, 'INVENTORY', 0
-          DEFW unimplemented_command
+          DEFW inventory_function
         DEFB 4, 'DOWN', 0
           DEFW down_function
         DEFB 4, 'DROP', 0
@@ -668,9 +728,9 @@ command_table:
         DEFB 1, 'L', 1
           DEFW look_function
         DEFB 3, 'INV', 1
-          DEFW unimplemented_command
+          DEFW inventory_function
         DEFB 1, 'I', 1
-          DEFW unimplemented_command
+          DEFW inventory_function
         DEFB 1, 'U', 1
           DEFW up_function
         DEFB 1, 'D', 1
@@ -688,28 +748,60 @@ location_table:
         DEFW location_0_short
         DEFW location_0_long
         DB 0 ; seen-flag
-        DB 0, 0, 0, 0, 0  ; items in this location
+        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_1_short
         DEFW location_1_long
         DB 0 ; seen-flag
-        DB 0, 0, 0, 0, 0  ; items in this location
+        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_2_short
         DEFW location_2_long
         DB 0 ; seen-flag
-        DB 0, 0, 0, 0, 0  ; items in this location
+        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_3_short
         DEFW location_3_long
         DB 0 ; seen-flag
-        DB 0, 0, 0, 0, 0  ; items in this location
+        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_4_short
         DEFW location_4_long
         DB 0 ; seen-flag
-        DB 0, 0, 0, 0, 0  ; items in this location
+        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
+
+
+item_0_name: db "generator"
+item_0_desc: db "A small generator.$"
+item_0_long: db "This is a diesel-power generator, which seems to be full."
+             db "$"
+
+item_1_name:  db "mirror"
+item_1_desc:  db "A small mirror.$"
+item_1_long:  db "The mirror doesn't seem to be anything special.\n"
+              db "But your reflection?  It looks fabulous.\n"
+              db "$"
+;
+; Item table
+;
+; Each item contains:
+;
+;   1. A pointer to a short description
+;   2. A pointer to a long description
+;
+;  TODO:
+;
+;    ptr for get, drop, use, and examine
+;
+items:
+        DEFW item_0_name
+        DEFW item_0_desc
+        DEFW item_0_long
+
+        DEFW item_1_name
+        DEFW item_1_desc
+        DEFW item_1_long
 
 
 
