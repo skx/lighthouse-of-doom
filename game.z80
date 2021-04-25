@@ -281,6 +281,26 @@ ret_obj:
 
 
 ;
+; Helper function - get length of string pointed to by HL
+;
+; Return length in b
+;
+strlen:
+        push hl
+        xor b
+strlen_loop:
+        ld a,(hl)
+        cp 0
+        jp z,strlen_end
+        inc hl
+        inc b
+        jp strlen_loop
+strlen_end:
+        pop hl
+        ret
+
+;
+;
 ; Helper function - get pointer to second command-line word
 ;
 ; e.g. The user enters "GET TORCH", "EXAMINE BOOK", etc, we want to
@@ -438,6 +458,12 @@ examine_function:
         call show_msg
         ret
 examine_object:
+        ; HL points to the (upper-case) object the user wants.
+
+        ; Does this exist in the current location?
+
+        ; Does this exist in the user's inventory?
+
         push hl
         pop de
         call show_msg
@@ -906,30 +932,30 @@ location_first:
 
 LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
-item_0_name: db "generator"
+item_0_name: db "GENERATOR"
 item_0_desc: db "A small generator.$"
 item_0_long: db "This is a diesel-power generator, which seems to be full."
              db "$"
 
-item_1_name:  db "mirror"
+item_1_name:  db "MIRROR"
 item_1_desc:  db "A small mirror.$"
 item_1_long:  db "The mirror doesn't seem to be anything special.\n"
               db "But your reflection?  It looks fabulous.\n"
               db "$"
 
-item_2_name:  db "mirror-broken"
+item_2_name:  db "MIRROR-BROKEN"
 item_2_desc:  db "A small mirror, which is cracked and broken.$"
 item_2_long:  db "The mirror was once small and delicate.\n"
               db "But now it shows a distored reflection of yourself,\n"
               db "which is oddly unsettling.\n"
               db "$"
 
-item_3_name:  db "torch"
+item_3_name:  db "TORCH"
 item_3_desc:  db "A small torch.$"
 item_3_long:  db "The torch doesn't seem to be anything special.\n"
               db "$"
 
-item_4_name:  db "torch-lit"
+item_4_name:  db "TORCH-LIT"
 item_4_desc:  db "A small torch, which is turned on.$"
 item_4_long:  db "The torch doesn't seem to be anything special.\n"
               db "$"
