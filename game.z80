@@ -388,6 +388,7 @@ player_not_carrying_loop:
 ;
 strlen:
         push hl
+        push af
         xor b
 strlen_loop:
         ld a,(hl)
@@ -397,6 +398,7 @@ strlen_loop:
         inc b
         jp strlen_loop
 strlen_end:
+        pop af
         pop hl
         ret
 
@@ -580,17 +582,100 @@ examine_function:
         ld DE, EXAMINE_WHAT_MSG
         call show_msg
         ret
+
 examine_object:
-        ; HL points to the (upper-case) object the user wants.
+        call show_newline
 
-        ; Does this exist in the current location?
+        ; erase our temporary buffer
+        ld b,TMP_BUFFER_LEN
+        ld hl,tmp_buffer
+ex_erase:
+        ld (hl),0
+        inc hl
+        djnz ex_erase
 
-        ; Does this exist in the user's inventory?
+        ; OK we shall copy the second-term to the temporary buffer
+        call input_second_term
+        ld de,tmp_buffer+1
+        ld b,0
+ex_copy_loop:
+        ld a,(hl)
+        cp 0
+        jr z, copy_finished
+        ld (de),a
+        inc de
+        inc hl
+        inc b
+        jr ex_copy_loop
+
+copy_finished:
+        ld hl, tmp_buffer
+        ld (hl),b
+
+        ld hl, items
+        ld b, ITEM_COUNT
+examine_objects_loop:
+        ; hl points to the item
+        ; skip past the name - but save it in DE
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+        ; skip past the desc
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; is this object carried?
+        ld a,(hl)
+        cp 0xff ; 0xff means the item is being carried
+        jr z, examine_object_present
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld c,(hl)
+        pop hl
+        cp c
+        jr z, examine_object_present
+examine_not_present:
+        inc hl
+        djnz examine_objects_loop
+        ret
+
+examine_object_present:
+        push hl ; preserve our entry into the item
+        push bc ; preserve b for our loop
+
+        ld hl, tmp_buffer ; Get the length from our buffer
+        ld b, (hl)
+        inc hl            ; Now DE points to the input
+
+        call CompareStringsWithLength
+        jp z, examine_do_it
+
+        pop bc
+        pop hl
+        jr examine_not_present
+
+examine_do_it:
+        pop bc
+        pop hl
 
         push hl
-        pop de
+        push bc
+
+        dec hl
+        dec hl
+
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+
         call show_msg
-        ret
+        pop bc
+        pop hl
+        jr examine_not_present
 
 ;
 ; Command-Handler QUIT
@@ -1058,7 +1143,7 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
 item_0_name: db "GENERATOR"
 item_0_desc: db "A small generator.$"
-item_0_long: db "This is a diesel-power generator, which seems to be full."
+item_0_long: db "This is a diesel-power generator, which seems to be full of fuel, and ready to go."
              db "$"
 
 item_1_name:  db "MIRROR"
@@ -1076,7 +1161,8 @@ item_2_long:  db "The mirror was once small and delicate.\n"
 
 item_3_name:  db "TORCH"
 item_3_desc:  db "A small torch.$"
-item_3_long:  db "The torch doesn't seem to be anything special.\n"
+item_3_long:  db "The torch doesn't seem to be anything special,\n"
+              db "but you do notice that it contains batteries and can be turned on easily.\n"
               db "$"
 
 item_4_name:  db "TORCH-LIT"
@@ -1136,6 +1222,8 @@ tmp_buffer:
         db 0,0, 0,0, 0,0, 0,0, 0,0
         db 0,0, 0,0, 0,0, 0,0, 0,0
         db 0,0, 0,0, 0,0, 0,0, 0,0
+tmp_buffer_end:
+TMP_BUFFER_LEN: EQU ( tmp_buffer_end - tmp_buffer)
 
 
 ;
