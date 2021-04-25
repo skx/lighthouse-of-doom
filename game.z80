@@ -136,14 +136,14 @@ find_command:
         ; get the length of the entry in the command table
         ;
         ; Entries are arranged like so:
-        ;   LENGTH "ASCII" ADDR1 ADDR2
+        ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
         ;
-        ; Where LENGTH is the length of the ASCII command-name.
+        ; Where $LENGTH is the length of the ASCII command-name.
         ;
         ; So:
         ;
-        ;   4, "QUIT", quit_fn_ptr
-        ;   3, "CLS", cls_fn_ptr
+        ;   4, "QUIT", 0, quit_fn_ptr
+        ;   3, "CLS",  1, cls_fn_ptr
         ;   0,
         ;
 find_command_again:
@@ -171,9 +171,9 @@ cont:
 find_command_skip:
         inc de
         djnz find_command_skip
-        inc de ; jump past the address
-        inc de
-
+        inc de ; hidden-flag
+        inc de ; addr1
+        inc de ; addr2
         ; next entry - might be zero-terminated
         jp  find_command_again
 
@@ -187,7 +187,7 @@ find_command_found:
 find_command_skip2:
         inc de
         djnz find_command_skip2
-
+        inc de ; skip the hidden-flag
         ld a, (de)
         ld l,a
         inc de
@@ -211,21 +211,77 @@ CompareStringsWithLength:
 
 
 ;
-; Command-Handlers - stubs
+; Command-Handler QUIT
 ;
+; Terminate the game
 quit_function:
         ld de, QUIT_MSG
         call show_msg
         jp 0x0000
+
+;
+; Command-Handler HELP
+;
+; Show "These commands are available", then the names of each non-hidden
+; command.
+;
 help_function:
         ld de, HELP_MSG
-        jp show_msg
+        call show_msg
+        ld de,command_table
+help_function_again: ; have we run out of commands?
+        ld a, (de) ; length of string
+        cp 0x00
+        ret z
+        ld hl, help_function_cmd_buffer
+        ld b, a    ; B will contain the length
+        inc de     ; DE point to the string itself
+help_func_loop:  ; copy the command-name to the buffer
+        ld a,(de)
+        ld (hl),a
+        inc hl
+        inc de
+        djnz help_func_loop
+        ld a, 0x0a
+        ld (hl),a
+        inc hl
+        ld a, 0x0d
+        ld (hl),a
+        ld a, '$'
+        ld (hl),a
+        push de
+        ld a,(de)
+        cp 1
+        jr z, help_skip_this
+        ld de, help_function_cmd_buffer
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+help_skip_this:
+        pop de
+        inc de
+        inc de  ; skip addr1
+        inc de  ; skip addr2
+        jp  help_function_again
+
+help_function_cmd_buffer:
+        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+
+;
+; Command-Handler CLS
+;
+;  Clear the screen
 cls_function:
         ld de, CLS_MSG
         jp show_msg
-inventory_function:
-        ld de, INVENTORY_MSG
-        jp show_msg
+
+
+;
+; Command-Handler STUB
+;
+;  Show that the given command isn't implemented
+unimplemented_command:
+        ld de, unimplemented_command_str
 show_msg:
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
@@ -241,9 +297,9 @@ CLS_MSG:
 QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
 HELP_MSG:
-        db 0x0a, 0x0d, "You entered the magic HELP command$"
-INVENTORY_MSG:
-        db 0x0a, 0x0d, "You entered the magic INVENTORY command$"
+        db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
+unimplemented_command_str:
+        db 0x0a, 0x0d, "That command is not yet implemented$"
 prompt_message:
         db 0x0a, 0x0d,">$"
 you_entered_message:
@@ -256,17 +312,69 @@ usage_message:
 
 
 ;
-; Stub command-table
+; Our command-table contains the commands we accept, a pointer to their
+; handlers, and a "hidden" flag.
+;
+; The HELP command will show all non-hidden commands.
+;
+; NOTE: There is no help-text for the commands
 ;
 command_table:
-        DEFB 4, 'QUIT'
+        DEFB 4, 'QUIT', 0
           DEFW quit_function
-        DEFB 4, 'HELP'
+        DEFB 4, 'HELP', 0
           DEFW help_function
-        DEFB 3, 'CLS'
+        DEFB 3, 'CLS', 1
           DEFW cls_function
-        DEFB 9, 'INVENTORY'
-          DEFW inventory_function
+        DEFB 9, 'INVENTORY', 0
+          DEFW unimplemented_command
+        DEFB 4, 'DOWN', 0
+          DEFW unimplemented_command
+        DEFB 4, 'DROP', 0
+          DEFW unimplemented_command
+        DEFB 7, 'EXAMINE', 0
+          DEFW unimplemented_command
+        DEFB 3, 'GET', 0
+          DEFW unimplemented_command
+        DEFB 4, 'LOOK', 0
+          DEFW unimplemented_command
+        DEFB 4, 'OPEN', 0
+          DEFW unimplemented_command
+        DEFB 2, 'UP', 0
+          DEFW unimplemented_command
+        DEFB 3, 'USE', 0
+          DEFW unimplemented_command
+        ;; synonyms
+        DEFB 4, 'TAKE', 1
+          DEFW unimplemented_command
+        DEFB 6, 'PICKUP', 1
+          DEFW unimplemented_command
+        DEFB 4, 'READ', 1
+          DEFW unimplemented_command
+        ;; easter-eges
+        DEFB 4, 'CALL', 1
+          DEFW unimplemented_command
+        DEFB 4, 'DIAL', 1
+          DEFW unimplemented_command
+        DEFB 5, 'PHONE', 1
+          DEFW unimplemented_command
+        DEFB 4, 'FUCK', 1
+          DEFW unimplemented_command
+        DEFB 4, 'SHIT', 1
+          DEFW unimplemented_command
+        DEFB 5, 'XYZZY', 1
+          DEFW unimplemented_command
+        ;; abbreviations
+        DEFB 1, 'L', 1
+          DEFW unimplemented_command
+        DEFB 3, 'INV', 1
+          DEFW unimplemented_command
+        DEFB 1, 'I', 1
+          DEFW unimplemented_command
+        DEFB 1, 'U', 1
+          DEFW unimplemented_command
+        DEFB 1, 'D', 1
+          DEFW unimplemented_command
         DEFB 0
 
 JP_HL:
