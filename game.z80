@@ -739,14 +739,8 @@ location_4_long:
 ; NOTE: There is no help-text for the commands
 ;
 command_table:
-        DEFB 4, 'QUIT', 0
-          DEFW quit_function
-        DEFB 4, 'HELP', 0
-          DEFW help_function
         DEFB 3, 'CLS', 1
           DEFW cls_function
-        DEFB 9, 'INVENTORY', 0
-          DEFW inventory_function
         DEFB 4, 'DOWN', 0
           DEFW down_function
         DEFB 4, 'DROP', 0
@@ -755,16 +749,22 @@ command_table:
           DEFW unimplemented_command
         DEFB 3, 'GET', 0
           DEFW unimplemented_command
+        DEFB 4, 'HELP', 0
+          DEFW help_function
         DEFB 4, 'LOOK', 0
           DEFW look_function
+        DEFB 9, 'INVENTORY', 0
+          DEFW inventory_function
         DEFB 4, 'OPEN', 0
           DEFW unimplemented_command
+        DEFB 4, 'QUIT', 0
+          DEFW quit_function
+        DEFB 5, 'TURNS', 0
+          DEFW show_turn_count
         DEFB 2, 'UP', 0
           DEFW up_function
         DEFB 3, 'USE', 0
           DEFW unimplemented_command
-        DEFB 5, 'TURNS', 0
-          DEFW show_turn_count
         ;; synonyms
         DEFB 4, 'TAKE', 1
           DEFW unimplemented_command
