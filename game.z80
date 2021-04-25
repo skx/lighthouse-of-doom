@@ -318,7 +318,12 @@ show_a_register:
 	ld l,a
 	jp DispHL
 
+
+;
+; Show the number of turns a user has played
+;
 show_turn_count:
+        call show_newline
         ld de, PLAYER_TURN_COUNT
         call show_msg
         ld hl, TURN_COUNT
@@ -637,6 +642,8 @@ command_table:
           DEFW up_function
         DEFB 3, 'USE', 0
           DEFW unimplemented_command
+        DEFB 5, 'TURNS', 0
+          DEFW show_turn_count
         ;; synonyms
         DEFB 4, 'TAKE', 1
           DEFW unimplemented_command
