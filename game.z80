@@ -20,10 +20,11 @@
 ;   3.  Otherwise we echo the input
 ;   4.  GOTO 1.
 ;
-; We have no map/world, we have no items, we have no movement, and
-; we have no real implementation.
+; We have declared a complete list of command-handlers, but most of them
+; are not implemented.
 ;
-; However this can be extended over time.
+; We've defined our location-map but the movement commands are broken,
+; because we don't sanity-check and no items are supported.
 ;
 
 
@@ -253,6 +254,22 @@ ret_obj:
         ret
 
 
+
+; INPUT: THE VALUES IN REGISTER B EN C
+; OUTPUT: HL = B * C
+; CHANGES: AF,DE,HL,B
+;
+multiply:
+	LD HL,0
+	LD A,B
+	OR A
+	RET Z
+	LD D,0
+	LD E,C
+LOOP:	ADD HL,DE
+	DJNZ LOOP
+	RET
+
 ;
 ; Output numbers
 ;
@@ -319,6 +336,17 @@ cls_function:
         jp show_msg
 
 ;
+; Command-Handler DOWN
+;
+; Change location - TODO fix this
+;
+down_function:
+        ld hl, CURRENT_LOCATION
+        inc (hl)
+        call look_function
+        ret
+
+;
 ; Command-Handler QUIT
 ;
 ; Terminate the game
@@ -375,6 +403,74 @@ help_skip_this:
 
 
 
+;
+; Command-Handler LOOK
+;
+; Show the current location.  If the seen-flag has not been set then
+; show the long description and set the flag.
+;
+look_function:
+        ld de,LOOK_FUNCTION_PREFIX
+        call show_msg
+        ld hl, CURRENT_LOCATION  ; get current location
+        ld a, (hl)
+        ld b, a                  ; multiply by five
+        ld c, 5
+        call multiply
+        ld de, location_table ; add to base of location table
+        add hl,de
+
+look_function_show:
+        ; ok we point to the table - show the short version
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        inc hl
+        push hl
+        call show_msg
+        call show_newline
+        call show_newline
+        pop hl
+
+        ld e, (hl)  ; get the long-message address in de
+        inc hl
+        ld d, (hl)
+        inc hl
+
+        ; input-buffer starts with L for look?
+        ; then always show
+        ld bc, input_buffer+2
+        ld a, (bc)
+        cp 'L'
+        jp z,look_show_extended
+
+        ; otherwise if we've seen this room don't show the
+        ; extended description or objects.
+        ld a, (hl)
+        cp 1
+        ret z
+look_show_extended:
+        push hl
+        call show_msg
+        pop hl
+
+        ld a, 1
+        ld (hl), a    ; set the seen-flag
+
+        ; TODO - show items in this room.
+        ret
+
+
+;
+; Command-Handler UP
+;
+; Change location - TODO fix this
+;
+up_function:
+        ld hl, CURRENT_LOCATION
+        dec (hl)
+        call look_function
+        ret
 
 ;
 ; Command-Handler STUB
@@ -387,6 +483,9 @@ show_msg:
         call BDOS_ENTRY_POINT
         ret
 
+show_newline:
+        ld de, NEWLINE
+        jp show_msg
 
 
 
@@ -410,6 +509,9 @@ PLAYER_WON:
 ; Data Area
 ;********************************************************************
 
+NEWLINE:
+        db 0x0a, 0x0d, "$"
+
 CLS_MSG:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
@@ -424,6 +526,8 @@ prompt_message:
         db 0x0a, 0x0d,">$"
 you_entered_message:
         db 0x0a, 0x0d, "You entered: $"
+BUG_MSG:
+        db 0x0a, 0x0d, "BUG DETECTED!", 0x0a, 0x0d, "$"
 usage_message:
         db  "This is a demo for lighthouse of doom!"
         db 0x0a, 0x0d
@@ -441,6 +545,54 @@ PLAYER_TURN_COUNT:
 PLAYER_TURN_COUNT_END:
         db " turns."
         db 0x0a, 0x0d,"$"
+LOOK_FUNCTION_PREFIX:
+        db 0x0a, 0x0d, "You are in $"
+
+;
+; Location text
+;
+location_0_short:
+        db "the top floor of the lighthouse.$"
+location_0_long:
+        db "The lighthouse has a spiral staircase which runs from top to bottom.\n"
+        db "Through the window you can see the lights of an approach ship, and\n"
+        db "you know that it will crash upon the rocks if you can't signal it away.\n"
+        db "Too bad the lighthouse light doesn't seem to be working, it looks like\n"
+        db "there's a problem with the power.\n"
+        db "$"
+
+location_1_short:
+        db "the middle floor of the lighthouse.$"
+location_1_long:
+        db "The middle floor of the lighthouse seems to be a relaxation-room,\n"
+        db "you see some comfy chairs, a work-desk, as well as various odds and\n"
+        db "ends.\n\n"
+        db "An impressive painting hangs over the desk.\n"
+        db "$"
+
+location_2_short:
+        db "the ground floor of the lighthouse.$"
+location_2_long:
+        db "The ground floor seems very crowded, with most of the room\n"
+        db "taken up by a coat-rack, boots, and similar things\n"
+        db "$"
+
+
+location_3_short:
+        db "the lighthouse basement.$"
+location_3_long:
+        db "This seems to be a graveyard for discarded machinery, and\n"
+        db "oddly enough old children's toys.\n"
+        db "$"
+
+location_4_short:
+        db "a dark place.$"
+location_4_long:
+        db "You cannot see anything, but you can hear a snarling.\n"
+        db "There is also a strong smell, a feral smell, could it be that this\n"
+        db "is the haunt of a grue?"
+        db "$"
+
 
 ;
 ; Our command-table contains the commands we accept, a pointer to their
@@ -460,7 +612,7 @@ command_table:
         DEFB 9, 'INVENTORY', 0
           DEFW unimplemented_command
         DEFB 4, 'DOWN', 0
-          DEFW unimplemented_command
+          DEFW down_function
         DEFB 4, 'DROP', 0
           DEFW unimplemented_command
         DEFB 7, 'EXAMINE', 0
@@ -468,11 +620,11 @@ command_table:
         DEFB 3, 'GET', 0
           DEFW unimplemented_command
         DEFB 4, 'LOOK', 0
-          DEFW unimplemented_command
+          DEFW look_function
         DEFB 4, 'OPEN', 0
           DEFW unimplemented_command
         DEFB 2, 'UP', 0
-          DEFW unimplemented_command
+          DEFW up_function
         DEFB 3, 'USE', 0
           DEFW unimplemented_command
         ;; synonyms
@@ -497,16 +649,47 @@ command_table:
           DEFW unimplemented_command
         ;; abbreviations
         DEFB 1, 'L', 1
-          DEFW unimplemented_command
+          DEFW look_function
         DEFB 3, 'INV', 1
           DEFW unimplemented_command
         DEFB 1, 'I', 1
           DEFW unimplemented_command
         DEFB 1, 'U', 1
-          DEFW unimplemented_command
+          DEFW up_function
         DEFB 1, 'D', 1
-          DEFW unimplemented_command
+          DEFW down_function
         DEFB 0
+
+
+;
+; Location table
+;
+; Each location contains a short-description, a long one, and a flag to
+; say whether we've previously entered this location.
+;
+location_table:
+        DEFW location_0_short
+        DEFW location_0_long
+        DB 0
+
+        DEFW location_1_short
+        DEFW location_1_long
+        DB 0
+
+        DEFW location_2_short
+        DEFW location_2_long
+        DB 0
+
+        DEFW location_3_short
+        DEFW location_3_long
+        DB 0
+
+        DEFW location_4_short
+        DEFW location_4_long
+        DB 0
+
+
+
 
 ; Temporary buffer, available to all handlers.
 ; 30 bytes long
@@ -514,6 +697,7 @@ tmp_buffer:
         db 0,0, 0,0, 0,0, 0,0, 0,0
         db 0,0, 0,0, 0,0, 0,0, 0,0
         db 0,0, 0,0, 0,0, 0,0, 0,0
+
 
 ;
 ; This is the buffer which is used for reading a line of text from the
