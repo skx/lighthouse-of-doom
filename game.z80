@@ -50,6 +50,7 @@
 BDOS_ENTRY_POINT:    EQU 5
 
 ; BIOS functions we call
+BDOS_CHARACTER_READ:  EQU 0x01
 BDOS_OUTPUT_STRING:  EQU 0x09
 BDOS_READ_INPUT:     EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
@@ -59,12 +60,18 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
         ORG 100h
 
+        ; Clear the screen
+        call cls_function
+
         ; Opening banner
         ld de, usage_message
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 
-        ; TODO - pause for input here.
+        ; Pause for input here.
+        ld c,BDOS_CHARACTER_READ
+        call BDOS_ENTRY_POINT
+        call cls_function
 
         ; Show the starting-location.
         call show_newline
@@ -950,7 +957,6 @@ debug_off_msg:
         db 0x0a, 0x0d, "Debugging turned off.", 0x0a, 0x0d, "$"
 debug_on_msg:
         db 0x0a, 0x0d, "Debugging turned on.", 0x0a, 0x0d, "$"
-
 CLS_MSG:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
@@ -976,9 +982,26 @@ you_carrying_message:
 you_see_message:
         db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
 usage_message:
-        db  "This is a demo for lighthouse of doom!"
+        db "Lighthouse of doom!", 0x0a, 0x0d
+        db "===================", 0x0a, 0x0d, 0x0a, 0x0d
+        db "This is an original text-based adventure game written for CP/M!"
         db 0x0a, 0x0d
-        db "Pretend we paused for the game to start here."
+        db 0x0a, 0x0d
+        db "Written by Steve Kemp in 2021, with source available on github:"
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "  https://github.com/skx/lighthouse-of-doom"
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "Bug reports are most welcome, as are puzzle-suggestions and other feedback."
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "Any references to the Paw Patrol are entirely deliberate."
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "Press any key to start."
         db 0x0a, 0x0d, "$"
 
 PLAYER_DEAD_MESSAGE:
@@ -1215,6 +1238,7 @@ item_last:
 ; length of an entry in the item table.
 ITEM_ENTRY_LENGTH: EQU item_first - items
 ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
+
 
 ; Temporary buffer, available to all handlers.
 ; 30 bytes long
