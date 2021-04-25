@@ -356,6 +356,113 @@ item_not_present_loop:
 
 
 ;
+; Helper function.  Get item by name
+;
+; Name will be stored in HL
+;
+; On exit A will be 00 if all is OK, and HL will point to the item
+;
+; On exit A will be ff if there was a failure
+;
+get_item_by_name:
+
+        push hl
+
+        ; erase our temporary buffer
+        ld b,TMP_BUFFER_LEN
+        ld hl,tmp_buffer
+gibn_erase_loop:
+        ld (hl),0
+        inc hl
+        djnz gibn_erase_loop
+
+        ; copy the name of the item into the temporary-buffer, we add
+        ; a prefixed of the length.
+        pop hl
+        ld de,tmp_buffer+1
+        ld b,0
+gibn_copy_loop:
+        ld a,(hl)
+        cp 0
+        jr z, gibn_copy_complete
+        ld (de),a
+        inc de
+        inc hl
+        inc b
+        jr gibn_copy_loop
+
+gibn_copy_complete:
+        ld hl, tmp_buffer
+        ld (hl),b
+
+        ; point to the item-table
+        ld hl, items
+        ld b, ITEM_COUNT
+
+gibn_item_loop:
+        ; HL points to the item
+        ; Get the name in DE
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+
+        ; skip past the desc
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+
+        ; is this object carried?
+        ld a,(hl)
+        cp 0xff ; 0xff means the item is being carried
+        jr z, gibn_item_carried
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld c,(hl)
+        pop hl
+        cp c
+        jr z, gibn_item_present
+gibn_continue:
+        inc hl
+        djnz gibn_item_loop
+        ld a, 0xff
+        ret
+
+gibn_item_present:
+gibn_item_carried:
+        push hl ; preserve our entry into the item
+        push bc ; preserve b for our loop
+
+        ld hl, tmp_buffer ; Get the length from our buffer
+        ld b, (hl)
+        inc hl            ; Now HL points to the input
+                          ; DE points to the name of the current item.
+        call CompareStringsWithLength
+        jp z, gibn_found_it
+
+        pop bc
+        pop hl
+        jr gibn_continue
+
+gibn_found_it:
+        pop bc
+        pop hl
+
+        dec hl
+        dec hl
+
+        dec hl
+        dec hl
+
+        dec hl
+        dec hl
+        xor a
+        ret
+
+
+;
 ; Helper function.  Is the player carrying something?
 ;
 ; Return "A == 0" if so.
@@ -409,7 +516,6 @@ strlen_end:
         pop hl
         ret
 
-;
 ;
 ; Helper function - get pointer to second command-line word
 ;
@@ -593,96 +699,31 @@ examine_function:
 examine_object:
         call show_newline
 
-        ; erase our temporary buffer
-        ld b,TMP_BUFFER_LEN
-        ld hl,tmp_buffer
-ex_erase:
-        ld (hl),0
-        inc hl
-        djnz ex_erase
-
-        ; OK we shall copy the second-term to the temporary buffer
+        ; store object in HL
         call input_second_term
-        ld de,tmp_buffer+1
-        ld b,0
-ex_copy_loop:
-        ld a,(hl)
+
+        call get_item_by_name
         cp 0
-        jr z, copy_finished
-        ld (de),a
-        inc de
-        inc hl
-        inc b
-        jr ex_copy_loop
+        jp z,examine_found_it
 
-copy_finished:
-        ld hl, tmp_buffer
-        ld (hl),b
-
-        ld hl, items
-        ld b, ITEM_COUNT
-examine_objects_loop:
-        ; hl points to the item
-        ; skip past the name - but save it in DE
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-        ; skip past the desc
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; is this object carried?
-        ld a,(hl)
-        cp 0xff ; 0xff means the item is being carried
-        jr z, examine_object_present
-        push hl
-        ld hl, CURRENT_LOCATION
-        ld c,(hl)
-        pop hl
-        cp c
-        jr z, examine_object_present
-examine_not_present:
-        inc hl
-        djnz examine_objects_loop
+        ld de, item_not_present_msg
+        call show_msg
         ret
 
-examine_object_present:
-        push hl ; preserve our entry into the item
-        push bc ; preserve b for our loop
-
-        ld hl, tmp_buffer ; Get the length from our buffer
-        ld b, (hl)
-        inc hl            ; Now DE points to the input
-
-        call CompareStringsWithLength
-        jp z, examine_do_it
-
-        pop bc
-        pop hl
-        jr examine_not_present
-
-examine_do_it:
-        pop bc
-        pop hl
-
-        push hl
-        push bc
-
-        dec hl
-        dec hl
-
+examine_found_it:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; get the long description
         ld e,(hl)
         inc hl
         ld d,(hl)
         inc hl
-
         call show_msg
-        pop bc
-        pop hl
-        jr examine_not_present
+        ret
 
 ;
 ; Command-Handler QUIT
@@ -981,6 +1022,8 @@ you_carrying_message:
         db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
 you_see_message:
         db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
+item_not_present_msg:
+        db "I can't see that here!", 0x0a, 0x0d, "$"
 usage_message:
         db "Lighthouse of doom!", 0x0a, 0x0d
         db "===================", 0x0a, 0x0d, 0x0a, 0x0d
