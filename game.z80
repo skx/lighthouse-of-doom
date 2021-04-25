@@ -30,6 +30,16 @@
 ;
 
 ;
+; Deviations from the C-code
+;   Rather than having slots in the locations, and the player, for
+;  storing objects we instead make the location a property of each
+;  item.
+;
+;   An item will have location "FF" if the player is carrying it,
+;  otherwise the location will be the room it is stored within.
+;
+;
+;
 ; Deficiencies
 ;
 ;   HELP command doesn't show description next to command.
@@ -123,7 +133,7 @@ erase_input_buffer:
         ld de,DEBUG_YOU_ENTERED_MSG
         call show_msg
         call show_input_buffer
-
+        call show_newline
 continue1:
         ; 3. upper-case the input
         ld hl, input_buffer+1
@@ -150,6 +160,7 @@ game_loop_uc_nc:
         ld de,DEBUG_AFTER_CASE_CHANGE
         call show_msg
         call show_input_buffer
+        call show_newline
 
 continue2:
         ;  4.  Look for a handler, if found call it
@@ -302,6 +313,75 @@ ret_obj:
 
 
 ;
+; Helper function.  Are items present in this room?
+;
+; Return "A == 0" if so.
+;
+; Return "A == FF" if not
+;
+items_are_present:
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+
+        ld hl, items
+        ld b, ITEM_COUNT
+look_item_loop_test:
+        ; hl points to the item
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ld c,(hl)
+        cp c
+        jr nz, item_not_present_loop
+           xor a
+           ret
+item_not_present_loop:
+        inc hl
+        djnz look_item_loop_test
+        ld a, 0xff
+        ret
+
+
+;
+; Helper function.  Is the player carrying something?
+;
+; Return "A == 0" if so.
+;
+; Return "A == FF" if not
+;
+player_has_objects:
+        ld hl, items
+        ld b, ITEM_COUNT
+player_has_objects_loop:
+        ; hl points to the item
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ld a,(hl)
+        cp 255
+        jr nz, player_not_carrying_loop
+           xor a
+           ret
+player_not_carrying_loop:
+        inc hl
+        djnz player_has_objects_loop
+        ld a, 0xff
+        ret
+
+
+
 ; Helper function - get length of string pointed to by HL
 ;
 ; Return length in b
@@ -574,55 +654,54 @@ help_skip_this:
 ; Command-handler INVENTORY
 ;
 inventory_function:
-        ; is the inventory empty:
-        ld hl, CURRENT_INVENTORY
-        ld b, 5
-inventory_empty_test:
-        ld a, (hl)
-        cp 0xff
-        jp nz,inventory_non_empty
-        inc hl
-        djnz inventory_empty_test
-        ; OK if we reached here then we're empty
-        ld de,inventory_empty_message
+        call player_has_objects         ; is the player carrying:
+        cp 0
+        jp z, inventory_show_items      ; Yes.  Go show
+
+        ld de,inventory_empty_message   ; Otherwise "Carrying nothing"
         call show_msg
         ret
-inventory_non_empty:
+
+inventory_show_items:
         ld de,you_carrying_message
         call show_msg
-        ld b, 5 ;max items
-        ld hl, CURRENT_INVENTORY
-inventory_loop:
-        ld a, (hl)
-        cp 0xff
-        jp z,inventory_slot_empty
 
-        push bc
-        push hl
-
-        ; A contains the item-number we're carrying, show it.
-        ld b,a
-        ld c, ITEM_ENTRY_LENGTH
-        call multiply
-        ld de, items
-        add hl,de
-
-        ; hl now points to the item
+        ;
+        ; We know there are items being carried, look for them
+        ;
+        ld hl, items
+        ld b, ITEM_COUNT
+inventory_test_item:
+        ; hl points to the item
+        ; skip past the name
         inc hl
-        inc hl ; skip the name
-
-        ld e, (hl)
         inc hl
-        ld d, (hl)
-        call show_msg
-        call show_newline
-        ; show it
-        pop hl
-        pop bc
-inventory_slot_empty:
+        ; skip past the desc - but save it in DE
+        ld e,(hl)
         inc hl
-        djnz inventory_loop
+        ld d,(hl)
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ld a,(hl)
+        cp 0xff ; 0xff means the item is being carried
+        jr nz, inv_item_not_carried
+          push hl
+          push de
+          push bc
+          push af
+          call show_msg
+          call show_newline
+          pop af
+          pop bc
+          pop de
+          pop hl
+inv_item_not_carried:
+        inc hl
+        djnz inventory_test_item
         ret
+
 
 
 ;
@@ -679,58 +758,56 @@ look_show_extended:
         ld a, 1
         ld (hl), a    ; set the seen-flag
 
-        ; Can we see anything here?
-        inc hl ; point to the inventory
-        push hl
-        ld b,5
-look_item_loop_test:
-        ld a, (hl)
-        cp 255
-        jp nz, look_has_items
-        inc hl
-        djnz look_item_loop_test
-        pop hl
-        ret
+        call items_are_present
+        cp 0
+        ret nz
 
-look_has_items:
-        ld de, you_see_message
+        ld de,you_see_message
         call show_msg
-        pop hl
-        ld b,5
+
+
+        ;
+        ; OK at this point we have looked at the room, and
+        ; we want to see the items there.
+        ;
+        ; Walk over the list of items - and show any which
+        ; are present in this room.
+        ;
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+
+        ld hl, items
+        ld b, ITEM_COUNT
 look_item_loop:
-        ld a, (hl)
-        cp 255
-        jp z, skip_empty_item_slot
-
-        ; a contains the item index
-        push bc
-        push hl
-
-        ; A contains the item-number we're carrying, show it.
-        ld b,a
-        ld c, ITEM_ENTRY_LENGTH
-        call multiply
-        ld de, items
-        add hl,de
-
-        ; hl now points to the item
+        ; hl points to the item
+        ; skip past the name
         inc hl
-        inc hl ; skip the name
-
-        ld e, (hl)
         inc hl
-        ld d, (hl)
-        call show_msg
-        call show_newline
-        ; show it
-        pop hl
-        pop bc
-
-skip_empty_item_slot:
+        ; skip past the desc - but save it in DE
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+;        ld c,(hl)
+        cp (hl)
+        jr nz, item_not_present
+          push hl
+          push de
+          push bc
+          push af
+          call show_msg
+          call show_newline
+          pop af
+          pop bc
+          pop de
+          pop hl
+item_not_present:
         inc hl
         djnz look_item_loop
         ret
-
 
 ;
 ; Command-Handler UP
@@ -770,8 +847,6 @@ TURN_COUNT:
         db 0
 CURRENT_LOCATION:
         db 0
-CURRENT_INVENTORY:
-        db 0xff, 0xff, 0xff, 0xff, 0xff
 PLAYER_DEAD:
         db 0
 PLAYER_WON:
@@ -956,33 +1031,28 @@ command_table:
 ; Location table
 ;
 ; Each location contains a pointer to a short-description, a pointer to
-; a long description, a seen-flag, and space for five objects.
+; a long description, and a seen-flag.
 ;
 location_table:
         DEFW location_0_short
         DEFW location_0_long
         DB 0 ; seen-flag
-        DB 0x03, 0xff, 0xff, 0xff, 0xff  ; items in this location
 location_first:
         DEFW location_1_short
         DEFW location_1_long
         DB 0 ; seen-flag
-        DB 0x02, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_2_short
         DEFW location_2_long
         DB 0 ; seen-flag
-        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_3_short
         DEFW location_3_long
         DB 0 ; seen-flag
-        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
         DEFW location_4_short
         DEFW location_4_long
         DB 0 ; seen-flag
-        DB 0xff, 0xff, 0xff, 0xff, 0xff  ; items in this location
 
 LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
@@ -1031,25 +1101,34 @@ items:
         DEFW item_0_name  ; generator
         DEFW item_0_desc
         DEFW item_0_long
+        DEFB 0xff ; player
+
 item_first:
         DEFW item_1_name  ; mirror
         DEFW item_1_desc
         DEFW item_1_long
+        DEFB 0x01 ; middle-floor
 
         DEFW item_2_name  ; mirror-broken
         DEFW item_2_desc
         DEFW item_2_long
+        DEFB 0xF0         ; not visible anywhere
 
         DEFW item_3_name  ; torch
         DEFW item_3_desc
         DEFW item_3_long
+        DEFB 0x00         ; top-floor
 
         DEFW item_4_name  ; torch-lit
         DEFW item_4_desc
         DEFW item_4_long
+        DEFB 0xF0         ; not visible anywhere
+item_last:
+
 
 ; length of an entry in the item table.
 ITEM_ENTRY_LENGTH: EQU item_first - items
+ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
 
 ; Temporary buffer, available to all handlers.
 ; 30 bytes long
