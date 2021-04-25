@@ -41,9 +41,19 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
         ORG 100h
 
+        ; Opening banner
         ld de, usage_message
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
+
+        ; TODO - pause for input here.
+
+        ; Show the starting-location.
+        call show_newline
+        ld hl, input_buffer+2
+        ld a, 'L'
+        ld (hl), a
+        call look_function
 
         ; Game Loop
         ;
