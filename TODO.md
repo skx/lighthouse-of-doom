@@ -31,17 +31,11 @@
 //
 // 11. [ ] GO UP | GO DOWN should be synonyms
 //
+// 12. [x] Added a dog
+//
 //
 // Additions:
 //
 //   Allow the trapdoor to be closed
 //     If the trapdoor is opened the grue might escape?
-//
-
-
-// Add a dog
-//
-//  EXAMINE DOG
-//  -> "The dog is asleep, and as you disturbed him he mutters something"
-//     "about 'Apollo the Super-pup', and settles back into a comfortable dream"
 //
