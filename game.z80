@@ -337,18 +337,23 @@ ret_obj:
 ; Return "A == FF" if not
 ;
 items_are_present:
-        ld hl, CURRENT_LOCATION
-        ld a,(hl)
 
         ld hl, items
         ld b, ITEM_COUNT
 look_item_loop_test:
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        pop hl
+
         ; hl points to the item
         ; skip past the name
         inc hl
         inc hl
-        ; skip past the description
+        ; skip past the description - saving it
+        ld e, (hl)
         inc hl
+        ld d, (hl)
         inc hl
         ; skip past the long description
         inc hl
@@ -358,11 +363,18 @@ look_item_loop_test:
         inc hl
         ; skip past the "collectable" property
         inc hl
-        ld c,(hl)
+        ld c,(hl)  ; is this present in the current location?
         cp c
         jr nz, item_not_present_loop
-           xor a
-           ret
+
+        ; OK we have an item present.  Is the description empty?
+        ; if so that's a hidden object
+        ld a, d
+        or e
+        jr z, item_not_present_loop
+
+        xor a
+        ret
 item_not_present_loop:
         inc hl
         djnz look_item_loop_test
@@ -480,6 +492,7 @@ gibn_found_it:
 
         dec hl
         dec hl
+
         dec hl
         xor a
         ret
@@ -1078,9 +1091,14 @@ look_item_loop:
         inc hl
         ; skip past the "collectable" property
         inc hl
-;        ld c,(hl)
-        cp (hl)
+        ld c,(hl)
+        cp c
         jr nz, item_not_present
+
+        ld a, d
+        or d
+        jr z, item_not_present
+
           push hl
           push de
           push bc
@@ -1251,9 +1269,9 @@ you_carrying_message:
 you_see_message:
         db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
 item_not_present_msg:
-        db "I can't see that here!", 0x0a, 0x0d, "$"
+        db  0x0a, 0x0d, "I can't see that here!", 0x0a, 0x0d, "$"
 not_carrying_item_msg:
-        db "You're not carrying that!", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "You're not carrying that!", 0x0a, 0x0d, "$"
 MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks", 0x0a, 0x0d, "$"
 usage_message:
@@ -1469,11 +1487,13 @@ item_4_long:  db "The torch doesn't seem to be anything special.\n"
               db "$"
 
 item_5_name:  db "DOG"
-item_5_desc:  db "A small dog.$"
 item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him \n"
               db "he mutters something about 'Apollo the Super-Pup' in his sleep,\n"
               db "before settling back into silence.\n"
               db "$"
+
+item_6_name:  db "PAINTING"
+item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a group of dogs.$"
 
 
 ;
@@ -1505,7 +1525,7 @@ item_first:
         DEFW item_1_name  ; mirror
         DEFW item_1_desc
         DEFW item_1_long
-        DEFB drop_mirror_fn  ; No drop function
+        DEFW drop_mirror_fn  ; custom drop function
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1531,12 +1551,20 @@ item_first:
         DEFB 0xF0         ; not visible anywhere
 
         DEFW item_5_name  ; dog
-        DEFW item_5_desc
+        DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_5_long
         DEFB 0,0          ; No drop function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+
+        DEFW item_6_name  ; painting
+        DEFB 0,0          ; NO DESCRIPTION - hidden item
+        DEFW item_6_long
+        DEFB 0,0          ; No drop function
+        DEFB 0            ; this item cannot be picked up
+        DEFB 0x01         ; middle-floor
 item_last:
+
 
 
 ; length of an entry in the item table.
