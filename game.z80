@@ -425,7 +425,7 @@ look_function:
         ld hl, CURRENT_LOCATION  ; get current location
         ld a, (hl)
         ld b, a                  ; multiply by five
-        ld c, 5
+        ld c, 10
         call multiply
         ld de, location_table ; add to base of location table
         add hl,de
@@ -674,29 +674,34 @@ command_table:
 ;
 ; Location table
 ;
-; Each location contains a short-description, a long one, and a flag to
-; say whether we've previously entered this location.
+; Each location contains a pointer to a short-description, a pointer to
+; a long description, a seen-flag, and space for five objects.
 ;
 location_table:
         DEFW location_0_short
         DEFW location_0_long
-        DB 0
+        DB 0 ; seen-flag
+        DB 0, 0, 0, 0, 0  ; items in this location
 
         DEFW location_1_short
         DEFW location_1_long
-        DB 0
+        DB 0 ; seen-flag
+        DB 0, 0, 0, 0, 0  ; items in this location
 
         DEFW location_2_short
         DEFW location_2_long
-        DB 0
+        DB 0 ; seen-flag
+        DB 0, 0, 0, 0, 0  ; items in this location
 
         DEFW location_3_short
         DEFW location_3_long
-        DB 0
+        DB 0 ; seen-flag
+        DB 0, 0, 0, 0, 0  ; items in this location
 
         DEFW location_4_short
         DEFW location_4_long
-        DB 0
+        DB 0 ; seen-flag
+        DB 0, 0, 0, 0, 0  ; items in this location
 
 
 
