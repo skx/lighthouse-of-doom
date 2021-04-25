@@ -24,9 +24,20 @@
 ; are not implemented.
 ;
 ; We've defined our location-map but the movement commands are broken,
-; because we don't sanity-check and no items are supported.
+; because we don't sanity-check and while we can manually place items
+; in our map and inventory there are no working commands for operating
+; with/upon them.
 ;
 
+;
+; Deficiencies
+;
+;   HELP command doesn't show description next to command.
+;
+;   Command-table should be alphabetized.
+;
+;
+;
 
 ; BIOS entry-point
 BDOS_ENTRY_POINT:    EQU 5
@@ -364,7 +375,8 @@ down_function:
 ;
 ; Command-Handler QUIT
 ;
-; Terminate the game
+; Terminate the game, and show the turn-count.
+;
 quit_function:
         ld de, QUIT_MSG
         call show_msg
@@ -577,7 +589,6 @@ look_item_loop:
 skip_empty_item_slot:
         inc hl
         djnz look_item_loop
-
         ret
 
 
@@ -596,6 +607,7 @@ up_function:
 ; Command-Handler STUB
 ;
 ;  Show that the given command isn't implemented
+;
 unimplemented_command:
         ld de, unimplemented_command_str
 show_msg:
@@ -652,8 +664,6 @@ you_carrying_message:
         db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
 you_see_message:
         db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
-BUG_MSG:
-        db 0x0a, 0x0d, "BUG DETECTED!", 0x0a, 0x0d, "$"
 usage_message:
         db  "This is a demo for lighthouse of doom!"
         db 0x0a, 0x0d
