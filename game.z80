@@ -1496,6 +1496,36 @@ item_6_name:  db "PAINTING"
 item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a group of dogs.$"
 
 
+item_7_name: db "RUG"
+item_7_desc: db "A small rug.$"
+item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable\n"
+             db "about it.$"
+
+item_8_name: db "BOOK"
+item_8_desc: db "A small black book.$"
+item_8_long: db "The little black book seems to contain names and phone numbers:\n\n"
+             db "\t   Police    - 999\n"
+             db "\tAmbulance    - 999\n"
+             db "\tFire Service - 999\n"
+             db "\tPaw Patrol   - 999\n"
+             db "\nToo bad there are no instructions on powering the main light.\n"
+
+item_9_name: db "DESK"
+item_9_long: db "The desk is made of solid wood, unlike everything else in the room.$"
+
+item_10_name: db "TELEPHONE"
+item_10_desc: db "A telephone, wired to the wall.$"
+item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.$"
+
+item_11_name: db "TRAPDOOR"
+item_11_desc: db "A closed trapdoor.$"
+item_11_long: db "You cannot see anything special about the trapdoor.\nPerhaps you should open it to explore further?$"
+
+item_12_name: db "TRAPDOOR-OPEN"
+item_12_desc: db "An open trapdoor.$"
+item_12_long: db "You cannot see anything special about the trapdoor.\n$"
+
+
 ;
 ; Item table
 ;
@@ -1519,7 +1549,7 @@ items:
         DEFW item_0_long
         DEFB 0,0          ; No drop function
         DEFB 1            ; this item can be picked up
-        DEFB 0xff         ; player
+        DEFB 0x03         ; basement
 
 item_first:
         DEFW item_1_name  ; mirror
@@ -1563,6 +1593,50 @@ item_first:
         DEFB 0,0          ; No drop function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+
+        DEFW item_7_name  ; rug
+        DEFW item_7_desc
+        DEFW item_7_long
+        DEFB 0,0          ; No drop function
+        DEFB 1            ; this item can be picked up
+        DEFB 0x02         ; ground-floor
+
+        DEFW item_8_name  ; book
+        DEFW item_8_desc
+        DEFW item_8_long
+        DEFB 0,0          ; No drop function
+        DEFB 1            ; this item can be picked up
+        DEFB 0x01         ; middle-floor
+
+        DEFW item_9_name  ; desk
+        DEFB 0,0          ; NO DESCRIPTION - hidden item
+        DEFW item_9_long
+        DEFB 0,0          ; No drop function
+        DEFB 0            ; this item cannot be picked up
+        DEFB 0x01         ; middle-floor
+
+
+        DEFW item_10_name ; telephone
+        DEFB 0,0          ; NO DESCRIPTION - hidden item
+        DEFW item_10_long
+        DEFB 0,0          ; No drop function
+        DEFB 0            ; this item cannot be picked up
+        DEFB 0x01         ; middle-floor
+
+        DEFW item_11_name ; trapdoor-closed
+        DEFB item_11_desc
+        DEFW item_11_long
+        DEFB 0,0          ; No drop function
+        DEFB 0            ; this item cannot be picked up
+        DEFB 0xf0         ; hidden until the rug is moved
+
+        DEFW item_12_name ; trapdoor-open
+        DEFB item_12_desc
+        DEFW item_12_long
+        DEFB 0,0          ; No drop function
+        DEFB 0            ; this item cannot be picked up
+        DEFB 0xf0         ; hidden until the trapdoor is opened.
+
 item_last:
 
 
