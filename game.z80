@@ -47,9 +47,43 @@ BDOS_READ_INPUT:     EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
 
-
-
         ORG 100h
+
+        ;
+        ; Our game can be compiled with optional "encryption", which uses
+        ; a simple scheme to hide the strings in our binary.
+        ;
+        ; If this support is used we'll have to restore our contents, or
+        ; the game won't be playable.
+        ;
+        ; To compile the binary with encryption you need to define the
+        ; `ENCRYPT_STRINGS` symbol, and then post-process the binary
+        ; with `encrypt.c`.
+        ;
+IF ENCRYPT_STRINGS
+        ld hl, ENC                      ; start of region to unmangle
+        ld de, ( end_of_source - ENC )  ; length to unmangle.
+        ld c, '%'                       ; starting scrambling key (XOR)
+enc_loop:
+        ld a,(hl)          ; get the byte
+        xor c              ; modify it
+        ld (hl),a          ; store it back
+        inc hl             ; point to the next byte
+        dec de             ; decrease count of remaining bytes to process.
+        inc c              ; bump key
+        ld a, d            ; done?
+        or e
+        jr nz,enc_loop     ; no, then repeat
+
+
+        jp enc_end         ; Jump over our marker to the start of the game.
+
+        ;
+        ; Everything after here will be encrypted.
+        ;
+        ENC: DB "SKX"
+enc_end:
+ENDIF
 
         ; Clear the screen
         call cls_function
@@ -738,7 +772,7 @@ examine_function:
         cp 0
         jp z, examine_object
 
-        ld DE, EXAMINE_WHAT_MSG
+        ld de, EXAMINE_WHAT_MSG
         call show_msg
         ret
 
@@ -780,7 +814,7 @@ get_function:
         cp 0
         jp z, get_object
 
-        ld DE, GET_WHAT_MSG
+        ld de, GET_WHAT_MSG
         call show_msg
         ret
 
@@ -890,7 +924,7 @@ drop_function:
         cp 0
         jp z, drop_object
 
-        ld DE, DROP_WHAT_MSG
+        ld de, DROP_WHAT_MSG
         call show_msg
         ret
 
@@ -960,7 +994,7 @@ use_function:
         cp 0
         jp z, use_object
 
-        ld DE, USE_WHAT_MSG
+        ld de, USE_WHAT_MSG
         call show_msg
         ret
 
@@ -1569,6 +1603,8 @@ use_generator_won_fn:
 ; Data Storage
 ;********************************************************************
 
+
+
 TURN_COUNT:
         db 0
 CURRENT_LOCATION:
@@ -2079,3 +2115,6 @@ input_buffer:
         db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+
+        ; Label to the end of the game will be useful in the future
+end_of_source:
