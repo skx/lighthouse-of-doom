@@ -880,7 +880,7 @@ drop_invoke_handler:
         push de
         pop hl
         call JP_HL
-
+        ret
 
 ;
 ; Command-Handler QUIT
@@ -1053,13 +1053,15 @@ look_show_extended:
         ld a, 1
         ld (hl), a    ; set the seen-flag
 
+
+        ; If no items are in this room we can return
         call items_are_present
         cp 0
         ret nz
 
+        ; Show "You see .."
         ld de,you_see_message
         call show_msg
-
 
         ;
         ; OK at this point we have looked at the room, and
@@ -1068,9 +1070,6 @@ look_show_extended:
         ; Walk over the list of items - and show any which
         ; are present in this room.
         ;
-        ld hl, CURRENT_LOCATION
-        ld a,(hl)
-
         ld hl, items
         ld b, ITEM_COUNT
 look_item_loop:
@@ -1091,12 +1090,23 @@ look_item_loop:
         inc hl
         ; skip past the "collectable" property
         inc hl
+
+        ;
+        ; Get the current location
+        ;
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        pop hl
+
+        ; get the location of this item.
         ld c,(hl)
         cp c
         jr nz, item_not_present
 
+        ; Is the description empty?  Then it is hidden.
         ld a, d
-        or d
+        or e
         jr z, item_not_present
 
           push hl
