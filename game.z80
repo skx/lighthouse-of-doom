@@ -1173,12 +1173,14 @@ help_func_loop:  ; copy the command-name to the buffer
         inc hl
         ld a, 0x0d
         ld (hl),a
+        inc hl
         ld a, '$'
         ld (hl),a
         push de
         ld a,(de)
         cp 1
         jr z, help_skip_this
+        call show_tab
         ld de, tmp_buffer
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
