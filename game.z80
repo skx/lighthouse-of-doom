@@ -1296,10 +1296,36 @@ item_not_present:
 ;
 ; Command-Handler UP
 ;
-; Change location - TODO fix this
+; Change location.  Up is possible if you're not on the top-floor.
+;
+; When in the dark room "UP" moves you up two places.
 ;
 up_function:
         ld hl, CURRENT_LOCATION
+        ld a, (hl)
+        cp 0
+        jr z, no_up                ; can't go up
+        cp 1
+        jr z, up_on_middle_floor   ; go up
+        cp 2
+        jr z, up_on_ground_floor   ; go up
+        cp 3
+        jr z, up_on_basement_floor ; go up
+        cp 4
+        jr z, up_on_dark_room      ; go up two - to land in ground floor
+
+no_up:
+        ld de, no_up_msg
+        call show_msg
+        ret
+
+up_on_dark_room:
+        dec (hl)
+            ; fall-through
+
+up_on_middle_floor:
+up_on_ground_floor:
+up_on_basement_floor:
         dec (hl)
         call look_function
         ret
@@ -1622,6 +1648,8 @@ DEBUG_STORE:
 
 NEWLINE:
         db 0x0a, 0x0d, "$"
+no_up_msg:
+        db 0x0a, 0x0d, "You can't go up from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
         db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.\n$"
 failed_find_torch_msg:
