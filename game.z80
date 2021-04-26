@@ -1759,7 +1759,7 @@ use_trapdoor_found_t:
         inc hl
 
         ; Set the location to be something random
-        ld (hl), 0xfe
+        ld (hl), 0x55
 
         ; find the trapdoor-open
         ld hl, item_12_name
@@ -2147,7 +2147,7 @@ item_10_long: db "The telephone is an average telephone, which looks like it was
 item_11_name: db "TRAPDOOR"
 item_11_desc: db "A closed trapdoor.$"
 item_11_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
-              db "nPerhaps you should open it to explore further?", 0x0a, 0x0d, "$"
+              db "Perhaps you should open it to explore further?", 0x0a, 0x0d, "$"
 
 item_12_name: db "TRAPDOOR-OPEN"
 item_12_desc: db "An open trapdoor.$"
