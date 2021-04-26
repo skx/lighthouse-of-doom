@@ -49,9 +49,9 @@ too much state to care about:
 * Whether you won/lost.
 
 
-### Running It
+### Building & Running It
 
-Build the game by running `make`, and then launch it.
+Build the game by running `make`, and then run `./lighthouse`
 
 If you get stuck you can see command by entering `help`.
 
@@ -73,7 +73,7 @@ coding more of a challenge, so I made the location of each object a
 property of the object itself.
 
 
-### Running It
+### Building & Running It
 
 Ensure you have the `pasmo` assembler installed, then build the code
 by running `make game`, or `make release`.
@@ -81,6 +81,12 @@ by running `make game`, or `make release`.
 In either case the output will be a binary named `lihouse.com` which you
 should be able to run upon your system - or under a CP/M emulator.
 
+
+### Downloading It
+
+If you look on our [release page](https://github.com/skx/lighthouse-of-doom/releases/) you can find the latest stable build.
+
+Transfer `lihouse.com` to your system, and run `LIHOUSE` to launch it.
 
 
 ## Bugs
