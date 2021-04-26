@@ -10,40 +10,20 @@
 
 
 ;
-; This is a work-in-progress porting the game to Z80 assembly, such
+; This is a port of the lighthouse-of-doom game from C to Z80 assembly, such
 ; that it will run under CP/M 2.x
 ;
-; The current state is minimal:
+; It is quite functional, but not yet complete.
 ;
-;   1.  We prompt for input, continuously
-;   2.  If the input matches a known word we execute it.
-;   3.  Otherwise we echo the input
-;   4.  GOTO 1.
+; Although the game has been ported that process has resulted in some changes
+; to the text, and the command-handlers.  If you've played the C game, and
+; completed it, there will be no significant new surprises.
 ;
-; We have declared a complete list of command-handlers, but not all
-; of them are implemented.
+; Rather than having a global player-inventory store, and a place
+; in each location for object storage we've instead make the location
+; a property of each item.
 ;
-; We've defined our location-map but the movement commands are broken,
-; because we don't sanity-check.
-;
-; Items can be taken and dropped, but they cannot yet be used which is
-; one of the reasons that the game has no real puzzle at the moment.
-;
-
-;
-; Deviations from the C-code
-;   Rather than having a global player-inventory store, and a place
-;  in each location for object storage we've instead make the location
-;  a property of each item.
-;
-;   An item will have location "FF" if the player is carrying it,
-;  otherwise the location will be the room it is stored within.  We
-;  can hide objects by setting their room to 0xfe or similar - a room
-;  that doesn't exist.
-;
-;
-;
-; Deficiencies
+; Known deficiencies & bugs:
 ;
 ;   HELP command doesn't show description next to command.
 ;
@@ -51,7 +31,11 @@
 ;   changes.  Lack of real structures hurt here - but I'm too invested now
 ;   to look for a new compiler
 ;
+;   "TAKE RUG" will always move a trapdoor into play - but should only do
+;   so in the basement location.
 ;
+
+
 
 ; BIOS entry-point
 BDOS_ENTRY_POINT:    EQU 5
@@ -87,45 +71,47 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
         ld (hl), a
         call look_function
 
-        ; Game Loop
+        ; The start of our game loop.
         ;
-        ;  1.  Show prompt.
-        ;  2.  Read a line of input.
-        ;  3.  Upper-case the input.
-        ;  4.  Look for a handler, if found call it
-        ;  5.    Otherwise echo the input
-        ;  6.  Goto 1.
+        ; Here we basically read a line of input, attempt to call the
+        ; appropriate handler and then repeat.
+        ;
+        ; We upper-case all input to allow easier matching to our
+        ; command/dispatch-table.
 game_loop:
 
-        ; 0. Is the player dead?  Did the player win?
+        ; 1. Is the player dead?
         ld hl, PLAYER_DEAD
         ld a, (hl)
         cp 1
         jp nz,not_dead
 
+        ; The player is dead.  Oops.
         ld de, PLAYER_DEAD_MESSAGE
         call show_msg
         call show_turn_count
         jp 0x0000
 
 not_dead:
+        ; 2. Did the player win?
         ld hl, PLAYER_WON
         ld a, (hl)
         cp 1
         jp nz, not_won
 
+        ; The player won.  Yay!
         ld de, PLAYER_WON_MESSAGE
         call show_msg
         call show_turn_count
         jp 0x0000
 
 not_won:
-        ; 1. show the prompt
+        ; 3. show the prompt
         ld de, prompt_message
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 
-        ; 2. read the line of input
+        ; 4. Erase our input buffer.
         ld b, 0xff
         ld hl,input_buffer+2
         ld a,0
@@ -134,6 +120,7 @@ erase_input_buffer:
         inc hl
         djnz erase_input_buffer
 
+        ; 5. Read a line of input from the player.
         ld de, input_buffer
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
@@ -149,7 +136,7 @@ erase_input_buffer:
         call show_input_buffer
         call show_newline
 continue1:
-        ; 3. upper-case the input
+        ; 6. Convert the text to upper-case.
         ld hl, input_buffer+1
         ld b,(hl)
         inc hl
@@ -177,7 +164,9 @@ game_loop_uc_nc:
         call show_newline
 
 continue2:
-        ;  4.  Look for a handler, if found call it
+        ;  7.  Take the input from the user, and see if we have a registered
+        ; command with that name.  If we do we can invoke it, but if not we've
+        ; been given something we don't understand.
         ld hl, input_buffer+2
         call find_command
         cp 255
@@ -451,18 +440,20 @@ gibn_item_loop:
         ; skip past the "collectable" property
         inc hl
 
-        ; is this object carried?
+        ; is this object carried, in the current location, or
+        ; otherwise available?
         ld a,(hl)
-        cp 0xff ; 0xff means the item is being carried
+        cp 0xFF ; 0xff means the item is being carried
         jr z, gibn_item_carried
-        cp 0xfe ; 0xfe means the item can be found.
-        jr z, gibn_item_carried
+        cp 0xFE ; 0xfe means the item can be found.
+        jr z, gibn_item_available
         push hl
         ld hl, CURRENT_LOCATION
         ld c,(hl)
         pop hl
         cp c
         jr z, gibn_item_present
+
 gibn_continue:
         inc hl
         djnz gibn_item_loop
@@ -471,6 +462,7 @@ gibn_continue:
 
 gibn_item_present:
 gibn_item_carried:
+gibn_item_available:
         push hl ; preserve our entry into the item
         push bc ; preserve b for our loop
 
@@ -646,9 +638,18 @@ Num2:	inc	a
 	ret
 
 show_a_register:
+        push hl
+        push de
+        push bc
+        push af
         ld h,0
 	ld l,a
-	jp DispHL
+	call DispHL
+        pop af
+        pop bc
+        pop de
+        pop hl
+        ret
 
 
 ;
@@ -821,11 +822,60 @@ get_found_it:
         ret
 
 get_found_it_take:
+        ; item is now in the players possession
         inc hl
         ld (hl),255
-        call inventory_function
+
+        ; HACK - Was the item being taken the rug?
+        ld de, tmp_buffer+1
+        ld hl, item_7_name
+        ld b, 3 ; strlen("RUG")
+        call CompareStringsWithLength
+        jp nz, not_taken_rug
+
+        ; show a message telling the user about the trapdoor.
+        ld de, rug_taken_msg
+        call show_msg
+
+        ; make the trapdoor visible
+        ld hl, item_11_name
+        call get_item_by_name
+        cp 0
+        jp z, place_trapdoor
+
+        ld de, failed_find_trapdoor_msg
+        call show_msg
         ret
 
+place_trapdoor:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; get the current location and add the item there.
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        pop hl
+        ld (hl), a
+        ret
+not_taken_rug:
+        call inventory_function
+        ret
 
 
 ;
@@ -1351,7 +1401,7 @@ use_torch_found_t:
         push af
 
         ; Set the location to be something random
-        ld (hl), 0xf0
+        ld (hl), 0xfe
 
         ; find the lit torch
         ld hl, item_4_name
@@ -1397,6 +1447,89 @@ use_torch_found_t2:
 
 
 
+;  When you OPEN the TRAPDOOR it opens.
+;
+;  Remove the "trapdoor" item from the current location.
+;  Add the "trapdoor-open" item to the current location.
+;
+use_trapdoor_fn:
+        ; find the trapdoor
+        ld hl, item_11_name
+        call get_item_by_name
+
+        cp 0
+        jp z,use_trapdoor_found_t
+
+        ld de, failed_find_trapdoor_msg
+        call show_msg
+        ret
+use_trapdoor_found_t:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; Set the location to be something random
+        ld (hl), 0xfe
+
+        ; find the trapdoor-open
+        ld hl, item_12_name
+        call get_item_by_name
+
+        cp 0
+        jp z,use_trapdoor_found_t2
+
+        ld de, failed_find_trapdoor_open_msg
+        call show_msg
+        ret
+
+use_trapdoor_found_t2:
+
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; Set the location to be here.
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        pop hl
+        ld (hl),a
+
+        ; Show the message
+        ld de, TRAPDOOR_OPEN_MSG
+        call show_msg
+        ret
+
+
+
 
 ;  When you USE the GENERATOR you win.
 ;
@@ -1436,7 +1569,6 @@ use_generator_won_fn:
 ; Data Storage
 ;********************************************************************
 
-
 TURN_COUNT:
         db 0
 CURRENT_LOCATION:
@@ -1454,9 +1586,16 @@ DEBUG_STORE:
 
 NEWLINE:
         db 0x0a, 0x0d, "$"
-
+rug_taken_msg:
+        db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.\n$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
+failed_find_trapdoor_msg:
+        db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
+failed_find_trapdoor_open_msg:
+        db 0x0a, 0x0d, "BUG:Failed to find open trapdoor", 0x0a, 0x0d, "$"
+TRAPDOOR_OPEN_MSG:
+        db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
 failed_find_torch_lit_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
@@ -1526,7 +1665,7 @@ TORCH_ON_MSG:
 usage_message:
         db "Lighthouse of doom!", 0x0a, 0x0d
         db "===================", 0x0a, 0x0d, 0x0a, 0x0d
-        db "This is an original text-based adventure game written for CP/M!"
+        db "This is an original text-based adventure game written for CP/M."
         db 0x0a, 0x0d
         db 0x0a, 0x0d
         db "Written by Steve Kemp in 2021, with source available on github:"
@@ -1580,7 +1719,8 @@ location_1_long:
         db "The middle floor of the lighthouse seems to be a relaxation-room,\n"
         db "you see some comfy chairs, a work-desk, as well as various odds and\n"
         db "ends.\n\n"
-        db "An impressive painting hangs over the desk.\n"
+        db "An impressive painting hangs over the desk, and a dog sleeps in a basket\n"
+        db "to the side of it.\n"
         db "$"
 
 location_2_short:
@@ -1595,13 +1735,13 @@ location_3_short:
         db "the lighthouse basement.$"
 location_3_long:
         db "This seems to be a graveyard for discarded machinery, and\n"
-        db "oddly enough old children's toys.\n"
+        db "other random junk.\n"
         db "$"
 
 location_4_short:
         db "a dark place.$"
 location_4_long:
-        db "You cannot see anything, but you can hear a snarling.\n"
+        db "You cannot see anything, but you can certainly hear a snarling.\n"
         db "There is also a strong smell, a feral smell, could it be that this\n"
         db "is the haunt of a grue?"
         db "$"
@@ -1785,13 +1925,11 @@ item_12_long: db "You cannot see anything special about the trapdoor.\n$"
 ;   2. A pointer to a short description - this will be empty for "hidden" items.
 ;   3. A pointer to a long description.
 ;   4. A pointer to a drop-function.
-;   5. A byte to specify whether this can be taken.
-;   6. A byte to contain the location of the object.
-;       0xff == player carrying it
-;
-;  TODO:
-;
-;    ptr for use
+;   5. A pointer to a use-function.
+;   6. A byte to specify whether this can be taken.
+;   7. A byte to contain the location of the object.
+;       0xff == player is carrying it.
+;       0xfe == can be found.
 ;
 items:
         DEFW item_0_name  ; generator
@@ -1817,7 +1955,7 @@ item_first:
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
-        DEFB 0xF0         ; not visible anywhere
+        DEFB 0xFe         ; not visible anywhere
 
         DEFW item_3_name  ; torch
         DEFW item_3_desc
@@ -1875,7 +2013,6 @@ item_first:
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
-
         DEFW item_10_name ; telephone
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_10_long
@@ -1884,21 +2021,21 @@ item_first:
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
-        DEFW item_11_name ; trapdoor-closed
-        DEFB item_11_desc
+        DEFW item_11_name ; trapdoor
+        DEFW item_11_desc
         DEFW item_11_long
         DEFB 0,0          ; No drop function
-        DEFB 0,0          ; No use function
+        DEFW use_trapdoor_fn ; open function
         DEFB 0            ; this item cannot be picked up
-        DEFB 0xf0         ; hidden until the rug is moved
+        DEFB 0xFE         ; hidden until the rug is moved
 
         DEFW item_12_name ; trapdoor-open
-        DEFB item_12_desc
+        DEFW item_12_desc
         DEFW item_12_long
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
-        DEFB 0xf0         ; hidden until the trapdoor is opened.
+        DEFB 0xFE         ; hidden until the trapdoor is opened.
 
 item_last:
 
