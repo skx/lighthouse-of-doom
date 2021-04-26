@@ -1395,6 +1395,10 @@ magic_function:
         ; magic four
         ld de, magic_four_msg
         call show_msg
+
+        ; you're dead
+        ld hl, PLAYER_DEAD
+        inc (hl)
         ret
 magic_one:
         ld de, magic_one_msg
