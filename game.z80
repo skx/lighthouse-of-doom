@@ -361,6 +361,9 @@ look_item_loop_test:
         ; skip past the drop-handler
         inc hl
         inc hl
+        ; skip past the use-handler
+        inc hl
+        inc hl
         ; skip past the "collectable" property
         inc hl
         ld c,(hl)  ; is this present in the current location?
@@ -442,12 +445,17 @@ gibn_item_loop:
         ; skip past the drop-handler
         inc hl
         inc hl
+        ; skip past the use-handler
+        inc hl
+        inc hl
         ; skip past the "collectable" property
         inc hl
 
         ; is this object carried?
         ld a,(hl)
         cp 0xff ; 0xff means the item is being carried
+        jr z, gibn_item_carried
+        cp 0xfe ; 0xfe means the item can be found.
         jr z, gibn_item_carried
         push hl
         ld hl, CURRENT_LOCATION
@@ -494,6 +502,9 @@ gibn_found_it:
         dec hl
 
         dec hl
+        dec hl
+
+        dec hl
         xor a
         ret
 
@@ -522,6 +533,9 @@ player_has_objects_loop:
         inc hl
         inc hl
         ; skip past the drop-handler
+        inc hl
+        inc hl
+        ; skip past the use-handler
         inc hl
         inc hl
         ; skip past the "collectable" property
@@ -760,7 +774,6 @@ examine_found_it:
 ;
 ; Command-Handler GET
 ;
-;
 get_function:
         call input_second_term
         cp 0
@@ -793,6 +806,9 @@ get_found_it:
         inc hl
         inc hl
         ; skip past the drop-handler
+        inc hl
+        inc hl
+        ; skip past the use-handler
         inc hl
         inc hl
         ; is this item collectable?
@@ -857,6 +873,9 @@ drop_found_it:
         inc hl
         ld d,(hl)
         inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
         ; skip past the "collectable" property
         inc hl
 
@@ -881,6 +900,66 @@ drop_invoke_handler:
         pop hl
         call JP_HL
         ret
+
+
+;
+; Command-Handler USE
+;
+use_function:
+        call input_second_term
+        cp 0
+        jp z, use_object
+
+        ld DE, USE_WHAT_MSG
+        call show_msg
+        ret
+
+use_object:
+        ; store object in HL
+        call input_second_term
+
+        call get_item_by_name
+        cp 0
+        jp z, use_found_object
+
+        ld de, item_not_present_msg
+        call show_msg
+        ret
+
+use_found_object:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop function
+        inc hl
+        inc hl
+        ; Get the use-handler
+        ld e, (hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+
+        ; is the use-handler empty?
+        ld a, d
+        or e
+        jr z, use_is_futile
+
+        ; jump to the use-handler
+        push de
+        pop hl
+        call JP_HL
+        ret
+use_is_futile:
+        ld de, use_generic
+        call show_msg
+        ret
+
 
 ;
 ; Command-Handler QUIT
@@ -975,6 +1054,9 @@ inventory_test_item:
         inc hl
         inc hl
         ; skip past the drop-handler
+        inc hl
+        inc hl
+        ; skip past the use-function
         inc hl
         inc hl
         ; skip past the "collectable" property
@@ -1088,6 +1170,9 @@ look_item_loop:
         ; skip past the drop-handler
         inc hl
         inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
         ; skip past the "collectable" property
         inc hl
 
@@ -1158,10 +1243,10 @@ show_newline:
 ; CUSTOM OBJECT HOOKS
 ;********************************************************************
 
-; when you drop the mirror it cracks.
+;  When you drop the mirror it cracks.
 ;
-;  remove the "mirror" item from the current location.
-;  add the "mirror-broken" item to the current location.
+;  Remove the "mirror" item from the current location.
+;  Add the "mirror-broken" item to the current location.
 ;
 drop_mirror_fn:
         ; find the mirror
@@ -1178,6 +1263,9 @@ drop_mirror_fn:
         inc hl
         inc hl
         ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
         inc hl
         inc hl
         ; skip past the "collectable" property
@@ -1202,6 +1290,9 @@ drop_mirror_fn:
         ; skip past the drop-function.
         inc hl
         inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
         ; skip past the "collectable" property
         inc hl
 
@@ -1214,6 +1305,129 @@ drop_mirror_fn:
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
+        call show_msg
+        ret
+
+
+;  When you USE the TORCH it lights.
+;
+;  Remove the "torch" item from the current location.
+;  Add the "torch-lit" item to the current location.
+;
+use_torch_fn:
+        ; find the torch
+        ld hl, item_3_name
+        call get_item_by_name
+
+        cp 0
+        jp z,use_torch_found_t
+
+        ld de, failed_find_torch_msg
+        call show_msg
+        ret
+use_torch_found_t:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; get the current location - to see if we're
+        ; setting this in the environment or the users'
+        ; inventory
+        ld a,(hl)
+        push af
+
+        ; Set the location to be something random
+        ld (hl), 0xf0
+
+        ; find the lit torch
+        ld hl, item_4_name
+        call get_item_by_name
+
+        cp 0
+        jp z,use_torch_found_t2
+
+        pop af; fixup
+        ld de, failed_find_torch_lit_msg
+        call show_msg
+        ret
+
+use_torch_found_t2:
+
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; Set the location to be the same as the
+        ; old torch was.
+        pop af
+        ld (hl),a
+
+        ; Show the message
+        ld de, TORCH_ON_MSG
+        call show_msg
+        ret
+
+
+
+
+;  When you USE the GENERATOR you win.
+;
+use_generator_fn:
+        ; find the generator
+        ld hl, item_0_name
+        call get_item_by_name
+
+        cp 0
+        jp z,use_generator_found_t
+
+        ld de, failed_find_generator_msg
+        call show_msg
+        ret
+
+use_generator_found_t:
+
+        ; You can only win if the generator is used on the top-floor
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        cp 0
+        jr z, use_generator_won_fn
+
+        ld de, use_gen_location
+        call show_msg
+        ret
+use_generator_won_fn:
+        ld hl, PLAYER_WON
+        ld (hl),1
+
+        ld de, use_generator_won
         call show_msg
         ret
 
@@ -1241,6 +1455,12 @@ DEBUG_STORE:
 NEWLINE:
         db 0x0a, 0x0d, "$"
 
+failed_find_torch_msg:
+        db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
+failed_find_torch_lit_msg:
+        db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
+failed_find_generator_msg:
+        db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
 debug_off_msg:
         db 0x0a, 0x0d, "Debugging turned off.", 0x0a, 0x0d, "$"
 debug_on_msg:
@@ -1248,6 +1468,19 @@ debug_on_msg:
 CLS_MSG:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
+        db "$"
+use_gen_location:
+        db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
+        db 0x0a, 0x0d, "$"
+use_generator_won:
+        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on", 0x0a, 0x0d
+        db "with a steady thrum the generator begins to provide power.", 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "Success!  The main-light turns on.", 0x0a, 0x0d,0x0a, 0x0d
+        db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
+        db "it looks like it will make it.", 0x0a, 0x0d
+        db 0x0a, 0x0d
+        db "Congratulations!", 0x0a, 0x0d
         db "$"
 QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
@@ -1259,6 +1492,8 @@ GET_WHAT_MSG:
         db 0x0a, 0x0d, "Take what?", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
         db 0x0a, 0x0d, "Drop what?", 0x0a, 0x0d, "$"
+USE_WHAT_MSG:
+        db 0x0a, 0x0d, "Use what?", 0x0a, 0x0d, "$"
 cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
@@ -1278,12 +1513,16 @@ you_carrying_message:
         db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
 you_see_message:
         db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
+use_generic:
+        db 0x0a, 0x0d, "Nothing seems to happen.", 0x0a, 0x0d, "$"
 item_not_present_msg:
         db  0x0a, 0x0d, "I can't see that here!", 0x0a, 0x0d, "$"
 not_carrying_item_msg:
         db 0x0a, 0x0d, "You're not carrying that!", 0x0a, 0x0d, "$"
 MIRROR_DROP_FUN:
-        db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
+TORCH_ON_MSG:
+        db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
 usage_message:
         db "Lighthouse of doom!", 0x0a, 0x0d
         db "===================", 0x0a, 0x0d, 0x0a, 0x0d
@@ -1311,7 +1550,8 @@ PLAYER_DEAD_MESSAGE:
         db "Game over - you're dead."
         db 0x0a, 0x0d,"$"
 PLAYER_WON_MESSAGE:
-        db "Game over - you won!"
+        db 0x0a, 0x0d
+        db "You won!"
         db 0x0a, 0x0d,"$"
 PLAYER_TURN_COUNT:
         db "You've played $"
@@ -1392,8 +1632,6 @@ command_table:
           DEFW look_function
         DEFB 9, 'INVENTORY', 0
           DEFW inventory_function
-        DEFB 4, 'OPEN', 0
-          DEFW unimplemented_command
         DEFB 4, 'QUIT', 0
           DEFW quit_function
         DEFB 5, 'TURNS', 0
@@ -1401,7 +1639,7 @@ command_table:
         DEFB 2, 'UP', 0
           DEFW up_function
         DEFB 3, 'USE', 0
-          DEFW unimplemented_command
+          DEFW use_function
         ;; synonyms
         DEFB 5, 'DEBUG', 1
           DEFW debug_function
@@ -1409,8 +1647,10 @@ command_table:
           DEFW get_function
         DEFB 6, 'PICKUP', 1
           DEFW get_function
+        DEFB 4, 'OPEN', 1
+          DEFW use_function
         DEFB 4, 'READ', 1
-          DEFW unimplemented_command
+          DEFW use_function
         ;; easter-eges
         DEFB 4, 'CALL', 1
           DEFW unimplemented_command
@@ -1558,14 +1798,16 @@ items:
         DEFW item_0_desc
         DEFW item_0_long
         DEFB 0,0          ; No drop function
+        DEFW use_generator_fn ; handler
         DEFB 1            ; this item can be picked up
-        DEFB 0x03         ; basement
+        DEFB 0x02         ; ground-floor
 
 item_first:
         DEFW item_1_name  ; mirror
         DEFW item_1_desc
         DEFW item_1_long
         DEFW drop_mirror_fn  ; custom drop function
+        DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1573,6 +1815,7 @@ item_first:
         DEFW item_2_desc
         DEFW item_2_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
         DEFB 0xF0         ; not visible anywhere
 
@@ -1580,6 +1823,7 @@ item_first:
         DEFW item_3_desc
         DEFW item_3_long
         DEFB 0,0          ; No drop function
+        DEFW use_torch_fn ; USE TORCH
         DEFB 1            ; this item can be picked up
         DEFB 0x00         ; top-floor
 
@@ -1587,13 +1831,15 @@ item_first:
         DEFW item_4_desc
         DEFW item_4_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
-        DEFB 0xF0         ; not visible anywhere
+        DEFB 0xFE         ; not visible anywhere
 
         DEFW item_5_name  ; dog
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_5_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1601,6 +1847,7 @@ item_first:
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_6_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1608,6 +1855,7 @@ item_first:
         DEFW item_7_desc
         DEFW item_7_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
         DEFB 0x02         ; ground-floor
 
@@ -1615,6 +1863,7 @@ item_first:
         DEFW item_8_desc
         DEFW item_8_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1622,6 +1871,7 @@ item_first:
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_9_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1630,6 +1880,7 @@ item_first:
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_10_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
@@ -1637,6 +1888,7 @@ item_first:
         DEFB item_11_desc
         DEFW item_11_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0xf0         ; hidden until the rug is moved
 
@@ -1644,6 +1896,7 @@ item_first:
         DEFB item_12_desc
         DEFW item_12_long
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No use function
         DEFB 0            ; this item cannot be picked up
         DEFB 0xf0         ; hidden until the trapdoor is opened.
 
