@@ -1,10 +1,16 @@
 # The Lighthouse of Doom
 
-This repository contain a simple text-based adventure game.
+This repository contain a simple text-based adventure game, implemented
+twice:
 
-Currently this is implemented in portable C, however the intention is
-to re-implement the game to run on a CP/M system.
+* [C Implementation](#c-implementation)
+* [Z80 Implementation](#z80-implementation)
 
+My intention was to write a simple text-based adventure game to run under
+CP/M.  Starting large projects in Z80 assembly language from scratch
+is a bit of a daunting prospect, so I decided to code a simple game in C
+to get the design right and to avoid getting stuck in too many low-level
+details.
 
 
 ## Plot
@@ -15,21 +21,16 @@ to re-implement the game to run on a CP/M system.
   * The boat will surely crash if you don't turn on the main light.
 
 The game is over, when you either fix the light, or find another solution.
-If you do not achieve victory in 100 turns the boat runs aground, and
+If you do not achieve victory within a turn-limit the boat runs aground, and
 death will consume you all.  (It is a _very_ big boat!)
 
 
 
 ## C Implementation
 
-My goal behind this game is to write something simple, which can then be ported
-to run upon a CP/M system.  That mostly means that we should store as much
-logic as possible in a series of lookup-tables, or array of items - rather
-than writing complex logic within our handlers.
-
 The implementation is mostly concerned with creating the correct series of
 data-structures, which are essentially arrays of objects.  Because if we
-can make the game table-based that simplifies the coding that needs to be
+can make the game table-based we simplify the coding that needs to be
 done - we don't need to write per-object handlers anywhere, we can just
 add pointers to tables/structures.
 
@@ -48,7 +49,7 @@ too much state to care about:
 * Whether you won/lost.
 
 
-### Running The Game
+### Running It
 
 Build the game by running `make`, and then launch it.
 
@@ -58,11 +59,27 @@ If you get stuck you can see command by entering `help`.
 
 ## Z80 Implementation
 
-There is not yet a complete implementation of the game written in z80
-assembly language, however there is a basic stub.
+The Z80 implementation is based upon the C-implementation, with a few
+small changes.
 
-The C-code will not be literally ported over, however the same text will
-be used and the idea of using tables and structures will be maintained.
+The implementation uses a simple set of structures:
+
+* A command-table to map input-commands to handlers.
+* An item-table to store details about each object in the game.
+* A person table to store telephone messages.
+
+Along the way I did realize that having fixed inventory slots made the
+coding more of a challenge, so I made the location of each object a
+property of the object itself.
+
+
+### Running It
+
+Ensure you have the `pasmo` assembler installed, then build the code
+by running `make game`, or `make releas`.
+
+In either case the output will be a binary named `lihouse.com` which you
+should be able to run upon your system - or under a CP/M emulator.
 
 
 
