@@ -1739,6 +1739,26 @@ use_torch_found_t2:
         ; Show the message
         ld de, TORCH_ON_MSG
         call show_msg
+
+        ; If you're in the dark-place we'll warp you to the
+        ; normal basement
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        cp 4
+        jr nz, out_of_here
+        ld (hl),3
+
+        ; show that you can see where you are
+        ld de,NOW_YOU_SEE
+        call show_msg
+
+        ; show the location
+        ld hl, input_buffer+2
+        ld a, 'L'
+        ld (hl), a
+        call look_function
+
+out_of_here:
         ret
 
 
@@ -1907,7 +1927,7 @@ call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
         ; FALL-THROUGH
 NEWLINE:
-        0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "$"
 TAB:
         db "     $"
 invalid_msg:
@@ -2001,6 +2021,8 @@ MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
 TORCH_ON_MSG:
         db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
+NOW_YOU_SEE:
+        db "Now you can see where you are:", 0x0a, 0x0d, "$"
 usage_message:
         db "Lighthouse of doom!", 0x0a, 0x0d
         db "===================", 0x0a, 0x0d, 0x0a, 0x0d
@@ -2081,7 +2103,6 @@ location_2_long:
         db "taken up by a coat-rack, boots, and similar things.", 0x0a, 0x0d
         db "$"
 
-
 location_3_short:
         db "the lighthouse basement.$"
 location_3_long:
@@ -2138,7 +2159,6 @@ item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him
 
 item_6_name:  db "PAINTING"
 item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a group of dogs.$"
-
 
 item_7_name: db "RUG"
 item_7_desc: db "A small rug.$"
