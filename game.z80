@@ -117,8 +117,8 @@ game_loop:
         ; 0. Have we died?
         ld hl, TURN_COUNT
         ld a, (hl)
-        cp 10
-        jp nc,game_loop_continue
+        cp 50
+        jp c,game_loop_continue
 
         ld HL, PLAYER_DEAD
         inc (hl)
@@ -1989,6 +1989,18 @@ usage_message:
         db 0x0a, 0x0d, "$"
 
 PLAYER_DEAD_MESSAGE:
+        db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d, "The ship ploughs into the base of your lighthouse, causing it to collapse around"
+        db 0x0a, 0x0d, "you."
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d, "You're buried and helpless, and as the darkness consumes you the sounds of the"
+        db 0x0a, 0x0d, "sailors thrashing in the water reach you, from a distance."
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d, "Let us hope some of them can swim to shore.."
+
+        db 0x0a, 0x0d
+        db 0x0a, 0x0d
         db "Game over - you're dead."
         db 0x0a, 0x0d,"$"
 PLAYER_WON_MESSAGE:
