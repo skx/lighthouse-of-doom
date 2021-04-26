@@ -114,6 +114,17 @@ ENDIF
         ; command/dispatch-table.
 game_loop:
 
+        ; 0. Have we died?
+        ld hl, TURN_COUNT
+        ld a, (hl)
+        cp 10
+        jp nc,game_loop_continue
+
+        ld HL, PLAYER_DEAD
+        inc (hl)
+
+game_loop_continue:
+
         ; 1. Is the player dead?
         ld hl, PLAYER_DEAD
         ld a, (hl)
