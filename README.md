@@ -76,7 +76,7 @@ property of the object itself.
 ### Running It
 
 Ensure you have the `pasmo` assembler installed, then build the code
-by running `make game`, or `make releas`.
+by running `make game`, or `make release`.
 
 In either case the output will be a binary named `lihouse.com` which you
 should be able to run upon your system - or under a CP/M emulator.
