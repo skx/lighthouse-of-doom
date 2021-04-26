@@ -1240,6 +1240,7 @@ inventory_test_item:
           push de
           push bc
           push af
+          call show_tab
           call show_msg
           call show_newline
           pop af
@@ -1370,6 +1371,7 @@ look_item_loop:
           push de
           push bc
           push af
+          call show_tab
           call show_msg
           call show_newline
           pop af
@@ -1545,6 +1547,20 @@ up_on_basement_floor:
 show_newline:
         ld de, NEWLINE
         jp show_msg
+
+show_tab:
+        push af
+        push bc
+        push de
+        push hl
+        ld de, TAB
+        ld c,BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        pop hl
+        pop de
+        pop bc
+        pop af
+        ret
 
 
 
@@ -1874,6 +1890,8 @@ call_me_msg:
 
 NEWLINE:
         db 0x0a, 0x0d, "$"
+TAB:
+        db "     $"
 invalid_msg:
         db 0x0a, 0x0d, "I'm sorry, I did not understnad that.", 0x0a, 0x0d, "$"
 BAD_LANGUAGE_MSG:
@@ -1901,7 +1919,7 @@ no_up_msg:
 no_down_msg:
         db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
-        db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.\n$"
+        db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
 failed_find_trapdoor_msg:
@@ -2021,44 +2039,44 @@ LOOK_FUNCTION_PREFIX:
 location_0_short:
         db "the top floor of the lighthouse.$"
 location_0_long:
-        db "The lighthouse has a spiral staircase which runs from top to bottom.\n"
-        db "Through the window you can see the lights of an approach ship, and\n"
-        db "you know that it will crash upon the rocks if you can't signal it away.\n"
-        db "Too bad the lighthouse light doesn't seem to be working, it looks like\n"
-        db "there's a problem with the power.\n"
+        db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d
+        db "Through the window you can see the lights of an approach ship, and", 0x0a, 0x0d
+        db "you know that it will crash upon the rocks if you can't signal it away.", 0x0a, 0x0d
+        db "Too bad the lighthouse light doesn't seem to be working, it looks like", 0x0a, 0x0d
+        db "there's a problem with the power.", 0x0a, 0x0d
         db "$"
 
 location_1_short:
         db "the middle floor of the lighthouse.$"
 location_1_long:
-        db "The middle floor of the lighthouse seems to be a relaxation-room,\n"
-        db "you see some comfy chairs, a work-desk, as well as various odds and\n"
-        db "ends.\n\n"
-        db "An impressive painting hangs over the desk, and a dog sleeps in a basket\n"
-        db "to the side of it.\n"
+        db "The middle floor of the lighthouse seems to be a relaxation-room,", 0x0a, 0x0d
+        db "you see some comfy chairs, a work-desk, as well as various odds and", 0x0a, 0x0d
+        db "ends.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "An impressive painting hangs over the desk, and a dog sleeps in a basket", 0x0a, 0x0d
+        db "to the side of it.", 0x0a, 0x0d
         db "$"
 
 location_2_short:
         db "the ground floor of the lighthouse.$"
 location_2_long:
-        db "The ground floor seems very crowded, with most of the room\n"
-        db "taken up by a coat-rack, boots, and similar things\n"
+        db "The ground floor seems very crowded, with most of the room", 0x0a, 0x0d
+        db "taken up by a coat-rack, boots, and similar things.", 0x0a, 0x0d
         db "$"
 
 
 location_3_short:
         db "the lighthouse basement.$"
 location_3_long:
-        db "This seems to be a graveyard for discarded machinery, and\n"
-        db "other random junk.\n"
+        db "This seems to be a graveyard for discarded machinery, and", 0x0a, 0x0d
+        db "other random junk.", 0x0a, 0x0d
         db "$"
 
 location_4_short:
         db "a dark place.$"
 location_4_long:
-        db "You cannot see anything, but you can certainly hear a snarling.\n"
-        db "There is also a strong smell, a feral smell, could it be that this\n"
-        db "is the haunt of a grue?"
+        db "You cannot see anything, but you can certainly hear a snarling.", 0x0a, 0x0d
+        db "There is also a strong smell, a feral smell, could it be that this", 0x0a, 0x0d
+        db "is the haunt of a grue?", 0x0a, 0x0d
         db "$"
 
 
@@ -2072,32 +2090,32 @@ item_0_long: db "This is a diesel-power generator, which seems to be full of fue
 
 item_1_name:  db "MIRROR"
 item_1_desc:  db "A small mirror.$"
-item_1_long:  db "The mirror doesn't seem to be anything special.\n"
-              db "But your reflection?  It looks fabulous.\n"
+item_1_long:  db "The mirror doesn't seem to be anything special.", 0x0a, 0x0d
+              db "But your reflection?  It looks fabulous.", 0x0a, 0x0d
               db "$"
 
 item_2_name:  db "MIRROR-BROKEN"
 item_2_desc:  db "A small mirror, which is cracked and broken.$"
-item_2_long:  db "The mirror was once small and delicate.\n"
-              db "But now it shows a distored reflection of yourself,\n"
-              db "which is oddly unsettling.\n"
+item_2_long:  db "The mirror was once small and delicate.", 0x0a, 0x0d
+              db "But now it shows a distored reflection of yourself,", 0x0a, 0x0d
+              db "which is oddly unsettling.", 0x0a, 0x0d
               db "$"
 
 item_3_name:  db "TORCH"
 item_3_desc:  db "A small torch.$"
-item_3_long:  db "The torch doesn't seem to be anything special,\n"
-              db "but you do notice that it contains batteries and can be turned on easily.\n"
+item_3_long:  db "The torch doesn't seem to be anything special,", 0x0a, 0x0d
+              db "but you do notice that it contains batteries and can be turned on easily.", 0x0a, 0x0d
               db "$"
 
 item_4_name:  db "TORCH-LIT"
 item_4_desc:  db "A small torch, which is turned on.$"
-item_4_long:  db "The torch doesn't seem to be anything special.\n"
+item_4_long:  db "The torch doesn't seem to be anything special.", 0x0a, 0x0d
               db "$"
 
 item_5_name:  db "DOG"
-item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him \n"
-              db "he mutters something about 'Apollo the Super-Pup' in his sleep,\n"
-              db "before settling back into silence.\n"
+item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him ", 0x0a, 0x0d
+              db "he mutters something about 'Apollo the Super-Pup' in his sleep,", 0x0a, 0x0d
+              db "before settling back into silence.", 0x0a, 0x0d
               db "$"
 
 item_6_name:  db "PAINTING"
@@ -2106,32 +2124,34 @@ item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a
 
 item_7_name: db "RUG"
 item_7_desc: db "A small rug.$"
-item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable\n"
-             db "about it.$"
+item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable", 0x0a, 0x0d
+             db "about it.", 0x0a, 0x0d, "$"
 
 item_8_name: db "BOOK"
 item_8_desc: db "A small black book.$"
-item_8_long: db "The little black book seems to contain names and phone numbers:\n\n"
-             db "\t   Police    - 999\n"
-             db "\tAmbulance    - 999\n"
-             db "\tFire Service - 999\n"
-             db "\tPaw Patrol   - 999\n"
-             db "\nToo bad there are no instructions on powering the main light.\n$"
+item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0a, 0x0d, 0x0a, 0x0d
+             db "\t   Police    - 999", 0x0a, 0x0d
+             db "\tAmbulance    - 999", 0x0a, 0x0d
+             db "\tFire Service - 999", 0x0a, 0x0d
+             db "\tPaw Patrol   - 999", 0x0a, 0x0d
+             db 0x0a, 0x0d
+             db "Too bad there are no instructions on powering the main light.", 0x0a, 0x0d, "$"
 
 item_9_name: db "DESK"
-item_9_long: db "The desk is made of solid wood, unlike everything else in the room.$"
+item_9_long: db "The desk is made of solid wood, unlike everything else in the room.", 0x0a, 0x0d, "$"
 
 item_10_name: db "TELEPHONE"
 item_10_desc: db "A telephone, wired to the wall.$"
-item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.$"
+item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.", 0x0a, 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
 item_11_desc: db "A closed trapdoor.$"
-item_11_long: db "You cannot see anything special about the trapdoor.\nPerhaps you should open it to explore further?$"
+item_11_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
+              db "nPerhaps you should open it to explore further?", 0x0a, 0x0d, "$"
 
 item_12_name: db "TRAPDOOR-OPEN"
 item_12_desc: db "An open trapdoor.$"
-item_12_long: db "You cannot see anything special about the trapdoor.\n$"
+item_12_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d, "$"
 
 
 ;
