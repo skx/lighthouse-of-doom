@@ -1900,16 +1900,14 @@ call_ryder_msg:
 call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
-
-        db "enjoying a nap.", 0x0a, 0x0d, "$"
 call_rubble_msg:
         db 0x0a, 0x0d, "Rubble doesn't answer your phone call, but at this time of day he's probably", 0x0a, 0x0d
         db "enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
-        db 0x0a, 0x0d, "Debbie Harry says hello, but then hangs up.", 0x0a, 0x0d, "$"
-
+        db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
+        ; FALL-THROUGH
 NEWLINE:
-        db 0x0a, 0x0d, "$"
+        0x0a, 0x0d, "$"
 TAB:
         db "     $"
 invalid_msg:
@@ -1988,7 +1986,7 @@ you_drop_it:
 prompt_message:
         db 0x0a, 0x0d,">$"
 inventory_empty_message:
-        db 0x0a, 0x0d, "You are carrying nothing.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "You are not carrying anything", 0x0a, 0x0d, "$"
 you_carrying_message:
         db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
 you_see_message:
