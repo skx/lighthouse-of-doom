@@ -159,26 +159,15 @@ erase_input_buffer:
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
 
-        ; (debug) show the input-text
-        ld hl,DEBUG_STORE
-        ld a,(hl)
-        cp 0
-        jp z, continue1
-
-        ld de,DEBUG_YOU_ENTERED_MSG
-        call show_msg
-        call show_input_buffer
-        call show_newline
-continue1:
         ; 6. Convert the text to upper-case.
         ld hl, input_buffer+1
         ld b,(hl)
         inc hl
 game_loop_uc_loop:
         ld a, (hl)
-        cp 'a'
+        cp 'a'-1
         jr c, game_loop_uc_nc
-        cp 'z'
+        cp 'z'+1
         jr nc, game_loop_uc_nc
         sub 32
 game_loop_uc_nc:
@@ -186,18 +175,6 @@ game_loop_uc_nc:
         inc hl
         djnz game_loop_uc_loop
 
-        ; (debug) show the result of the upper-casing
-        ld hl,DEBUG_STORE
-        ld a,(hl)
-        cp 0
-        jp z, continue2
-
-        ld de,DEBUG_AFTER_CASE_CHANGE
-        call show_msg
-        call show_input_buffer
-        call show_newline
-
-continue2:
         ;  7.  Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
@@ -218,33 +195,19 @@ continue2:
 
 
 no_handler:
+        ; Show the user that their command wasn't understood.
+        ld de, invalid_msg
+        call show_msg
+
         ; Invalid command, but this is still a turn
         ld hl, TURN_COUNT
         inc (hl)
 
-        ;  5.  Goto 1
+        ;  8.  Goto 1
         jp game_loop              ; restart
 
 
 
-;
-; Called only as part of the debugging routine
-;
-show_input_buffer:
-        ld hl, input_buffer+1
-        ld b,(hl)
-        inc hl
-show_char_loop:
-        ld e, (hl)
-        push bc
-        push hl
-        ld c, BDOS_OUTPUT_SINGLE_CHARACTER
-        call BDOS_ENTRY_POINT
-        pop hl
-        pop bc
-        inc hl
-        djnz show_char_loop
-        ret
 
 
 ; This will be a major part of our code so it is perhaps a little more
@@ -578,6 +541,7 @@ player_not_carrying_loop:
         ret
 
 
+
 ;
 ; Helper function - get pointer to second command-line word
 ;
@@ -616,6 +580,16 @@ input_second_term_end:
         ld a, 0xff
         ret
 
+
+;
+; Show a message, terminated with "$"
+;
+; Address in DE
+;
+show_msg:
+        ld c, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        ret
 
 
 
@@ -709,6 +683,14 @@ show_turn_count:
 ;********************************************************************
 
 
+
+;
+; Command-Handler SWEARING
+;
+bad_language_function:
+        ld de, BAD_LANGUAGE_MSG
+        jp show_msg
+
 ;
 ; Command-Handler CLS
 ;
@@ -717,40 +699,191 @@ cls_function:
         ld de, CLS_MSG
         jp show_msg
 
-
-;
-; Command-Handler DEBUG
-;
-; Toggles the debug-flag, which can be used to see some parsing/input details
-; but not much more than that.
-;
-debug_function:
-        ld hl,DEBUG_STORE
-        ld a,(hl)
-        cp 0
-        jr z, debug_turn_on
-        ld a,0
-        ld (hl),a
-        ld de, debug_off_msg
-        call show_msg
-        ret
-debug_turn_on:
-        ld a,1
-        ld (hl),a
-        ld de, debug_on_msg
-        call show_msg
-        ret
-
 ;
 ; Command-Handler DOWN
 ;
-; Change location - TODO fix this
+; Change location, this has some tests
 ;
 down_function:
         ld hl, CURRENT_LOCATION
+        ld a, (hl)
+        cp 0
+        jr z, down_on_top_floor
+        cp 1
+        jr z, down_on_middle_floor
+        cp 2
+        jr z, down_on_ground_floor
+
+        ; fall-through other options will show "NO DOWN"
+no_down:
+        ld de, no_down_msg
+        call show_msg
+        ret
+
+down_on_top_floor:
+down_on_middle_floor:
         inc (hl)
         call look_function
         ret
+
+down_on_ground_floor:
+        ; find the trapdoor-open - if it isn't there you can't go down
+        ld hl, item_12_name
+        call get_item_by_name
+        cp 0
+        jr z, down_found_trap
+
+        ld de, failed_find_trapdoor_open_msg
+        call show_msg
+        ret
+down_found_trap:
+
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ld a,(hl) ; get the location of the trapdoor
+        cp 2
+        jr nz, no_down ; not on the basement?  Then we can't go down
+
+        ; Does the user have the torch-lit?
+        ;
+        ; Note that if we can't find the torch that is because it
+        ; is not in the current locaton OR the player isn't carrying it
+        ;
+        ; That's OK, that just means they go to the dark place.
+        ld hl, item_4_name
+        call get_item_by_name
+        cp 0
+        jp nz, dark_destination
+
+        ; found the torch
+
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function.
+        inc hl
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; is the player carrying it?
+        ld a,(hl)
+        cp 255
+        jr nz,dark_destination
+
+        ld hl,CURRENT_LOCATION
+        ld (hl),3
+        call look_function
+        ret
+dark_destination:
+        ld hl,CURRENT_LOCATION
+        ld (hl),4
+        call look_function
+        ret
+
+
+
+
+;
+; Command-Handler DROP
+;
+; If the item is carried by the player it is dropped
+;
+; If there is a non-zero drop-function it is invoked.
+;
+drop_function:
+        call input_second_term
+        cp 0
+        jp z, drop_object
+
+        ld de, DROP_WHAT_MSG
+        call show_msg
+        ret
+
+drop_object:
+        ; store object in HL
+        call input_second_term
+
+        call get_item_by_name
+        cp 0
+        jp z,drop_found_it
+
+        ; if we didn't find it in the current location or inventory
+        ; then we're not carrying it.
+        ld de, not_carrying_item_msg
+        call show_msg
+        ret
+
+drop_found_it:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop-function - but save it in DE
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+        ; skip past the use-function
+        inc hl
+        inc hl
+        ; skip past the "collectable" property
+        inc hl
+
+        ; save the current location in this slot, so it is
+        ; now dropped
+        push hl
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        pop hl
+        ld (hl),a
+
+        ; is the handler empty?
+        ld a, d
+        or e
+        jr nz, drop_invoke_handler
+        ld de, you_drop_it
+        call show_msg
+        ret
+
+drop_invoke_handler:
+        push de
+        pop hl
+        call JP_HL
+        ret
+
+
+
 
 ;
 ; Command-Handler EXAMINE
@@ -805,6 +938,90 @@ examine_found_it:
         call show_msg
         ret
 
+
+;
+; Command-Handler CALL
+;
+; If we're in the middle-floor we can use the telephone
+;
+call_function:
+        ld hl,CURRENT_LOCATION
+        ld a,(hl)
+        cp 1
+        jr z, call_proceed
+
+        ; not in the phone-room?  Show an error and return
+        ld de, NO_PHONE_HERE
+        call show_msg
+        ret
+
+call_proceed:
+        call input_second_term
+        cp 0
+        jp z, call_person
+
+        ; missing person
+        ld de, CALL_WHO_MSG
+        call show_msg
+        ret
+
+call_person:
+        ; HL points to the person the user tried to call
+        ; look in our people-table to see if there is a response
+        ; we can make
+        ld de, people_table
+next_person_test:
+        push de
+        ld a, (de)       ; length of string
+        cp 0x00          ; zero?  We've hit the end of the table and not found
+        jr nz, cont_call ; a match - show a failure message and return
+
+        ; show the error-message and return
+        pop de
+        ld de, call_unknown_msg
+        call show_msg
+        ret
+
+        ; OK we've got an entry
+cont_call:
+        ld b, a    ; B will contain the length
+        inc de     ; DE point to the string itself
+
+        push hl
+        call CompareStringsWithLength
+        jp z, found_person_to_call
+        pop hl
+
+        ; ok we didn't find
+        pop de
+
+        ; ok we didn't find
+        ld a, (de)
+        inc de     ; get the entry-length
+        ld b,a
+skip_string:
+        inc de
+        djnz skip_string
+        inc de ; addr1
+        inc de ; addr2
+        jp next_person_test
+
+found_person_to_call:
+        pop hl
+        pop de
+        ld a, (de)
+        inc de     ; get the entry-length
+        ld b,a
+skip_string2:
+        inc de
+        djnz skip_string2
+        push de
+        pop hl
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        call show_msg
+        ret
 
 ;
 ; Command-Handler GET
@@ -912,149 +1129,9 @@ not_taken_rug:
         ret
 
 
-;
-; Command-Handler DROP
-;
-; If the item is carried by the player it is dropped
-;
-; If there is a non-zero drop-function it is invoked.
-;
-drop_function:
-        call input_second_term
-        cp 0
-        jp z, drop_object
-
-        ld de, DROP_WHAT_MSG
-        call show_msg
-        ret
-
-drop_object:
-        ; store object in HL
-        call input_second_term
-
-        call get_item_by_name
-        cp 0
-        jp z,drop_found_it
-
-        ; if we didn't find it in the current location or inventory
-        ; then we're not carrying it.
-        ld de, not_carrying_item_msg
-        call show_msg
-        ret
-
-drop_found_it:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function - but save it in DE
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-
-        ; save the current location in this slot, so it is
-        ; now dropped
-        push hl
-        ld hl, CURRENT_LOCATION
-        ld a,(hl)
-        pop hl
-        ld (hl),a
-
-        ; is the handler empty?
-        ld a, d
-        or e
-        jr nz, drop_invoke_handler
-        ld de, you_drop_it
-        call show_msg
-        ret
-
-drop_invoke_handler:
-        push de
-        pop hl
-        call JP_HL
-        ret
 
 
-;
-; Command-Handler USE
-;
-use_function:
-        call input_second_term
-        cp 0
-        jp z, use_object
 
-        ld de, USE_WHAT_MSG
-        call show_msg
-        ret
-
-use_object:
-        ; store object in HL
-        call input_second_term
-
-        call get_item_by_name
-        cp 0
-        jp z, use_found_object
-
-        ld de, item_not_present_msg
-        call show_msg
-        ret
-
-use_found_object:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop function
-        inc hl
-        inc hl
-        ; Get the use-handler
-        ld e, (hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-
-        ; is the use-handler empty?
-        ld a, d
-        or e
-        jr z, use_is_futile
-
-        ; jump to the use-handler
-        push de
-        pop hl
-        call JP_HL
-        ret
-use_is_futile:
-        ld de, use_generic
-        call show_msg
-        ret
-
-
-;
-; Command-Handler QUIT
-;
-; Terminate the game, and show the turn-count.
-;
-quit_function:
-        ld de, QUIT_MSG
-        call show_msg
-        call show_turn_count
-        jp 0x0000
 
 
 ;
@@ -1293,6 +1370,124 @@ item_not_present:
         djnz look_item_loop
         ret
 
+
+
+
+
+; Command-handler MAGIC
+;
+;
+magic_function:
+        ld HL,MAGIC_LOCATION
+        ld a,(hl)
+        inc a
+        ld (hl),a
+
+        cp 1
+        jr z, magic_one
+
+        cp 2
+        jr z, magic_two
+
+        cp 3
+        jr z, magic_three
+
+        ; magic four
+        ld de, magic_four_msg
+        call show_msg
+        ret
+magic_one:
+        ld de, magic_one_msg
+        call show_msg
+        ret
+magic_two:
+        ld de, magic_two_msg
+        call show_msg
+        ret
+magic_three:
+        ld de, magic_three_msg
+        call show_msg
+        ret
+
+
+
+
+;
+; Command-Handler QUIT
+;
+; Terminate the game, and show the turn-count.
+;
+quit_function:
+        ld de, QUIT_MSG
+        call show_msg
+        call show_turn_count
+        jp 0x0000
+
+
+
+
+;
+; Command-Handler USE
+;
+; Use the named object, if there is a handler defined for it.
+use_function:
+        call input_second_term
+        cp 0
+        jp z, use_object
+
+        ld de, USE_WHAT_MSG
+        call show_msg
+        ret
+
+use_object:
+        ; store object in HL
+        call input_second_term
+
+        call get_item_by_name
+        cp 0
+        jp z, use_found_object
+
+        ld de, item_not_present_msg
+        call show_msg
+        ret
+
+use_found_object:
+        ; skip past the name
+        inc hl
+        inc hl
+        ; skip past the short description
+        inc hl
+        inc hl
+        ; skip past the long description
+        inc hl
+        inc hl
+        ; skip past the drop function
+        inc hl
+        inc hl
+        ; Get the use-handler
+        ld e, (hl)
+        inc hl
+        ld d,(hl)
+        inc hl
+
+        ; is the use-handler empty?
+        ld a, d
+        or e
+        jr z, use_is_futile
+
+        ; jump to the use-handler
+        push de
+        pop hl
+        call JP_HL
+        ret
+use_is_futile:
+        ld de, use_generic
+        call show_msg
+        ret
+
+
+
+
 ;
 ; Command-Handler UP
 ;
@@ -1330,17 +1525,7 @@ up_on_basement_floor:
         call look_function
         ret
 
-;
-; Command-Handler STUB
-;
-;  Show that the given command isn't implemented
-;
-unimplemented_command:
-        ld de, unimplemented_command_str
-show_msg:
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        ret
+
 
 show_newline:
         ld de, NEWLINE
@@ -1625,11 +1810,11 @@ use_generator_won_fn:
         ret
 
 
-;********************************************************************
-; Data Storage
-;********************************************************************
 
 
+;********************************************************************
+; Data / State Storage
+;********************************************************************
 
 TURN_COUNT:
         db 0
@@ -1639,17 +1824,67 @@ PLAYER_DEAD:
         db 0
 PLAYER_WON:
         db 0
-DEBUG_STORE:
+MAGIC_LOCATION
         db 0
 
+
 ;********************************************************************
-; Data Area
+; String Area
 ;********************************************************************
+
+call_911_msg:
+call_999_msg:
+call_police_msg:
+        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted in a lack of", 0x0a, 0x0d
+        db "a functioning police force.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
+
+call_unknown_msg:
+        db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
+
+call_ryder_msg:
+        db 0x0a, 0x0d, "Ryder here!  No pup is too small, no job is too big!", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
+        db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
+call_skye_msg:
+        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
+        db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
+
+        db "enjoying a nap.", 0x0a, 0x0d, "$"
+call_rubble_msg:
+        db 0x0a, 0x0d, "Rubble doesn't answer your phone call, but at this time of day he's probably", 0x0a, 0x0d
+        db "enjoying a nap.", 0x0a, 0x0d, "$"
+call_me_msg:
+        db 0x0a, 0x0d, "Debbie Harry says hello, but then hangs up.", 0x0a, 0x0d, "$"
 
 NEWLINE:
         db 0x0a, 0x0d, "$"
+invalid_msg:
+        db 0x0a, 0x0d, "I'm sorry, I did not understnad that.", 0x0a, 0x0d, "$"
+BAD_LANGUAGE_MSG:
+        db 0x0a, 0x0d, "What language!", 0x0a, 0x0d, "$"
+NO_PHONE_HERE:
+        db 0x0a, 0x0d, "You can't see a telephone to use here!", 0x0a, 0x0d, "$"
+magic_one_msg:
+        db 0x0a, 0x0d, "Magic happens.",  0x0a, 0x0d, "$"
+magic_two_msg:
+        db 0x0a, 0x0d, "Magic intensifies.",  0x0a, 0x0d, "$"
+magic_three_msg:
+        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush.",  0x0a, 0x0d
+        db "This can't be good for you, maybe stop now?", 0x0a, 0x0d, "$"
+magic_four_msg:
+        db 0x0a, 0x0d , "You couldn't draw the line, could you?", 0x0a, 0x0d, 0x0a, 0x0d
+        db "The magic flooding your body is too powerful, and you're finding it impossible", 0x0a, 0x0d
+        db "to breath.  With a wail of frustration you topple backwards, clutching", 0x0a, 0x0d
+        db "at your chest.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "You're dying, soon the end will come.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+
+CALL_WHO_MSG:
+        db 0x0a, 0x0d, "Call who?", 0x0a, 0x0d, "$"
 no_up_msg:
         db 0x0a, 0x0d, "You can't go up from here.", 0x0a, 0x0d, "$"
+no_down_msg:
+        db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
         db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.\n$"
 failed_find_torch_msg:
@@ -1664,10 +1899,6 @@ failed_find_torch_lit_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
-debug_off_msg:
-        db 0x0a, 0x0d, "Debugging turned off.", 0x0a, 0x0d, "$"
-debug_on_msg:
-        db 0x0a, 0x0d, "Debugging turned on.", 0x0a, 0x0d, "$"
 CLS_MSG:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
@@ -1701,15 +1932,8 @@ cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
         db 0x0a, 0x0d, "You drop it", 0x0a, 0x0d, "$"
-
-unimplemented_command_str:
-        db 0x0a, 0x0d, "That command is not yet implemented$"
 prompt_message:
         db 0x0a, 0x0d,">$"
-DEBUG_YOU_ENTERED_MSG:
-        db 0x0a, 0x0d, "You entered: $"
-DEBUG_AFTER_CASE_CHANGE:
-        db 0x0a, 0x0d, "After upper-casing: $"
 inventory_empty_message:
         db 0x0a, 0x0d, "You are carrying nothing.", 0x0a, 0x0d, "$"
 you_carrying_message:
@@ -1812,105 +2036,8 @@ location_4_long:
 
 
 ;
-; Our command-table contains the commands we accept, a pointer to their
-; handlers, and a "hidden" flag.
+; Item text
 ;
-; The HELP command will show all non-hidden commands.
-;
-; NOTE: There is no help-text for the commands
-;
-command_table:
-        DEFB 3, 'CLS', 1
-          DEFW cls_function
-        DEFB 4, 'DOWN', 0
-          DEFW down_function
-        DEFB 4, 'DROP', 0
-          DEFW drop_function
-        DEFB 7, 'EXAMINE', 0
-          DEFW examine_function
-        DEFB 3, 'GET', 0
-          DEFW get_function
-        DEFB 4, 'HELP', 0
-          DEFW help_function
-        DEFB 4, 'LOOK', 0
-          DEFW look_function
-        DEFB 9, 'INVENTORY', 0
-          DEFW inventory_function
-        DEFB 4, 'QUIT', 0
-          DEFW quit_function
-        DEFB 5, 'TURNS', 0
-          DEFW show_turn_count
-        DEFB 2, 'UP', 0
-          DEFW up_function
-        DEFB 3, 'USE', 0
-          DEFW use_function
-        ;; synonyms
-        DEFB 5, 'DEBUG', 1
-          DEFW debug_function
-        DEFB 4, 'TAKE', 1
-          DEFW get_function
-        DEFB 6, 'PICKUP', 1
-          DEFW get_function
-        DEFB 4, 'OPEN', 1
-          DEFW use_function
-        DEFB 4, 'READ', 1
-          DEFW use_function
-        ;; easter-eges
-        DEFB 4, 'CALL', 1
-          DEFW unimplemented_command
-        DEFB 4, 'DIAL', 1
-          DEFW unimplemented_command
-        DEFB 4, 'FUCK', 1
-          DEFW unimplemented_command
-        DEFB 5, 'PHONE', 1
-          DEFW unimplemented_command
-        DEFB 4, 'SHIT', 1
-          DEFW unimplemented_command
-        DEFB 5, 'XYZZY', 1
-          DEFW unimplemented_command
-        ;; abbreviations
-        DEFB 1, 'L', 1
-          DEFW look_function
-        DEFB 3, 'INV', 1
-          DEFW inventory_function
-        DEFB 1, 'I', 1
-          DEFW inventory_function
-        DEFB 1, 'U', 1
-          DEFW up_function
-        DEFB 1, 'D', 1
-          DEFW down_function
-        DEFB 0
-
-
-;
-; Location table
-;
-; Each location contains a pointer to a short-description, a pointer to
-; a long description, and a seen-flag.
-;
-location_table:
-        DEFW location_0_short
-        DEFW location_0_long
-        DB 0 ; seen-flag
-location_first:
-        DEFW location_1_short
-        DEFW location_1_long
-        DB 0 ; seen-flag
-
-        DEFW location_2_short
-        DEFW location_2_long
-        DB 0 ; seen-flag
-
-        DEFW location_3_short
-        DEFW location_3_long
-        DB 0 ; seen-flag
-
-        DEFW location_4_short
-        DEFW location_4_long
-        DB 0 ; seen-flag
-
-LOCATION_ENTRY_LENGTH: EQU location_first - location_table
-
 item_0_name: db "GENERATOR"
 item_0_desc: db "A small generator.$"
 item_0_long: db "This is a diesel-power generator, which seems to be full of fuel, and ready to go."
@@ -1978,6 +2105,147 @@ item_11_long: db "You cannot see anything special about the trapdoor.\nPerhaps y
 item_12_name: db "TRAPDOOR-OPEN"
 item_12_desc: db "An open trapdoor.$"
 item_12_long: db "You cannot see anything special about the trapdoor.\n$"
+
+
+;
+; People text
+;
+
+
+
+;********************************************************************
+; Table Area
+;********************************************************************
+
+
+;
+; Our command-table contains the commands we accept, a pointer to their
+; handlers, and a "hidden" flag.
+;
+; The HELP command will show all non-hidden commands.
+;
+; NOTE: There is no help-text for the commands
+;
+command_table:
+        DEFB 3, 'CLS', 1
+          DEFW cls_function
+        DEFB 4, 'DOWN', 0
+          DEFW down_function
+        DEFB 4, 'DROP', 0
+          DEFW drop_function
+        DEFB 7, 'EXAMINE', 0
+          DEFW examine_function
+        DEFB 3, 'GET', 0
+          DEFW get_function
+        DEFB 4, 'HELP', 0
+          DEFW help_function
+        DEFB 4, 'LOOK', 0
+          DEFW look_function
+        DEFB 9, 'INVENTORY', 0
+          DEFW inventory_function
+        DEFB 4, 'QUIT', 0
+          DEFW quit_function
+        DEFB 5, 'TURNS', 0
+          DEFW show_turn_count
+        DEFB 2, 'UP', 0
+          DEFW up_function
+        DEFB 3, 'USE', 0
+          DEFW use_function
+        ;; synonyms
+        DEFB 4, 'TAKE', 1
+          DEFW get_function
+        DEFB 6, 'PICKUP', 1
+          DEFW get_function
+        DEFB 4, 'OPEN', 1
+          DEFW use_function
+        DEFB 4, 'READ', 1
+          DEFW use_function
+        ;; easter-eges
+        DEFB 4, 'CALL', 1
+          DEFW call_function
+        DEFB 4, 'DIAL', 1
+          DEFW call_function
+        DEFB 4, 'FUCK', 1
+          DEFW bad_language_function
+        DEFB 5, 'PHONE', 1
+          DEFW call_function
+        DEFB 4, 'SHIT', 1
+          DEFW bad_language_function
+        DEFB 5, 'XYZZY', 1
+          DEFW magic_function
+        ;; abbreviations
+        DEFB 1, 'L', 1
+          DEFW look_function
+        DEFB 3, 'INV', 1
+          DEFW inventory_function
+        DEFB 1, 'I', 1
+          DEFW inventory_function
+        DEFB 1, 'U', 1
+          DEFW up_function
+        DEFB 1, 'D', 1
+          DEFW down_function
+        DEFB 0
+
+
+;
+; People table
+;
+; Similar to the command-table, each entry is:
+;
+;  LENGTH "NAME HERE" Ptr-To-Response
+;
+people_table:
+        DEFB 3, '911'
+             DEFW call_911_msg
+        DEFB 3, '999'
+             DEFW call_999_msg
+        DEFB 6, 'POLICE'
+             DEFW call_police_msg
+        DEFB 5, 'RYDER'
+             DEFW call_ryder_msg
+        DEFB 5, 'RIDER'
+             DEFW call_ryder_msg
+        DEFB 10, 'PAW PATROL'
+             DEFW call_ryder_msg
+        DEFB 14, 'THE PAW PATROL'
+             DEFW call_ryder_msg
+        DEFB 4, 'SKYE'
+             DEFW call_skye_msg
+        DEFB 6, 'RUBBLE'
+             DEFW call_rubble_msg
+        DEFB 2, 'ME'
+             DEFW call_me_msg
+        DEFB 0
+
+
+;
+; Location table
+;
+; Each location contains a pointer to a short-description, a pointer to
+; a long description, and a seen-flag.
+;
+location_table:
+        DEFW location_0_short
+        DEFW location_0_long
+        DB 0 ; seen-flag
+location_first:
+        DEFW location_1_short
+        DEFW location_1_long
+        DB 0 ; seen-flag
+
+        DEFW location_2_short
+        DEFW location_2_long
+        DB 0 ; seen-flag
+
+        DEFW location_3_short
+        DEFW location_3_long
+        DB 0 ; seen-flag
+
+        DEFW location_4_short
+        DEFW location_4_long
+        DB 0 ; seen-flag
+
+LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
 
 ;
@@ -2103,11 +2371,18 @@ item_first:
 
 item_last:
 
-
-
 ; length of an entry in the item table.
 ITEM_ENTRY_LENGTH: EQU item_first - items
 ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
+
+
+
+
+
+;********************************************************************
+; Buffer Area
+;********************************************************************
+
 
 
 ; Temporary buffer, available to all handlers.
