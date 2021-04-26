@@ -2450,18 +2450,6 @@ ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
 ; Buffer Area
 ;********************************************************************
 
-
-
-; Temporary buffer, available to all handlers.
-; 30 bytes long
-tmp_buffer:
-        db 0,0, 0,0, 0,0, 0,0, 0,0
-        db 0,0, 0,0, 0,0, 0,0, 0,0
-        db 0,0, 0,0, 0,0, 0,0, 0,0
-tmp_buffer_end:
-TMP_BUFFER_LEN: EQU ( tmp_buffer_end - tmp_buffer)
-
-
 ;
 ; This is the buffer which is used for reading a line of text from the
 ; CP/M BIOS.
@@ -2475,5 +2463,29 @@ input_buffer:
         db 100  ; size of our input-buffer
         db 0x00 ; Count of characters returned.
 
-        ; Label to the end of the game will be useful in the future
+
+
+;
+; A temporary buffer, available to all handlers.
+;
+; This is placed after the input-buffer above, and is defined as being 50
+; bytes long.  It is used for finding the argument to a handler.
+;
+; For example:
+;
+;   CALL RYDER
+;
+; The CALL handler will be invoked, and the object of the call, "RYDER" will
+; be copied into this buffer for table-lookup.
+;
+tmp_buffer: EQU input_buffer + 255
+TMP_BUFFER_LEN: EQU 50
+
+
+;
+; Our source code ends here.
+;
+; We use this label to calculate how many bytes to decrypt when we
+; launch - if that support is enabled.
+;
 end_of_source:
