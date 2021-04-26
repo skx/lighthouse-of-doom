@@ -73,6 +73,16 @@ coding more of a challenge, so I made the location of each object a
 property of the object itself.
 
 
+### Changes
+
+* The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
+* There is no grue in this version.
+  * It will come.
+* The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
+  * Stops you looking through the binary for hints.
+  * Run `make release` to build the _protected_ version, and `make game` to build a rare version.
+
+
 ### Building & Running It
 
 Ensure you have the `pasmo` assembler installed, then build the code
