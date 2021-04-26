@@ -1518,7 +1518,7 @@ item_8_long: db "The little black book seems to contain names and phone numbers:
              db "\tAmbulance    - 999\n"
              db "\tFire Service - 999\n"
              db "\tPaw Patrol   - 999\n"
-             db "\nToo bad there are no instructions on powering the main light.\n"
+             db "\nToo bad there are no instructions on powering the main light.\n$"
 
 item_9_name: db "DESK"
 item_9_long: db "The desk is made of solid wood, unlike everything else in the room.$"
