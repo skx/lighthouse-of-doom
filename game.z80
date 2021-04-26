@@ -45,6 +45,40 @@ BDOS_READ_INPUT:     EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
 
+;
+; Simple macro to inject "L" into our input buffer,
+; and call the LOOK handler.
+;
+MACRO FAKE_LOOK
+        ld hl, input_buffer+2
+        ld a, 'L'
+        ld (hl), a
+        call look_function
+      ENDM
+
+
+;
+; Simple macro to push all registers
+;
+MACRO PUSH_ALL
+        push af
+        push bc
+        push de
+        push hl
+      ENDM
+
+;
+; Simple macro to pop all registers
+;
+MACRO POP_ALL
+        pop hl
+        pop de
+        pop bc
+        pop af
+      ENDM
+
+
+
         ORG 100h
 
         ;
@@ -98,10 +132,7 @@ ENDIF
 
         ; Show the starting-location.
         call show_newline
-        ld hl, input_buffer+2
-        ld a, 'L'
-        ld (hl), a
-        call look_function
+        FAKE_LOOK
 
         ; The start of our game loop.
         ;
@@ -659,33 +690,22 @@ Num2:	inc	a
 	add	hl,bc
 	jr	c,Num2
 	sbc	hl,bc
-        push hl
-        push de
-        push bc
-        push af
+
+        PUSH_ALL
 
         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
         ld e, a
         call BDOS_ENTRY_POINT
 
-        pop af
-        pop bc
-        pop de
-        pop hl
+        POP_ALL
 	ret
 
 show_a_register:
-        push hl
-        push de
-        push bc
-        push af
+        PUSH_ALL
         ld h,0
 	ld l,a
 	call DispHL
-        pop af
-        pop bc
-        pop de
-        pop hl
+        POP_ALL
         ret
 
 
@@ -825,12 +845,12 @@ down_found_trap:
         cp 255
         jr nz,dark_destination
 
-        ld hl,CURRENT_LOCATION
+        ld hl, CURRENT_LOCATION
         ld (hl),3
         call look_function
         ret
 dark_destination:
-        ld hl,CURRENT_LOCATION
+        ld hl, CURRENT_LOCATION
         ld (hl),4
         call look_function
         ret
@@ -974,7 +994,7 @@ examine_found_it:
 ; If we're in the middle-floor we can use the telephone
 ;
 call_function:
-        ld hl,CURRENT_LOCATION
+        ld hl, CURRENT_LOCATION
         ld a,(hl)
         cp 1
         jr z, call_proceed
@@ -1256,17 +1276,11 @@ inventory_test_item:
         ld a,(hl)
         cp 0xff ; 0xff means the item is being carried
         jr nz, inv_item_not_carried
-          push hl
-          push de
-          push bc
-          push af
+          PUSH_ALL
           call show_tab
           call show_msg
           call show_newline
-          pop af
-          pop bc
-          pop de
-          pop hl
+          POP_ALL
 inv_item_not_carried:
         inc hl
         djnz inventory_test_item
@@ -1387,17 +1401,11 @@ look_item_loop:
         or e
         jr z, item_not_present
 
-          push hl
-          push de
-          push bc
-          push af
+          PUSH_ALL
           call show_tab
           call show_msg
           call show_newline
-          pop af
-          pop bc
-          pop de
-          pop hl
+          POP_ALL
 item_not_present:
         inc hl
         djnz look_item_loop
@@ -1644,7 +1652,7 @@ drop_mirror_fn:
 
         ; Set the location to be the current location
         push hl
-        ld hl,CURRENT_LOCATION
+        ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
         ld (hl), a
@@ -1753,10 +1761,7 @@ use_torch_found_t2:
         call show_msg
 
         ; show the location
-        ld hl, input_buffer+2
-        ld a, 'L'
-        ld (hl), a
-        call look_function
+        FAKE_LOOK
 
 out_of_here:
         ret
