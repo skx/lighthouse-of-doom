@@ -1974,7 +1974,7 @@ items:
         DEFB 0,0          ; No drop function
         DEFW use_generator_fn ; handler
         DEFB 1            ; this item can be picked up
-        DEFB 0x02         ; ground-floor
+        DEFB 0x03         ; basement
 
 item_first:
         DEFW item_1_name  ; mirror
