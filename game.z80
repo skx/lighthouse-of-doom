@@ -13,8 +13,6 @@
 ; This is a port of the lighthouse-of-doom game from C to Z80 assembly, such
 ; that it will run under CP/M 2.x
 ;
-; It is quite functional, but not yet complete.
-;
 ; Although the game has been ported that process has resulted in some changes
 ; to the text, and the command-handlers.  If you've played the C game, and
 ; completed it, there will be no significant new surprises.
@@ -157,34 +155,25 @@ not_won:
         call BDOS_ENTRY_POINT
 
         ; 4. Erase our input buffer.
+        ld hl, input_buffer+2
         ld b, 0xff
-        ld hl,input_buffer+2
-        ld a,0
-erase_input_buffer:
-        ld (hl),a
-        inc hl
-        djnz erase_input_buffer
+        call erase_buffer
 
         ; 5. Read a line of input from the player.
         ld de, input_buffer
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
 
-        ; 6. Convert the text to upper-case.
+        ; If the input was zero-length (i.e. User pressed return) ignore it.
         ld hl, input_buffer+1
-        ld b,(hl)
+        ld a,(hl)
+        cp 0
+        jr z, not_won
+
+        ; 6. Convert the input to upper-case.
+        ld b,a
         inc hl
-game_loop_uc_loop:
-        ld a, (hl)
-        cp 'a'-1
-        jr c, game_loop_uc_nc
-        cp 'z'+1
-        jr nc, game_loop_uc_nc
-        sub 32
-game_loop_uc_nc:
-        ld (hl),a
-        inc hl
-        djnz game_loop_uc_loop
+        call uppercase_buffer
 
         ;  7.  Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
@@ -326,6 +315,39 @@ ret_obj:
 
 
 ;
+; Helper function, fill a region of memory with zero characters
+;
+;  HL will point to the buffer.
+;   B will have the length
+erase_buffer:
+        xor a
+erase_buffer_loop:
+        ld (hl),a
+        inc hl
+        djnz erase_buffer_loop
+        ret
+
+
+;
+; Helper function.  Upper-case the given string.
+;
+;  HL will point to the buffer.
+;   B will have the length
+;
+uppercase_buffer:
+        ld a, (hl)
+        cp 'a'-1
+        jr c, uppercase_ok
+        cp 'z'+1
+        jr nc, uppercase_ok
+        sub 32
+        ld (hl),a
+uppercase_ok:
+        inc hl
+        djnz uppercase_buffer
+        ret
+
+;
 ; Helper function.  Are ANY items present in this room?
 ;
 ; This is just used to know whether to print the "You can see .." message
@@ -334,7 +356,6 @@ ret_obj:
 ; Return "A == FF" if not
 ;
 items_are_present:
-
         ld hl, items
         ld b, ITEM_COUNT
 look_item_loop_test:
@@ -395,12 +416,9 @@ get_item_by_name:
         push hl
 
         ; erase our temporary buffer
+        ld hl, tmp_buffer
         ld b,TMP_BUFFER_LEN
-        ld hl,tmp_buffer
-gibn_erase_loop:
-        ld (hl),0
-        inc hl
-        djnz gibn_erase_loop
+        call erase_buffer
 
         ; copy the name of the item into the temporary-buffer, we add
         ; a prefixed of the length.
@@ -2454,19 +2472,8 @@ TMP_BUFFER_LEN: EQU ( tmp_buffer_end - tmp_buffer)
 ;
 ; After that goes the input itself, obviously.
 input_buffer:
-        db 100, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        db 100  ; size of our input-buffer
+        db 0x00 ; Count of characters returned.
 
         ; Label to the end of the game will be useful in the future
 end_of_source:
