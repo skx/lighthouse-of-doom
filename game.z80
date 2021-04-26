@@ -1126,12 +1126,31 @@ get_found_it_take:
         inc hl
         ld (hl),255
 
-        ; HACK - Was the item being taken the rug?
+        ;
+        ; HACK - We don't have a notion of a take-handler
+        ;        so we can't show the trapdoor when the rug
+        ;        is taken.
+        ;
+        ;        Hardwire that behaviour here, even though that
+        ;        is horrid.
+        ;
+        ;        The alternative would have been to give some kind of
+        ;        "rug covers other objects" property to the rug.
+        ;
         ld de, tmp_buffer+1
         ld hl, item_7_name
         ld b, 3 ; strlen("RUG")
         call CompareStringsWithLength
         jp nz, not_taken_rug
+
+        ; Taking the rug should only trigger this behaviour
+        ; once - store state in `RUG_TAKEN` and ensure it
+        ; doesn't get triggered more than once.
+        ld hl, RUG_TAKEN
+        ld a,(hl)
+        cp 0
+        jr nz, not_taken_rug
+        inc (hl)
 
         ; show a message telling the user about the trapdoor.
         ld de, rug_taken_msg
@@ -1902,7 +1921,8 @@ PLAYER_WON:
         db 0
 MAGIC_LOCATION
         db 0
-
+RUG_TAKEN:
+        db 0
 
 ;********************************************************************
 ; String Area
