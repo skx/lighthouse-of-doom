@@ -103,7 +103,12 @@ Transfer `lihouse.com` to your system, and run `LIHOUSE` to launch it.
 
 ## Bugs
 
-Report them as you see them :)
+Report any bugs as you see them:
+
+* A crash of the game is a bug.
+* Bad spelling, grammar, or broken punctuation are also bugs.
+* Getting into a zombie-state where winning or losing are impossible is a bug.
+  * Albeit unlikely!
 
 
 Steve
