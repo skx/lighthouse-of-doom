@@ -36,15 +36,14 @@
 BDOS_ENTRY_POINT:    EQU 5
 
 ; BIOS functions we call
-BDOS_CHARACTER_READ:  EQU 0x01
-BDOS_OUTPUT_STRING:  EQU 0x09
-BDOS_READ_INPUT:     EQU 0x0A
+BDOS_CHARACTER_READ:          EQU 0x01
+BDOS_OUTPUT_STRING:           EQU 0x09
+BDOS_READ_INPUT:              EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
 
 ;
-; Simple macro to inject "L" into our input buffer,
-; and call the LOOK handler.
+; Simple macro to inject "L" into our input buffer, and call the LOOK handler.
 ;
 MACRO FAKE_LOOK
         ld hl, INPUT_BUFFER+2
@@ -75,7 +74,13 @@ MACRO POP_ALL
       ENDM
 
 
-
+        ;
+        ; Entry-point of CP/M binaries is 0x100.
+        ;
+        ; The zero-page, or PSP, is located before that:
+        ;
+        ;     https://en.wikipedia.org/wiki/Zero_page_(CP/M)
+        ;
         ORG 100h
 
         ;
@@ -146,7 +151,7 @@ game_loop:
         cp 50
         jp c,game_loop_continue
 
-        ld HL, PLAYER_DEAD
+        ld hl, PLAYER_DEAD
         inc (hl)
 
 game_loop_continue:
@@ -1471,7 +1476,7 @@ item_not_present:
 ;
 ;
 magic_function:
-        ld HL,MAGIC_LOCATION
+        ld hl, MAGIC_LOCATION
         ld a,(hl)
         inc a
         ld (hl),a
@@ -1634,7 +1639,7 @@ show_tab:
         push de
         push hl
         ld de, TAB
-        ld c,BDOS_OUTPUT_STRING
+        ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
         pop hl
         pop de
