@@ -25,10 +25,6 @@
 ;
 ;   HELP command doesn't show description next to command.
 ;
-;   When we change the item-size we have to mess around a lot with pointer
-;   changes.  Lack of real structures hurt here - but I'm too invested now
-;   to look for a new compiler
-;
 
 
 
@@ -389,40 +385,45 @@ uppercase_ok:
 ; Return "A == FF" if not
 ;
 items_are_present:
+
+        ; Point to the item-table, and get the count of objects
         ld hl, items
         ld b, ITEM_COUNT
+
 look_item_loop_test:
+
+        ; Set A to the current location.
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
 
-        ; hl points to the item
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the description - saving it
+        ; Get the description of the object in DE, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
+        add hl,de
         ld e, (hl)
         inc hl
         ld d, (hl)
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-handler
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-        ld c,(hl)  ; is this present in the current location?
+        pop hl
+
+        ; Get the location of the object in C, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld c, (hl)
+        pop de
+        pop hl
+
+        ; Is the item in the room?
         cp c
         jr nz, item_not_present_loop
 
         ; OK we have an item present.  Is the description empty?
-        ; if so that's a hidden object
+        ; if so that's a hidden object and it doesn't count.
         ld a, d
         or e
         jr z, item_not_present_loop
@@ -430,7 +431,12 @@ look_item_loop_test:
         xor a
         ret
 item_not_present_loop:
-        inc hl
+        ; Since we have HL pointing to an entry we can move to the next
+        ; just by adding the length of the table-item.
+        push de
+        ld de, ITEM_ENTRY_LENGTH
+        add hl,de
+        pop de
         djnz look_item_loop_test
         ld a, 0xff
         ret
@@ -561,34 +567,40 @@ gibn_found_it:
 ; Return "A == FF" if not.
 ;
 player_has_objects:
+        ; Point to the item-table, and get the count of objects
         ld hl, items
         ld b, ITEM_COUNT
+
 player_has_objects_loop:
-        ; hl points to the item
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-handler
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-        ld a,(hl)
-        cp 255
+
+        ; Get the location of the object in A, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop de
+        pop hl
+
+        ; If the location is 0xff then the player is carrying
+        ; something.
+        cp 0xff
         jr nz, player_not_carrying_loop
+
+        ; Report success
         xor a
         ret
 player_not_carrying_loop:
-        inc hl
+
+        ; Since we have HL pointing to an entry we can move to the next
+        ; just by adding the length of the table-item.
+        push de
+        ld de, ITEM_ENTRY_LENGTH
+        add hl,de
+        pop de
+
+        ; Loop again
         djnz player_has_objects_loop
         ld a, 0xff
         ret
@@ -780,25 +792,20 @@ down_on_ground_floor:
         ret
 down_found_trap:
 
+        ; HL points to the open-trapdoor.
+        ; Is the location the basement?  If not we can't go down
         ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
 
-        ld a,(hl) ; get the location of the trapdoor
+        ; Get the location of the trapdoor in A, leaving the entry
+        ; item pointer alone.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop de
+        pop hl
+
         cp 2
         jr nz, no_down ; not on the basement?  Then we can't go down
 
@@ -815,26 +822,18 @@ down_found_trap:
 
         ; found the torch
 
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
+        ; Get the location of the torch in A
+        ; Get the location of the trapdoor in A, leaving the entry
+        ; item pointer alone.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop de
+        pop hl
 
         ; is the player carrying it?
-        ld a,(hl)
         cp 255
         jr nz,dark_destination
 
@@ -882,33 +881,35 @@ drop_object:
         ret
 
 drop_found_it:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function - but save it in DE
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
+        ; HL points to the item's table-entry
 
-        ; save the current location in this slot, so it is
-        ; now dropped
+        ; Get the current location
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
-        ld (hl),a
+
+        ; Update the item to have its location-field set to the
+        ; location we just discovered.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld  (hl), a
+        pop de
+        pop hl
+
+        ; HL points to the start of the entry
+        ; get the location of the drop pointer
+        push de
+        ld de, ITEM_TABLE_DROP_OFFSET
+        add hl, de
+        pop de
+
+        ; Get the drop-handler
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
 
         ; is the handler empty?
         ld a, d
@@ -966,17 +967,19 @@ examine_object:
         ret
 
 examine_found_it:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; get the long description
+        ; HL points to the start of the entry
+        ; get the location of the extended-description pointer
+        push de
+        ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
+        add hl, de
+        pop de
+
+        ; Get the pointer to the string
         ld e,(hl)
         inc hl
         ld d,(hl)
-        inc hl
+
+        ; show it
         call show_msg
         ret
 
@@ -987,7 +990,7 @@ examine_found_it:
 ;
 ; Command-Handler GO
 ;
-; This allows the user to enter "GO UP", and "GO DOWN"
+; This allows the user to enter "GO UP", and "GO DOWN".
 ;
 go_function:
         call input_second_term
@@ -1128,23 +1131,20 @@ get_object:
         ret
 
 get_found_it:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-handler
-        inc hl
-        inc hl
+        ; HL points to the start of the item-entry of the object
+        ; the user tried to take.
+
+        ; Get the collectable property of the object, leaving HL
+        ; pointing to the start of the object
+        push hl
+        push de
+        ld de, ITEM_TABLE_COLLECTABLE_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop de
+        pop hl
+
         ; is this item collectable?
-        ld a,(hl)
         cp 1
         jr z, get_found_it_take
 
@@ -1153,9 +1153,16 @@ get_found_it:
         ret
 
 get_found_it_take:
-        ; item is now in the players possession
-        inc hl
-        ld (hl),255
+
+        ; HL still points to the start of the item entry
+        ; change the location to be in the player's possession
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld (hl), 0xff
+        pop de
+        pop hl
 
         ;
         ; HACK - We don't have a notion of a take-handler
@@ -1198,31 +1205,26 @@ get_found_it_take:
         ret
 
 place_trapdoor:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
+        ; HL points to the start of the trapdoor's item-entry
+        ; change the location of that item to be the current location
 
-        ; get the current location and add the item there.
+        ; Get the current location.
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
+
+        ; Save the location in the item.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
         ld (hl), a
+        pop de
+        pop hl
+
         ret
+
 not_taken_rug:
         call inventory_function
         ret
@@ -1272,7 +1274,7 @@ help_func_loop:  ; copy the command-name to the buffer
         call BDOS_ENTRY_POINT
 help_skip_this:
         pop de
-        inc de
+        inc de  ; skip hidden-flag
         inc de  ; skip addr1
         inc de  ; skip addr2
         jp  help_function_again
@@ -1301,36 +1303,44 @@ inventory_show_items:
         ld hl, items
         ld b, ITEM_COUNT
 inventory_test_item:
-        ; hl points to the item
-        ; skip past the name
+
+        ; HL points to the item-table
+        ; Get the description of the object in DE, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
+        add hl,de
+        ld e, (hl)
         inc hl
-        inc hl
-        ; skip past the desc - but save it in DE
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-        ld a,(hl)
+        ld d, (hl)
+        pop hl
+
+        ; Get the location of the object in A, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop de
+        pop hl
+
         cp 0xff ; 0xff means the item is being carried
         jr nz, inv_item_not_carried
-          PUSH_ALL
+
+        PUSH_ALL
           call show_tab
           call show_msg
           call show_newline
-          POP_ALL
+        POP_ALL
+
 inv_item_not_carried:
-        inc hl
+        ; Since we have HL pointing to an entry we can move to the next
+        ; just by adding the length of the table-item.
+        push de
+        ld de, ITEM_ENTRY_LENGTH
+        add hl,de
+        pop de
         djnz inventory_test_item
         ret
 
@@ -1410,37 +1420,35 @@ look_show_extended:
         ld hl, items
         ld b, ITEM_COUNT
 look_item_loop:
-        ; hl points to the item
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the desc - but save it in DE
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
 
-        ;
+        ; HL points to the item-table
+        ; Get the description of the object in DE, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
+        add hl,de
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        pop hl
+
+        ; Get the location of the object in C, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld c, (hl)
+        pop de
+        pop hl
+
         ; Get the current location
-        ;
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
 
-        ; get the location of this item.
-        ld c,(hl)
+        ; If the location of the object doesn't match it isn't here.
         cp c
         jr nz, item_not_present
 
@@ -1449,13 +1457,18 @@ look_item_loop:
         or e
         jr z, item_not_present
 
-          PUSH_ALL
+        PUSH_ALL
           call show_tab
           call show_msg
           call show_newline
-          POP_ALL
+        POP_ALL
 item_not_present:
-        inc hl
+        ; Since we have HL pointing to an entry we can move to the next
+        ; just by adding the length of the table-item.
+        push de
+        ld de, ITEM_ENTRY_LENGTH
+        add hl,de
+        pop de
         djnz look_item_loop
         ret
 
@@ -1545,23 +1558,17 @@ use_object:
         ret
 
 use_found_object:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop function
-        inc hl
-        inc hl
-        ; Get the use-handler
+        ; HL points to the start of the entry
+        ; get the location of the use-pointer
+        push de
+        ld de, ITEM_TABLE_USE_OFFSET
+        add hl, de
+        pop de
+
+        ; Get the drop-handler
         ld e, (hl)
         inc hl
-        ld d,(hl)
-        inc hl
+        ld d, (hl)
 
         ; is the use-handler empty?
         ld a, d
@@ -1655,60 +1662,43 @@ drop_mirror_fn:
         ld hl, item_1_name
         call get_item_by_name
 
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-
-        ; Set the location to be something random
-        ld (hl), 0xfe
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Change the location to be something random.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld (hl), 0x55
+        pop de
+        pop hl
 
         ; find the broken-mirror
         ld hl,item_2_name
         call get_item_by_name
 
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-
-        ; Set the location to be the current location
+        ; Get the current location in A
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
+
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Change the location of the broken-mirror to be the current one
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
         ld (hl), a
+        pop de
+        pop hl
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
         call show_msg
         ret
+
 
 
 ;  When you USE the TORCH it lights.
@@ -1728,32 +1718,22 @@ use_torch_fn:
         call show_msg
         ret
 use_torch_found_t:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
 
-        ; get the current location - to see if we're
-        ; setting this in the environment or the users'
-        ; inventory
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Get the location of that object into A, and change the
+        ; location to be something random.
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
         ld a,(hl)
-        push af
+        ld (hl), 0x55
+        pop de
+        pop hl
 
-        ; Set the location to be something random
-        ld (hl), 0xfe
+        ; save the location the torch had
+        push af
 
         ; find the lit torch
         ld hl, item_4_name
@@ -1769,35 +1749,26 @@ use_torch_found_t:
 
 use_torch_found_t2:
 
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-
-        ; Set the location to be the same as the
-        ; old torch was.
+        ; Restore the location of the old torch
         pop af
-        ld (hl),a
+
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Set the location of the lit-torch to be that the torch had
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld (hl), a
+        pop de
+        pop hl
 
         ; Show the message
         ld de, TORCH_ON_MSG
         call show_msg
 
-        ; If you're in the dark-place we'll warp you to the
-        ; normal basement
+        ; If you're in the dark-place we'll now warp you to the
+        ; normal basement.
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         cp 4
@@ -1833,26 +1804,17 @@ use_trapdoor_fn:
         call show_msg
         ret
 use_trapdoor_found_t:
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
 
-        ; Set the location to be something random
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Update the location of that object to be something random
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
         ld (hl), 0x55
+        pop de
+        pop hl
 
         ; find the trapdoor-open
         ld hl, item_12_name
@@ -1867,30 +1829,22 @@ use_trapdoor_found_t:
 
 use_trapdoor_found_t2:
 
-        ; skip past the name
-        inc hl
-        inc hl
-        ; skip past the short description
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-function.
-        inc hl
-        inc hl
-        ; skip past the use-function
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
-
-        ; Set the location to be here.
+        ; Get the current location
         push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
         pop hl
-        ld (hl),a
+
+        ; The item-table entry will be stored in HL.
+        ;
+        ; Update the location of that object to be something random
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld (hl), a
+        pop de
+        pop hl
 
         ; Show the message
         ld de, TRAPDOOR_OPEN_MSG
@@ -2392,13 +2346,11 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 
 
 ;
-; Item table
-;
-; Each item contains:
+; Item table - Each item contains:
 ;
 ;   1. A pointer to the (internal) name.
 ;   2. A pointer to a short description - this will be empty for "hidden" items.
-;   3. A pointer to a long description.
+;   3. A pointer to a long description - shown by "EXAMINE $object"
 ;   4. A pointer to a drop-function.
 ;   5. A pointer to a use-function.
 ;   6. A byte to specify whether this can be taken.
@@ -2406,24 +2358,49 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;       0xff == player is carrying it.
 ;       0xfe == can be found.
 ;
-; TODO:
-;  add take_function
-;  add examine_function
-;  add state_byte
+; We expect to add further pointers in the future, to allow custom behaviour
+; on a per-object basis.  This might mean we have a function pointer to
+; invoke for "TAKE", "EXAMINE", or similar.
+;
+; We might store state in the future too, for some objects.
 ;
 items:
-        DEFW item_0_name  ; generator                 ; 0, 1
-        DEFW item_0_desc                              ; 2, 3
-        DEFW item_0_long                              ; 4, 5
-        DEFB 0,0          ; No drop function          ; 6, 7
-        DEFW use_generator_fn ; handler               ; 8, 9
-        DEFB 1            ; this item can be picked up    ; 10
+item_name:
+        DEFW item_0_name  ; generator
+item_description_ptr:
+        DEFW item_0_desc
+item_ext_description_ptr:
+        DEFW item_0_long
+item_drop_ptr:
+        DEFB 0,0          ; No drop function
+item_use_ptr:
+        DEFW use_generator_fn ; handler
+item_collectable:
+        DEFB 1            ; this item can be picked up
 item_location:
-         DEFB 0x03         ; basement                 ; 11
+         DEFB 0x03         ; basement
 
 
-ITEM_TABLE_LOCATION_OFFSET: EQU item_location - items
-
+;
+; We have a function called "get_item_by_name" which returns a pointer
+; to the start of the item's table-entry.
+;
+; Rather than manually counting bytes to get access to the fields we
+; use some constants to access them - these constants are calculated here.
+;
+; e.g. Find a torch and get the location:
+;
+;         find the item, so the base is in HL
+;         add ITEM_TABLE_LOCATION_OFFSET to HL
+;         read the byte
+;
+ITEM_TABLE_NAME_OFFSET:            EQU item_name - items
+ITEM_TABLE_DESCRIPTION_OFFSET:     EQU item_description_ptr - items
+ITEM_TABLE_EXT_DESCRIPTION_OFFSET: EQU item_ext_description_ptr - items
+ITEM_TABLE_DROP_OFFSET:            EQU item_drop_ptr - items
+ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
+ITEM_TABLE_COLLECTABLE_OFFSET:     EQU item_collectable - items
+ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
 
 item_first:
         DEFW item_1_name  ; mirror
