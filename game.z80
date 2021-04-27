@@ -47,7 +47,7 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 ; and call the LOOK handler.
 ;
 MACRO FAKE_LOOK
-        ld hl, input_buffer+2
+        ld hl, INPUT_BUFFER+2
         ld a, 'L'
         ld (hl), a
         call look_function
@@ -183,17 +183,17 @@ not_won:
         call BDOS_ENTRY_POINT
 
         ; 4. Erase our input buffer.
-        ld hl, input_buffer+2
+        ld hl, INPUT_BUFFER+2
         ld b, 0xff
         call erase_buffer
 
         ; 5. Read a line of input from the player.
-        ld de, input_buffer
+        ld de, INPUT_BUFFER
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
 
         ; If the input was zero-length (i.e. User pressed return) ignore it.
-        ld hl, input_buffer+1
+        ld hl, INPUT_BUFFER+1
         ld a,(hl)
         cp 0
         jr z, not_won
@@ -206,7 +206,7 @@ not_won:
         ;  7.  Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
-        ld hl, input_buffer+2
+        ld hl, INPUT_BUFFER+2
         call find_command
         cp 255
         jp z, no_handler
@@ -444,14 +444,14 @@ get_item_by_name:
         push hl
 
         ; erase our temporary buffer
-        ld hl, tmp_buffer
-        ld b,TMP_BUFFER_LEN
+        ld hl, TMP_BUFFER
+        ld b, TMP_BUFFER_LEN
         call erase_buffer
 
         ; copy the name of the item into the temporary-buffer, we add
         ; a prefixed of the length.
         pop hl
-        ld de,tmp_buffer+1
+        ld de, TMP_BUFFER+1
         ld b,0
 gibn_copy_loop:
         ld a,(hl)
@@ -464,7 +464,7 @@ gibn_copy_loop:
         jr gibn_copy_loop
 
 gibn_copy_complete:
-        ld hl, tmp_buffer
+        ld hl, TMP_BUFFER
         ld (hl),b
 
         ; point to the item-table
@@ -520,7 +520,7 @@ gibn_item_available:
         push hl ; preserve our entry into the item
         push bc ; preserve b for our loop
 
-        ld hl, tmp_buffer ; Get the length from our buffer
+        ld hl, TMP_BUFFER ; Get the length from our buffer
         ld b, (hl)
         inc hl            ; Now HL points to the input
                           ; DE points to the name of the current item.
@@ -606,7 +606,7 @@ player_not_carrying_loop:
 ; get the start of second-word "TORCH", "BOOK"
 ;
 input_second_term:
-        ld hl, input_buffer+2
+        ld hl, INPUT_BUFFER+2
 
         ; start be incrementing the pointer until we find a space
 input_second_term_loop1:
@@ -1172,7 +1172,7 @@ get_found_it_take:
         ;        The alternative would have been to give some kind of
         ;        "rug covers other objects" property to the rug.
         ;
-        ld de, tmp_buffer+1
+        ld de, TMP_BUFFER+1
         ld hl, item_7_name
         ld b, 3 ; strlen("RUG")
         call CompareStringsWithLength
@@ -1249,7 +1249,7 @@ help_function_again: ; have we run out of commands?
         ld a, (de) ; length of string
         cp 0x00
         ret z
-        ld hl, tmp_buffer
+        ld hl, TMP_BUFFER
         ld b, a    ; B will contain the length
         inc de     ; DE point to the string itself
 help_func_loop:  ; copy the command-name to the buffer
@@ -1271,7 +1271,7 @@ help_func_loop:  ; copy the command-name to the buffer
         cp 1
         jr z, help_skip_this
         call show_tab
-        ld de, tmp_buffer
+        ld de, TMP_BUFFER
         ld c, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 help_skip_this:
@@ -1376,7 +1376,7 @@ look_function_show:
 
         ; input-buffer starts with L for look?
         ; then always show
-        ld bc, input_buffer+2
+        ld bc, INPUT_BUFFER+2
         ld a, (bc)
         cp 'L'
         jp z,look_show_extended
@@ -2410,6 +2410,11 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;       0xff == player is carrying it.
 ;       0xfe == can be found.
 ;
+; TODO:
+;  add take_function
+;  add examine_function
+;  add state_byte
+;
 items:
         DEFW item_0_name  ; generator
         DEFW item_0_desc
@@ -2535,11 +2540,14 @@ ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
 ; CP/M BIOS.
 ;
 ; The way this works is you pass the address of a region of memory, the
-; first byte is the length of the buffer, the second byte will be populated
-; by the amount of text which was read.
+; first byte is the length of the buffer.
 ;
-; After that goes the input itself, obviously.
-input_buffer:
+; On return the second byte of the buffer will be populated by the
+; amount of text which was read, then the input itself:
+;
+;    http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm#Function_10
+;
+INPUT_BUFFER:
         db 100  ; size of our input-buffer
         db 0x00 ; Count of characters returned.
 
@@ -2558,7 +2566,7 @@ input_buffer:
 ; The CALL handler will be invoked, and the object of the call, "RYDER" will
 ; be copied into this buffer for table-lookup.
 ;
-tmp_buffer: EQU input_buffer + 255
+TMP_BUFFER: EQU INPUT_BUFFER + 255
 TMP_BUFFER_LEN: EQU 50
 
 
