@@ -437,12 +437,15 @@ item_not_present_loop:
 
 
 ;
-; Helper function.  Get item by name
+; Helper function.  Get an item by name.
 ;
-; Name will be stored in HL
+; On entry the name of the item to be found  will be stored in HL.
 ;
 ; On exit A will be 00 if all is OK, and HL will point to the item.
+;
 ; On exit A will be ff if there was a failure.
+;
+; This is a bit hairy, but not too bad.
 ;
 get_item_by_name:
 
@@ -453,8 +456,7 @@ get_item_by_name:
         ld b, TMP_BUFFER_LEN
         call erase_buffer
 
-        ; copy the name of the item into the temporary-buffer, we add
-        ; a prefixed of the length.
+        ; copy the name of the item into the temporary-buffer
         pop hl
         ld de, TMP_BUFFER+1
         ld b,0
@@ -469,37 +471,33 @@ gibn_copy_loop:
         jr gibn_copy_loop
 
 gibn_copy_complete:
+        ; prefix the temporary buffer with the length of the item
         ld hl, TMP_BUFFER
         ld (hl),b
 
-        ; point to the item-table
+        ; Point to our table of items
         ld hl, items
         ld b, ITEM_COUNT
 
 gibn_item_loop:
-        ; HL points to the item
-        ; Get the name in DE
+        ; HL points to the start of the entry in the table
+        push hl
+
+        ; Get the name of the object in DE - leaving HL back at the
+        ; start of the item.
         ld e,(hl)
         inc hl
         ld d,(hl)
-        inc hl
+        dec hl
 
-        ; skip past the desc
-        inc hl
-        inc hl
-        ; skip past the long description
-        inc hl
-        inc hl
-        ; skip past the drop-handler
-        inc hl
-        inc hl
-        ; skip past the use-handler
-        inc hl
-        inc hl
-        ; skip past the "collectable" property
-        inc hl
+        ; Now get the location of the object, which is stored
+        ; within the item-table entry.
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        pop de
 
-        ; is this object carried, in the current location, or
+        ; Is this object carried, in the current location, or
         ; otherwise available?
         ld a,(hl)
         cp 0xFF ; 0xff means the item is being carried
@@ -514,48 +512,41 @@ gibn_item_loop:
         jr z, gibn_item_present
 
 gibn_continue:
-        inc hl
+        ; OK we didn't find the object, so we need to try looking at
+        ; the next table entry
+        pop hl
+        push de
+        ld de, ITEM_ENTRY_LENGTH
+        add hl,de
+        pop de
+
         djnz gibn_item_loop
+
+        ; At this point we've looked at all objects and not found a match
+        ; return a failure-value
         ld a, 0xff
         ret
 
 gibn_item_present:
 gibn_item_carried:
 gibn_item_available:
-        push hl ; preserve our entry into the item
         push bc ; preserve b for our loop
+
 
         ld hl, TMP_BUFFER ; Get the length from our buffer
         ld b, (hl)
         inc hl            ; Now HL points to the input
                           ; DE points to the name of the current item.
+                          ; B contains the length
         call CompareStringsWithLength
         jp z, gibn_found_it
 
         pop bc
-        pop hl
         jr gibn_continue
 
 gibn_found_it:
         pop bc
         pop hl
-
-        dec hl ; yeah this is bad.
-        dec hl ; we're decreasing HL to point back to the start of this item.
-
-        dec hl
-        dec hl
-
-        dec hl
-        dec hl
-
-        dec hl
-        dec hl
-
-        dec hl
-        dec hl
-
-        dec hl
         xor a
         ret
 
@@ -2421,13 +2412,18 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;  add state_byte
 ;
 items:
-        DEFW item_0_name  ; generator
-        DEFW item_0_desc
-        DEFW item_0_long
-        DEFB 0,0          ; No drop function
-        DEFW use_generator_fn ; handler
-        DEFB 1            ; this item can be picked up
-        DEFB 0x03         ; basement
+        DEFW item_0_name  ; generator                 ; 0, 1
+        DEFW item_0_desc                              ; 2, 3
+        DEFW item_0_long                              ; 4, 5
+        DEFB 0,0          ; No drop function          ; 6, 7
+        DEFW use_generator_fn ; handler               ; 8, 9
+        DEFB 1            ; this item can be picked up    ; 10
+item_location:
+         DEFB 0x03         ; basement                 ; 11
+
+
+ITEM_TABLE_LOCATION_OFFSET: EQU item_location - items
+
 
 item_first:
         DEFW item_1_name  ; mirror
