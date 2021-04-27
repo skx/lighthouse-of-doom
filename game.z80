@@ -2034,27 +2034,32 @@ TORCH_ON_MSG:
 NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0a, 0x0d, "$"
 usage_message:
-        db "Lighthouse of doom!", 0x0a, 0x0d
-        db "===================", 0x0a, 0x0d, 0x0a, 0x0d
-        db "This is an original text-based adventure game written for CP/M."
         db 0x0a, 0x0d
+        db "        .n.        The lighthouse of doom", 0x0a, 0x0d
+        db "       /___\        ======================", 0x0a, 0x0d
+        db "       [|||]        ", 0x0a, 0x0d
+        db "       [___]        ", 0x0a, 0x0d
+        db "       }-=-{        ", 0x0a, 0x0d
+        db "       |-\" |        ", 0x0a, 0x0d
+        db "       |.-\"|                p", 0x0a, 0x0d
+        db "~^=~^~-|_.-|~^-~^~ ~^~ -^~^~|\ ~^-~^~-", 0x0a, 0x0d
+        db "^   .=.| _.|__  ^       ~  /| \\", 0x0a, 0x0d
+        db " ~ /:. \\\" _|_/\    ~      /_|__\\  ^", 0x0a, 0x0d
+        db ".-/::.  |   |\"\"|-._    ^   ~~~~", 0x0a, 0x0d
+        db "  `===-'-----'\"\"`  '-.              ~", 0x0a, 0x0d
+        db "                 __.-'      ^", 0x0a, 0x0d
+        db "", 0x0a, 0x0d
+        db "An original text-based adventure game written for CP/M."
         db 0x0a, 0x0d
         db "Written by Steve Kemp in 2021, with source available on github:"
         db 0x0a, 0x0d
-        db 0x0a, 0x0d
         db "  https://github.com/skx/lighthouse-of-doom"
         db 0x0a, 0x0d
-        db 0x0a, 0x0d
         db "Bug reports are most welcome, as are puzzle-suggestions and other feedback."
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
+                db 0x0a, 0x0d
         db "Any references to the Paw Patrol are entirely deliberate."
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
-        db "Press any key to start."
-        db 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, 0x0a, 0x0d
+        db "Press any key to start.$"
 
 PLAYER_DEAD_MESSAGE:
         db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
