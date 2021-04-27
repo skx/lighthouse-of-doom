@@ -27,6 +27,18 @@
 ;
 
 
+;
+; I've tried to be consistent with naming-schemes, but of course some
+; code was added in an ad-hoc fashion:
+;
+;   * All functions with a _command suffix are command-handlers
+;     These are invoked as a result of the user typing the appropriate
+;     string.  e.g. User types "EXAMINE" we run "examine_function"
+;
+;   * All object-specific functions have a _fn suffix.
+;     e.g. Custom code runs when you "GET RUG" is get_rug_fn
+;
+
 
 ; BIOS entry-point
 BDOS_ENTRY_POINT:    EQU 5
@@ -161,7 +173,7 @@ game_loop_continue:
         ; The player is dead.  Oops.
         ld de, PLAYER_DEAD_MESSAGE
         call show_msg
-        call show_turn_count
+        call turns_function
         jp 0x0000
 
 not_dead:
@@ -174,7 +186,7 @@ not_dead:
         ; The player won.  Yay!
         ld de, PLAYER_WON_MESSAGE
         call show_msg
-        call show_turn_count
+        call turns_function
         jp 0x0000
 
 not_won:
@@ -285,38 +297,46 @@ cont:
         jp z,find_command_found
         pop hl
 
-        ; ok we didn't find
+        ; ok we didn't find a match with this command-table entry.
+
+        ; restore DE which points to this entry's start
         pop de
-        ld a, (de)
-        inc de
-        ld b,a
+
+        ld a, (de)           ; get the length of the command-name
+        inc de               ; point to the command-name
+        ld b,a               ; bump the pointer past the ASCII string, in a loop
 find_command_skip:
         inc de
         djnz find_command_skip
-        inc de ; hidden-flag
-        inc de ; addr1
-        inc de ; addr2
-        ; next entry - might be zero-terminated
-        jp  find_command_again
+        inc de                 ; bump past the hidden-flag
+        inc de                 ; bump past the addr1-byte
+        inc de                 ; bump past the addr2-byte
+        jp  find_command_again ; loop back to try the next table entry.
 
 find_command_found:
+        ; drop hl
         pop hl
-        pop de ; points to the length before the entry
 
-        ld a, (de) ; get the length
-        inc de     ; move to the start of the string
+        ; restore the pointer to the start of this command-table entry.
+        pop de
+
+        ; Once again we need to bump past the length, and the ASCII string
+        ; itself.  Now we know we've got a match we want to get the address
+        ; of the handler to invoke.
+        ld a, (de)              ; get the length
+        inc de                  ; move to the start of the string
         ld b,a
-find_command_skip2:    ; skip length-bytes
+find_command_skip2:             ; skip $LENGTH-bytes
         inc de
         djnz find_command_skip2
-        inc de ; skip the hidden-flag
-        ld a, (de)  ; set l
+        inc de                  ; skip the hidden-flag
+        ld a, (de)              ; set l
         ld l,a
         inc de
-        ld a, (de)  ; set h
+        ld a, (de)              ; set h
         ld h,a
-        ld a,0      ; indicate success
-        ret         ; return with the function-pointer in HL
+        xor a                  ; indicate success
+        ret                    ; return with the function-pointer in HL
 
 
 ; compare strings stored in HL + DE for equality.  Length is stored in B
@@ -714,23 +734,6 @@ show_a_register:
         ret
 
 
-;
-; Show the number of turns a user has played
-;
-show_turn_count:
-        call show_newline
-        ld de, PLAYER_TURN_COUNT
-        call show_msg
-        ld hl, TURN_COUNT
-        ld a, (hl)
-        inc a
-        call show_a_register
-        ld de, PLAYER_TURN_COUNT_END
-        call show_msg
-        ret
-
-
-
 
 ;********************************************************************
 ; Command Handlers
@@ -745,6 +748,8 @@ bad_language_function:
         ld de, BAD_LANGUAGE_MSG
         jp show_msg
 
+
+
 ;
 ; Command-Handler CLS
 ;
@@ -756,7 +761,7 @@ cls_function:
 ;
 ; Command-Handler DOWN
 ;
-; Change location, this has some tests
+; Change location, this has some tests to cope with the basement-puzzle.
 ;
 down_function:
         ld hl, CURRENT_LOCATION
@@ -968,6 +973,28 @@ examine_object:
 
 examine_found_it:
         ; HL points to the start of the entry
+        ; get the pointer to the custom examine-function, in DE,
+        ; leave HL alone
+        push hl
+        ld de, ITEM_TABLE_EXAMINE_OFFSET
+        add hl,de
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        pop hl
+
+        ; If the custom examine function is non-empty call
+        ; it and return, otherwise show the extended message
+        ld a, d
+        or e
+        jr z, show_ext_desc
+
+        push de
+        pop hl
+        call JP_HL
+        ret
+
+show_ext_desc:
         ; get the location of the extended-description pointer
         push de
         ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
@@ -1109,6 +1136,12 @@ skip_string2:
 ;
 ; Command-Handler GET
 ;
+;  If there is a custom take-function defined for the appropriate
+; object then we'll invoke it.
+;
+;  Otherwise the location of the item will be updated to mark it as
+; within the player's inventory.
+;
 get_function:
         call input_second_term
         cp 0
@@ -1133,6 +1166,29 @@ get_object:
 get_found_it:
         ; HL points to the start of the item-entry of the object
         ; the user tried to take.
+
+        ; HL points to the start of the entry
+        ; get the pointer to the custom take-function, in DE, leaving HL alone
+        push hl
+        ld de, ITEM_TABLE_TAKE_OFFSET
+        add hl,de
+        ld e, (hl)
+        inc hl
+        ld d, (hl)
+        pop hl
+
+        ; Is there a custom function?
+        ld a, d
+        or e
+        jr z, take_as_normal
+
+        ; OK there is a custom function.  Use it
+        push de
+        pop hl
+        call JP_HL
+        ret
+
+take_as_normal:
 
         ; Get the collectable property of the object, leaving HL
         ; pointing to the start of the object
@@ -1164,37 +1220,16 @@ get_found_it_take:
         pop de
         pop hl
 
-        ;
-        ; HACK - We don't have a notion of a take-handler
-        ;        so we can't show the trapdoor when the rug
-        ;        is taken.
-        ;
-        ;        Hardwire that behaviour here, even though that
-        ;        is horrid.
-        ;
-        ;        The alternative would have been to give some kind of
-        ;        "rug covers other objects" property to the rug.
-        ;
-        ld de, TMP_BUFFER+1
-        ld hl, item_7_name
-        ld b, 3 ; strlen("RUG")
-        call CompareStringsWithLength
-        jp nz, not_taken_rug
+        ; Now we've taken the item show the users (updated)
+        ; inventory.
+        call inventory_function
+        ret
 
-        ; Taking the rug should only trigger this behaviour
-        ; once - store state in `RUG_TAKEN` and ensure it
-        ; doesn't get triggered more than once.
-        ld hl, RUG_TAKEN
-        ld a,(hl)
-        cp 0
-        jr nz, not_taken_rug
-        inc (hl)
 
-        ; show a message telling the user about the trapdoor.
-        ld de, rug_taken_msg
-        call show_msg
 
-        ; make the trapdoor visible
+
+
+make_trapdoor_visible:
         ld hl, item_11_name
         call get_item_by_name
         cp 0
@@ -1224,12 +1259,6 @@ place_trapdoor:
         pop hl
 
         ret
-
-not_taken_rug:
-        call inventory_function
-        ret
-
-
 
 
 
@@ -1475,9 +1504,10 @@ item_not_present:
 
 
 
-
+;
 ; Command-handler MAGIC
 ;
+; Show a different message each time this is called, until you are killed.
 ;
 magic_function:
         ld hl, MAGIC_LOCATION
@@ -1526,9 +1556,28 @@ magic_three:
 quit_function:
         ld de, QUIT_MSG
         call show_msg
-        call show_turn_count
+        call turns_function
         jp 0x0000
 
+
+
+
+;
+; Command-Handler TURNS
+;
+; Show the number of turns a user has played
+;
+turns_function:
+        call show_newline
+        ld de, PLAYER_TURN_COUNT
+        call show_msg
+        ld hl, TURN_COUNT
+        ld a, (hl)
+        inc a
+        call show_a_register
+        ld de, PLAYER_TURN_COUNT_END
+        call show_msg
+        ret
 
 
 
@@ -1700,6 +1749,114 @@ drop_mirror_fn:
         ret
 
 
+; When you EXAMINE RUG you'll end here.
+;
+;  If the rug is on the ground:
+;    show the user a message and
+;    make the trapdoor appear
+;
+;  If the rug is in your posession just show the description
+;
+examine_rug_fn:
+
+        ; Get the rug object
+        ld hl, item_7_name
+        call get_item_by_name
+
+        ; Get the location which it appears
+        push hl
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a,(hl)
+        pop hl
+
+        ; Is the item in your possessions?
+        cp 0xff
+        jr nz, rug_on_ground
+
+        ; The rug must be in your possession, just show the extended
+        ; description.
+        push de
+        ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
+        add hl, de
+        pop de
+
+        ; Get the pointer to the string
+        ld e,(hl)
+        inc hl
+        ld d,(hl)
+
+        call show_msg
+        ret
+
+rug_on_ground:
+
+        ld de, rug_detail_msg
+        call show_msg
+        call make_trapdoor_visible
+        ret
+
+
+;  When you TAKE the RUG a trapdoor will be revealed:
+;
+;  - If it was already hidden
+;
+;  - AND you're in the basement
+;
+take_rug_fn:
+
+        ; Get the rug object
+        ld hl, item_7_name
+        call get_item_by_name
+
+        ; Update the location, so that we've taken it.
+        push hl
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld (hl), 0xff
+        pop hl
+
+        ; Taking the rug should only trigger this behaviour
+        ; once - store state in `RUG_TAKEN` and ensure it
+        ; doesn't get triggered more than once.
+        ld hl, RUG_TAKEN
+        ld a,(hl)
+        cp 0
+        jr nz, get_rug_show_inv
+        inc (hl)
+
+        ; Is the trapdoor already present?  If so we don't need
+        ; to do anything special.
+
+        ; get the trapdoor
+        ld hl, item_11_name
+        call get_item_by_name
+
+        ; get the location
+        ; Get the location of the object in A, but leaving
+        ; HL pointing to the start of the item's entry.
+        push hl
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop hl
+
+        ; trapdoor in the basement?  No special action required
+        cp 2
+        jr z, get_rug_show_inv
+
+        ; show a message telling the user about the trapdoor.
+        ld de, rug_taken_msg
+        call show_msg
+
+        ; And make the trapdoor visible
+        call make_trapdoor_visible
+        ret
+
+get_rug_show_inv:
+        call inventory_function
+        ret
+
 
 ;  When you USE the TORCH it lights.
 ;
@@ -1806,7 +1963,25 @@ use_trapdoor_fn:
 use_trapdoor_found_t:
 
         ; The item-table entry will be stored in HL.
-        ;
+
+        ; Get the location of the object in A, leaving HL alone
+        push hl
+        push de
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a,(hl)
+        pop de
+        pop hl
+
+        ; Is the trapdoor in the basement?
+        cp 2
+        jr z, open_trapdoor_present
+
+        ld de, item_not_present_msg
+        call show_msg
+        ret
+
+open_trapdoor_present:
         ; Update the location of that object to be something random
         push hl
         push de
@@ -1965,11 +2140,15 @@ no_up_msg:
 no_down_msg:
         db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
-        db 0x0a, 0x0d, "As you take the rug you see it covered a trapdoor.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so", 0x0a, 0x0d
+        db "you notice that it was covering a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
 failed_find_trapdoor_msg:
         db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
+rug_detail_msg:
+        db 0x0a, 0x0d, "You examine the rug, which shows nothing special.", 0x0a, 0x0d
+        db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_trapdoor_open_msg:
         db 0x0a, 0x0d, "BUG:Failed to find open trapdoor", 0x0a, 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
@@ -2196,7 +2375,7 @@ item_10_desc: db "A telephone, wired to the wall.$"
 item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.", 0x0a, 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
-item_11_desc: db "A closed trapdoor.$"
+item_11_desc: db "A trapdoor.$"
 item_11_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
               db "Perhaps you should open it to explore further?", 0x0a, 0x0d, "$"
 
@@ -2244,7 +2423,7 @@ command_table:
         DEFB 4, 'QUIT', 0
           DEFW quit_function
         DEFB 5, 'TURNS', 0
-          DEFW show_turn_count
+          DEFW turns_function
         DEFB 2, 'UP', 0
           DEFW up_function
         DEFB 3, 'USE', 0
@@ -2284,6 +2463,7 @@ command_table:
           DEFW up_function
         DEFB 1, 'D', 1
           DEFW down_function
+        ;; end of table
         DEFB 0
 
 
@@ -2352,20 +2532,22 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ; Item table - Each item contains:
 ;
 ;   1. A pointer to the (internal) name.
-;   2. A pointer to a short description - this will be empty for "hidden" items.
+;   2. A pointer to a short description - empty for "hidden" items
 ;   3. A pointer to a long description - shown by "EXAMINE $object"
-;   4. A pointer to a drop-function.
-;   5. A pointer to a use-function.
-;   6. A byte to specify whether this can be taken.
-;   7. A byte to contain the location of the object.
+;   4. A pointer to a take-function.
+;   5. A pointer to a drop-function.
+;   6. A pointer to an examine-function.
+;        If this is null then the extended description will be shown.
+;   7. A pointer to a use-function.
+;   8. A byte used for item-state.
+;   9. A byte to specify whether this can be taken.
+;  10. A byte to contain the location of the object.
 ;       0xff == player is carrying it.
 ;       0xfe == can be found.
 ;
-; We expect to add further pointers in the future, to allow custom behaviour
-; on a per-object basis.  This might mean we have a function pointer to
-; invoke for "TAKE", "EXAMINE", or similar.
-;
-; We might store state in the future too, for some objects.
+; We might add further pointers in the future, to allow custom behaviour
+; on a per-object basis.  Hopefully the use of calculated offsets relating
+; to the item-structure will make that a painless process.
 ;
 items:
 item_name:
@@ -2374,10 +2556,16 @@ item_description_ptr:
         DEFW item_0_desc
 item_ext_description_ptr:
         DEFW item_0_long
+item_take_ptr:
+        DEFB 0,0          ; No take function
 item_drop_ptr:
         DEFB 0,0          ; No drop function
+item_examine_ptr:
+        DEFB 0,0          ; No examine function
 item_use_ptr:
         DEFW use_generator_fn ; handler
+item_state:
+        DEFB 0            ; Item state
 item_collectable:
         DEFB 1            ; this item can be picked up
 item_location:
@@ -2400,105 +2588,144 @@ item_location:
 ITEM_TABLE_NAME_OFFSET:            EQU item_name - items
 ITEM_TABLE_DESCRIPTION_OFFSET:     EQU item_description_ptr - items
 ITEM_TABLE_EXT_DESCRIPTION_OFFSET: EQU item_ext_description_ptr - items
+ITEM_TABLE_TAKE_OFFSET:            EQU item_take_ptr - items
 ITEM_TABLE_DROP_OFFSET:            EQU item_drop_ptr - items
+ITEM_TABLE_EXAMINE_OFFSET:         EQU item_examine_ptr - items
 ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
 ITEM_TABLE_COLLECTABLE_OFFSET:     EQU item_collectable - items
+ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
 
 item_first:
         DEFW item_1_name  ; mirror
         DEFW item_1_desc
         DEFW item_1_long
-        DEFW drop_mirror_fn  ; custom drop function
-        DEFB 0,0          ; No use function
-        DEFB 1            ; this item can be picked up
-        DEFB 0x01         ; middle-floor
+        DEFB 0,0            ; No take function
+        DEFW drop_mirror_fn ; custom drop function
+        DEFB 0,0            ; no custom examine functoin
+        DEFB 0,0            ; No use function
+        DEFB 0              ; item state
+        DEFB 1              ; this item can be picked up
+        DEFB 0x01           ; middle-floor
 
         DEFW item_2_name  ; mirror-broken
         DEFW item_2_desc
         DEFW item_2_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0xFe         ; not visible anywhere
 
         DEFW item_3_name  ; torch
         DEFW item_3_desc
         DEFW item_3_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFW use_torch_fn ; USE TORCH
+        DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x00         ; top-floor
 
         DEFW item_4_name  ; torch-lit
         DEFW item_4_desc
         DEFW item_4_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0xFE         ; not visible anywhere
 
         DEFW item_5_name  ; dog
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_5_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
         DEFW item_6_name  ; painting
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_6_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
         DEFW item_7_name  ; rug
         DEFW item_7_desc
         DEFW item_7_long
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; No use function
-        DEFB 1            ; this item can be picked up
-        DEFB 0x02         ; ground-floor
+        DEFW take_rug_fn     ; Custom take-function
+        DEFB 0,0             ; No drop function
+        DEFW examine_rug_fn  ; No examine function
+        DEFB 0,0             ; No use function
+        DEFB 0               ; item state
+        DEFB 1               ; this item can be picked up
+        DEFB 0x02            ; ground-floor
 
         DEFW item_8_name  ; book
         DEFW item_8_desc
         DEFW item_8_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; No examine function
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
 
         DEFW item_9_name  ; desk
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_9_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; no custom examine functoin
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
         DEFW item_10_name ; telephone
         DEFB 0,0          ; NO DESCRIPTION - hidden item
         DEFW item_10_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; no custom examine functoin
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
         DEFW item_11_name ; trapdoor
         DEFW item_11_desc
         DEFW item_11_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; no custom examine functoin
         DEFW use_trapdoor_fn ; open function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0xFE         ; hidden until the rug is moved
 
         DEFW item_12_name ; trapdoor-open
         DEFW item_12_desc
         DEFW item_12_long
+        DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
+        DEFB 0,0          ; no custom examine functoin
         DEFB 0,0          ; No use function
+        DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0xFE         ; hidden until the trapdoor is opened.
 
