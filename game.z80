@@ -29,9 +29,6 @@
 ;   changes.  Lack of real structures hurt here - but I'm too invested now
 ;   to look for a new compiler
 ;
-;   "TAKE RUG" will always move a trapdoor into play - but should only do
-;   so in the basement location.
-;
 
 
 
@@ -988,6 +985,44 @@ examine_found_it:
         ret
 
 
+
+
+
+;
+; Command-Handler GO
+;
+; This allows the user to enter "GO UP", and "GO DOWN"
+;
+go_function:
+        call input_second_term
+        cp 0
+        jp z, go_somewhere
+
+go_unknown:
+        ld de, GO_WHERE_MSG
+        call show_msg
+        ret
+
+go_somewhere:
+
+        ; GO "U" vs GO "D"
+        ld a,(HL)
+        cp 'U'
+        jr z, up_function_jmp
+        cp 'D'
+        jr z, down_function_jmp
+
+        ; not (u)p or (d)own - show error
+        jr go_unknown
+
+        ; Relative jumps only allow the range +127/-127 bytes
+        ; so we've had to add absolute jumps here.
+down_function_jmp:
+        jp down_function
+up_function_jmp:
+        jp up_function
+
+
 ;
 ; Command-Handler CALL
 ;
@@ -1195,8 +1230,6 @@ place_trapdoor:
 not_taken_rug:
         call inventory_function
         ret
-
-
 
 
 
@@ -2018,6 +2051,8 @@ HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
 EXAMINE_WHAT_MSG:
         db 0x0a, 0x0d, "Examine what?", 0x0a, 0x0d, "$"
+GO_WHERE_MSG:
+        db 0x0a, 0x0d, "Go where?", 0x0a, 0x0d, "$"
 GET_WHAT_MSG:
         db 0x0a, 0x0d, "Take what?", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
@@ -2262,6 +2297,8 @@ command_table:
         DEFB 3, 'USE', 0
           DEFW use_function
         ;; synonyms
+        DEFB 2, 'GO', 1
+          DEFW go_function
         DEFB 4, 'TAKE', 1
           DEFW get_function
         DEFB 6, 'PICKUP', 1

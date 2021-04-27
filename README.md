@@ -68,6 +68,8 @@ The implementation uses a simple set of structures:
 * An item-table to store details about each object in the game.
 * A person table to store telephone messages.
 
+The whole implementation is defined in the file [game.z80](game.z80).
+
 Along the way I did realize that having fixed inventory slots made the
 coding more of a challenge, so I made the location of each object a
 property of the object itself.
