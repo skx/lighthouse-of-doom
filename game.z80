@@ -375,6 +375,7 @@ find_command_skip2:             ; skip $LENGTH-bytes
 
 
 
+
 ;********************************************************************
 ; Utility functions
 ;********************************************************************
@@ -1709,6 +1710,43 @@ quit_function:
 
 
 ;
+; Command-Handler SLEEP
+;
+sleep_function:
+
+        ld de, SLEEP_START_MSG
+        call show_msg
+
+        ; Run a time-delay function 40 times
+        ld b, 40
+
+hl_delay
+         ld hl,0xffff / 2
+hl_delay_loop:
+         inc hl
+            ld de, 0xffff - 100
+de_delay_loop:
+            inc de
+            ld a, d
+            or e
+            jr nz, de_delay_loop
+         ld a,h
+         or l
+         jr nz, hl_delay_loop
+
+         PUSH_ALL
+         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
+         ld e, "."
+         call BDOS_ENTRY_POINT
+         POP_ALL
+       djnz hl_delay
+
+       ld de, SLEEP_END_MSG
+       call show_msg
+       ret
+
+
+;
 ; Command-Handler TURNS
 ;
 ; Show the number of turns a user has played
@@ -1865,6 +1903,17 @@ show_tab:
         pop de
         pop bc
         pop af
+        ret
+
+
+;
+; Command-Handler WAIT
+;
+; Nothing happens.
+;
+wait_function:
+        ld de, WAIT_CMD_MSG
+        call show_msg
         ret
 
 ; }
@@ -2500,6 +2549,15 @@ not_carrying_item_msg:
         db 0x0a, 0x0d, "You're not carrying that!", 0x0a, 0x0d, "$"
 MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
+SLEEP_START_MSG:
+        db 0x0a, 0x0d, "You lay down and try to take a small nap.", 0x0a, 0x0d
+        db "$"
+SLEEP_END_MSG:
+        db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat,", 0x0a, 0x0d
+        db "and yourself, are to certain doom.", 0x0a, 0x0d
+        db "$"
+WAIT_CMD_MSG:
+        db 0x0a, 0x0d, "You wait for a moment, lost in thought.", 0x0a, 0x0d, "$"
 TORCH_ON_MSG:
         db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
 ship_closer_msg:
@@ -2761,6 +2819,10 @@ command_table:
           DEFW bad_language_function
         DEFB 5, 'XYZZY', 1
           DEFW magic_function
+        DEFB 5, 'SLEEP', 1
+          DEFW sleep_function
+        DEFB 4, 'WAIT', 1
+          DEFW wait_function
         ;; abbreviations
         DEFB 1, 'L', 1
           DEFW look_function
