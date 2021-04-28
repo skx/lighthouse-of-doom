@@ -2163,6 +2163,8 @@ call_ryder_msg:
         db 0x0a, 0x0d, "Ryder here!  No pup is too small, no job is too big!", 0x0a, 0x0d
         db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
         db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
+call_ghostbusters_msg:
+        db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
 call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
@@ -2567,6 +2569,8 @@ people_table:
              DEFW call_rubble_msg
         DEFB 2, 'ME'
              DEFW call_me_msg
+        DEFB 12, 'GHOSTBUSTERS'
+             DEFW call_ghostbusters_msg
         DEFB 0
 
 
