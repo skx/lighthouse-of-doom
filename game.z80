@@ -232,6 +232,16 @@ ship_warning_over:
         inc hl
         call uppercase_buffer
 
+        ; Strip out " THE " from any input
+        ;
+        ; This means input is fixed for simple case:
+        ;
+        ;    "USE THE TORCH"    -> "USE TORCH"
+        ;    "EXAMINE THE BOOK" -> "EXAMINE BOOK"
+        ;
+        ; Not ideal, but more useable
+        call filter_input_buffer
+
         ;  7.  Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
@@ -404,6 +414,54 @@ uppercase_buffer:
 uppercase_ok:
         inc hl
         djnz uppercase_buffer
+        ret
+
+
+;
+; Helper function.  Remove " THE " from any input
+;
+; We iterate over the input-buffer and look for the string " THE " at
+; the current position.  If we find it we just overwrite the three letters
+; with spaces.
+;
+filter_input_buffer:
+
+        ld hl, INPUT_BUFFER+1  ; Input buffer has length in the second byte.
+        ld a, (hl)
+        ld b, a                ;  B now contains the input-string length.
+        inc hl                 ; HL points to the text the user entered.
+
+compare_loop:
+        push bc    ; preserve count
+        push hl    ; preserve starting char
+
+        ld b, 5  ; strlen(" THE " )
+        ld de, THE
+
+        call CompareStringsWithLength
+        jp z, we_found_the
+
+        pop hl
+        pop bc
+
+        inc hl
+        djnz compare_loop
+
+        ; Didn't find " THE " at any character position in the input-buffer.
+        ret
+
+we_found_the:
+        pop hl
+        pop de
+
+        ; HL points to " THE "
+        inc hl          ; skip past the leading space.
+        ld (hl), " "    ; replace T -> " ".
+        inc hl
+        ld (hl), " "    ; replace H -> " ".
+        inc hl
+        ld (hl), " "    ; replace E -> " ".
+                        ; ignore trailing space.
         ret
 
 ;
@@ -2159,12 +2217,12 @@ call_police_msg:
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
 
+call_ghostbusters_msg:
+        db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
 call_ryder_msg:
         db 0x0a, 0x0d, "Ryder here!  No pup is too small, no job is too big!", 0x0a, 0x0d
         db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
         db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
-call_ghostbusters_msg:
-        db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
 call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
@@ -2280,6 +2338,8 @@ ship_closer_msg:
         db 0x0a, 0x0d, "The ship is getting closer, hurry up!", 0x0a, 0x0d, "$"
 NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0a, 0x0d, "$"
+THE:
+        db " THE "
 usage_message:
         db 0x0a, 0x0d
         db "        .n.         The lighthouse of doom", 0x0a, 0x0d
@@ -2437,7 +2497,8 @@ item_8_long: db "The little black book seems to contain names and phone numbers:
              db "\t   Police    - 999", 0x0a, 0x0d
              db "\tAmbulance    - 999", 0x0a, 0x0d
              db "\tFire Service - 999", 0x0a, 0x0d
-             db "\tPaw Patrol   - 999", 0x0a, 0x0d
+             db "\tPaw Patrol   - ???", 0x0a, 0x0d
+             db "\tGhostbusters - 123", 0x0a, 0x0d
              db 0x0a, 0x0d
              db "Too bad there are no instructions on powering the main light.", 0x0a, 0x0d, "$"
 
@@ -2549,6 +2610,8 @@ command_table:
 ;  LENGTH "NAME HERE" Ptr-To-Response
 ;
 people_table:
+        DEFB 3, '123'
+             DEFW call_ghostbusters_msg
         DEFB 3, '911'
              DEFW call_911_msg
         DEFB 3, '999'
@@ -2560,8 +2623,6 @@ people_table:
         DEFB 5, 'RIDER'
              DEFW call_ryder_msg
         DEFB 10, 'PAW PATROL'
-             DEFW call_ryder_msg
-        DEFB 14, 'THE PAW PATROL'
              DEFW call_ryder_msg
         DEFB 4, 'SKYE'
              DEFW call_skye_msg
