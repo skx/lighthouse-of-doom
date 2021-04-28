@@ -5,6 +5,8 @@ twice:
 
 * [C Implementation](#c-implementation)
 * [Z80 Implementation](#z80-implementation)
+  * [Changes](#z80-changes)
+  * [Downloading It](#downloading-it)
 
 My intention was to write a simple text-based adventure game to run under
 CP/M.  Starting large projects in Z80 assembly language from scratch
@@ -21,6 +23,7 @@ details.
   * The boat will surely crash if you don't turn on the main light.
 
 The game is over, when you either fix the light, or find another solution.
+
 If you do not achieve victory within a turn-limit the boat runs aground, and
 death will consume you all.  (It is a _very_ big boat!)
 
@@ -75,17 +78,19 @@ coding more of a challenge, so I made the location of each object a
 property of the object itself.
 
 
-### Changes
+### Z80 Changes
 
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
 * There is no grue in this version.
   * It will come.
+* There are __two__ victory conditions.
 * The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
-  * Stops you looking through the binary for hints.
-  * Run `make release` to build the _protected_ version, and `make game` to build a rare version.
+  * This stops users from looking through the binary for hints.
+  * Run `make release` to build the _protected_ version.
+  * Run `make game` to build a raw version.
 
 
-### Building & Running It
+### Compiling & Running It
 
 Ensure you have the `pasmo` assembler installed, then build the code
 by running `make game`, or `make release`.
