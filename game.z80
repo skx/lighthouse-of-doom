@@ -1816,13 +1816,20 @@ take_rug_fn:
         ld (hl), 0xff
         pop hl
 
-        ; Taking the rug should only trigger this behaviour
-        ; once - store state in `RUG_TAKEN` and ensure it
-        ; doesn't get triggered more than once.
-        ld hl, RUG_TAKEN
-        ld a,(hl)
+        ; Taking the rug should only trigger this behaviour once.
+        ;
+        ; Since we have a piece of state with each object we can use that.
+        ld de, ITEM_TABLE_STATE_OFFSET
+        add hl,de
+        ld a, (hl)
+
+        ; If the state contains non-zero we've done this
+        ; before so we just show the inventory as we would
+        ; for a normal "take xxx" action.
         cp 0
         jr nz, get_rug_show_inv
+
+        ; Store 1 in the state, so we don't do this again.
         inc (hl)
 
         ; Is the trapdoor already present?  If so we don't need
@@ -2078,8 +2085,6 @@ PLAYER_DEAD:
 PLAYER_WON:
         db 0
 MAGIC_LOCATION
-        db 0
-RUG_TAKEN:
         db 0
 
 ;********************************************************************
