@@ -59,6 +59,8 @@ BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 ; Game over if you don't win in this many turns
 MAX_TURN_LIMIT: EQU 100
 
+; Maximum number of turns you can survive being near a grue
+MAX_GRUE_EXPOSURE: EQU 5
 
 
 
@@ -277,6 +279,9 @@ ship_warning_over:
         ld hl, TURN_COUNT
         inc (hl)
 
+        ; Did we get eaten?
+        call maybe_grue_death
+
         ; And restart the command-loop
         jp game_loop
 
@@ -285,6 +290,9 @@ no_handler:
         ; Show the user that their command wasn't understood.
         ld de, invalid_msg
         call show_msg
+
+        ; Did we get eaten?
+        call maybe_grue_death
 
         ;  8.  Goto 1
         jp game_loop              ; restart
@@ -412,6 +420,34 @@ ret_obj:
 
 
 
+;
+; Show some significant dots
+;
+show_dots:
+        ld b, 40
+
+hl_delay:
+         ld hl,0xffff / 8
+hl_delay_loop:
+         inc hl
+            ld de, 0xffff - 10
+de_delay_loop:
+            inc de
+            ld a, d
+            or e
+            jr nz, de_delay_loop
+         ld a,h
+         or l
+         jr nz, hl_delay_loop
+
+         PUSH_ALL
+         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
+         ld e, "."
+         call BDOS_ENTRY_POINT
+         POP_ALL
+       djnz hl_delay
+
+       ret
 
 ;
 ; Show a message, terminated with "$"
@@ -748,6 +784,57 @@ gibn_found_it:
         xor a
         ret
 
+
+;
+; Helper function.  Are we at risk of grue?
+;
+; If our location is in the dark-place we are at risk of being eaten.
+;
+; In the C implementation there was a random number test, here we decide
+; that if you enter three valid turns within the dark place then you
+; will die
+;
+maybe_grue_death:
+        ; Are we in the dark-place?
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        cp 4
+        ret nz
+
+        ; Get the grue (!)
+        ld hl, item_15_name
+        call get_item_by_name
+        cp 0
+        ret nz
+
+        ; Get the item-state, we use that to count how
+        ; many times we've been down here, and increas
+        ; the count too.
+        push hl
+        ld de, ITEM_TABLE_STATE_OFFSET
+        add hl,de
+        ld a, (hl)
+        inc (hl)
+        pop hl
+
+        cp MAX_GRUE_EXPOSURE
+        jr nc, death_by_grue_grue
+
+        call show_dots
+        ld de, grue_message
+        call show_msg
+        ret
+
+death_by_grue_grue:
+        ld de, you_were_eaten
+        call show_msg
+
+        ld hl,PLAYER_DEAD
+        inc (hl)
+
+        call turns_function
+        jp 0x0000
+        ret
 
 ;
 ; Helper function.  Is the player carrying something?
@@ -1720,32 +1807,10 @@ quit_function:
 ;
 sleep_function:
 
-        ld de, SLEEP_START_MSG
-        call show_msg
+       ld de, SLEEP_START_MSG
+       call show_msg
 
-        ; Run a time-delay function 40 times
-        ld b, 40
-
-hl_delay
-         ld hl,0xffff / 2
-hl_delay_loop:
-         inc hl
-            ld de, 0xffff - 100
-de_delay_loop:
-            inc de
-            ld a, d
-            or e
-            jr nz, de_delay_loop
-         ld a,h
-         or l
-         jr nz, hl_delay_loop
-
-         PUSH_ALL
-         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
-         ld e, "."
-         call BDOS_ENTRY_POINT
-         POP_ALL
-       djnz hl_delay
+       call show_dots
 
        ; Double the turn-count.
        ld hl,TURN_COUNT
@@ -2607,6 +2672,13 @@ WAIT_CMD_MSG:
         db 0x0a, 0x0d, "You wait for a moment, lost in thought.", 0x0a, 0x0d, "$"
 TORCH_ON_MSG:
         db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
+you_were_eaten:
+        db 0x0a, 0x0d, "You were eaten by a grue.", 0x0a, 0x0d,0x0a, 0x0d
+        db "At least you were spared the sight of the ship crashing into the rocks, and no", 0x0a, 0x0d
+        db "doubt causing the lighthouse itself to collapse, dooming you all.", 0x0a, 0x0d
+        db "$"
+grue_message:
+        db 0x0a, 0x0d, "You hear the scrabble of claws getting closer, is the grue about to attack?", 0x0a, 0x0d, "$"
 ship_closer_msg:
         db 0x0a, 0x0d, "The ship is getting closer, hurry up!", 0x0a, 0x0d, "$"
 NOW_YOU_SEE:
@@ -2710,9 +2782,9 @@ location_3_long:
 location_4_short:
         db "a dark place.$"
 location_4_long:
-        db "You cannot see anything, but you can certainly hear a snarling.", 0x0a, 0x0d
-        db "There is also a strong smell, a feral smell, could it be that this", 0x0a, 0x0d
-        db "is the haunt of a grue?", 0x0a, 0x0d
+        db "You cannot see anything, but you can certainly smell something animal-like.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "In the distance you hear the scrabble of claws on concrete.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "Could you have discovered the haunt of the mythical grue?", 0x0a, 0x0d
         db "$"
 
 
@@ -2802,6 +2874,8 @@ item_13_long: db "This piece of rock looks like it came from a larger meteor, it
 
 
 item_14_name: db "ROOM"
+
+item_15_name: db "GRUE"
 
 ;}
 
@@ -3169,6 +3243,17 @@ item_first:
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
         DEFW examine_room_fn ; EXAMINE ROOM -> custom function
+        DEFB 0,0             ; No use function
+        DEFB 0               ; item state
+        DEFB 0               ; this item cannot be picked up
+        DEFB 0xFE            ; hidden.
+
+        DEFW item_15_name    ; grue
+        DEFB 0,0             ; NO DESCRIPTION - hidden item
+        DEFB 0,0             ; No extended description
+        DEFB 0,0             ; Custom take function
+        DEFB 0,0             ; No drop function
+        DEFB 0,0             ; No use function
         DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
