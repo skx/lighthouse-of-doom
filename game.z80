@@ -256,10 +256,6 @@ no_handler:
         ld de, invalid_msg
         call show_msg
 
-        ; Invalid command, but this is still a turn
-        ld hl, TURN_COUNT
-        inc (hl)
-
         ;  8.  Goto 1
         jp game_loop              ; restart
 
