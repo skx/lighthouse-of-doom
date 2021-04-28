@@ -1,21 +1,27 @@
 # The Lighthouse of Doom
 
 This repository contain a simple text-based adventure game, implemented
-twice:
-
-* [C Implementation](#c-implementation)
-* [Z80 Implementation](#z80-implementation)
-  * [Changes](#z80-changes)
-  * [Downloading It](#downloading-it)
+twice, once in portable C, and once in Z80 assembly language, targetted
+at the CP/M operating system.
 
 My intention was to write a simple text-based adventure game to run under
 CP/M.  Starting large projects in Z80 assembly language from scratch
-is a bit of a daunting prospect, so I decided to code a simple game in C
-to get the design right and to avoid getting stuck in too many low-level
-details.
+is a bit of a daunting prospect, so I decided to code the game in C first,
+so that I could get the design right, and avoid getting stuck in too many
+low-level details initially.
+
+Quick links within this README file:
+
+* [Plot of the game](#game-plot)
+* [C Implementation](#c-implementation)
+  * [Building & running it](#building--running-it)
+* [Z80 Implementation](#z80-implementation)
+  * [Z80 Changes](#z80-changes)
+  * [Compiling & running it](#compiling--running-it)
+  * [Downloading It](#downloading-it)
 
 
-## Plot
+## Game Plot
 
 * You're inside a lighthouse (trapped? doesn't really matter I guess).
 * You see a boat on the horizon, heading your way.
