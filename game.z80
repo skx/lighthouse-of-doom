@@ -2337,8 +2337,10 @@ location_4_long:
 ; Item text
 ;
 item_0_name: db "GENERATOR"
-item_0_desc: db "A small generator.$"
-item_0_long: db "This is a diesel-power generator, which seems to be full of fuel, and ready to go."
+item_0_desc: db "A small, portable, generator.$"
+item_0_long: db "This is a small and easily carried diesel-power generator.", 0x0a, 0x0d
+             db "The generator seems to be full of fuel, and ready to go.", 0x0a, 0x0d
+             db "The important thing is probably working out where to use it.", 0x0a, 0x0d
              db "$"
 
 item_1_name:  db "MIRROR"
