@@ -2131,7 +2131,8 @@ NEWLINE:
 TAB:
         db "     $"
 invalid_msg:
-        db 0x0a, 0x0d, "I'm sorry, I did not understnad that.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "I did not understand your command.", 0x0a, 0x0d
+        db "For a list of several of our recognized words type 'HELP'.", 0x0a, 0x0d, "$"
 BAD_LANGUAGE_MSG:
         db 0x0a, 0x0d, "What language!", 0x0a, 0x0d, "$"
 NO_PHONE_HERE:
@@ -2290,9 +2291,11 @@ LOOK_FUNCTION_PREFIX:
 location_0_short:
         db "the top floor of the lighthouse.$"
 location_0_long:
-        db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d
-        db "Through the window you can see the lights of an approach ship, and", 0x0a, 0x0d
-        db "you know that it will crash upon the rocks if you can't signal it away.", 0x0a, 0x0d
+        db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "Through the window you can see the lights of an approaching ship, and you know", 0x0a, 0x0d
+        db "that without the lighthouse's beacon it will surely crash upon the rocks your", 0x0a, 0x0d
+        db "lighthouse is built upon.  If the ship crashes not only with the sailors drown", 0x0a, 0x0d
+        db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
         db "Too bad the lighthouse light doesn't seem to be working, it looks like", 0x0a, 0x0d
         db "there's a problem with the power.", 0x0a, 0x0d
         db "$"
