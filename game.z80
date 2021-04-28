@@ -1805,7 +1805,7 @@ up_function:
         jr z, up_on_dark_room      ; go up two - to land in ground floor
 
 up_on_middle_floor:
-        ; Are we carrying the meteor?
+        ; Get the meteor?
         ld hl, item_13_name
         call get_item_by_name
 
@@ -1816,12 +1816,12 @@ up_on_middle_floor:
         ld a, (hl)
         pop hl
 
-        ; Are we carrying the item
+        ; Are we carrying the item?
         cp 255
         jr nz, up_on_ground_floor
 
         ; We're on the middle-floor, going up, carrying the meteor.
-        ; That's a victory.
+        ; That's an easy victory.
         ld hl, PLAYER_WON
         inc (hl)
 
@@ -1836,11 +1836,13 @@ no_up:
         ret
 
 up_on_dark_room:
+        ld hl, CURRENT_LOCATION
         dec (hl)
             ; fall-through
 
 up_on_ground_floor:
 up_on_basement_floor:
+        ld hl, CURRENT_LOCATION
         dec (hl)
         call look_function
         ret
