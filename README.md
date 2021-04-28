@@ -19,6 +19,7 @@ Quick links within this README file:
   * [Z80 Changes](#z80-changes)
   * [Compiling & running it](#compiling--running-it)
   * [Downloading It](#downloading-it)
+* [Bugs?](#bugs)
 
 
 ## Game Plot
@@ -112,7 +113,7 @@ If you look on our [release page](https://github.com/skx/lighthouse-of-doom/rele
 Transfer `lihouse.com` to your system, and run `LIHOUSE` to launch it.
 
 
-## Bugs
+## Bugs?
 
 Report any bugs as you see them:
 
