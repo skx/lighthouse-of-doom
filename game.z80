@@ -1985,6 +1985,11 @@ drop_mirror_fn:
         ret
 
 
+; When you EXAMINE ROOM you'll end up here
+examine_room_fn:
+        FAKE_LOOK
+        ret
+
 ; When you EXAMINE RUG you'll end here.
 ;
 ;  If the rug is on the ground:
@@ -2794,6 +2799,10 @@ item_13_name: db "METEOR"
 item_13_desc: db "A meteor fragment$"
 item_13_long: db "This piece of rock looks like it came from a larger meteor, it is glowing with", 0x0a, 0x0d
               db "an eerie light.$"
+
+
+item_14_name: db "ROOM"
+
 ;}
 
 
@@ -3153,6 +3162,17 @@ item_first:
         DEFB 0              ; item state
         DEFB 0              ; this item cannot be picked up
         DEFB 0xFE           ; hidden until the desk is examined
+
+        DEFW item_14_name    ; room
+        DEFB 0,0             ; NO DESCRIPTION - hidden item
+        DEFB 0,0             ; No extended description
+        DEFB 0,0             ; Custom take function
+        DEFB 0,0             ; No drop function
+        DEFW examine_room_fn ; EXAMINE ROOM -> custom function
+        DEFB 0,0             ; No use function
+        DEFB 0               ; item state
+        DEFB 0               ; this item cannot be picked up
+        DEFB 0xFE            ; hidden.
 
 item_last:
 
