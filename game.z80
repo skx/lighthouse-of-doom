@@ -1391,7 +1391,53 @@ inv_item_not_carried:
 ; Show the current location.  If the seen-flag has not been set then
 ; show the long description and set the flag.
 ;
+; There is a special case here to handle the case where the user types
+;
+;   LOOK AT XXX
+;
+; If we see "LOOK AT XXX" then we replace the command with "EXAMINE YYYY"
+;
 look_function:
+        ld de, LOOK_AT                ;; "LOOK AT "
+        ld b, 7                       ;; strlen("LOOK_AT ")
+        ld hl, INPUT_BUFFER+2
+        call CompareStringsWithLength
+        jp nz,look_at_environment
+
+        ; OK we have a sleazy hack here.
+        ;
+        ; We want to convert:
+        ;
+        ;   "LOOK AT PIE"
+        ;
+        ; to
+        ;
+        ;   "EXAMINE PIE"
+        ;
+        ; Happily the length of "LOOK AT" is the same as the length of
+        ; EXAMINE.
+        ;
+        ; Edit the input-buffer in-place
+        ld hl, INPUT_BUFFER+2
+        ld (hl), "E"
+        inc hl
+        ld (hl), "X"
+        inc hl
+        ld (hl), "A"
+        inc hl
+        ld (hl), "M"
+        inc hl
+        ld (hl), "I"
+        inc hl
+        ld (hl), "N"
+        inc hl
+        ld (hl), "E"
+        inc hl
+        ld (hl), " "
+
+        jp examine_function
+
+look_at_environment:
         ld de,LOOK_FUNCTION_PREFIX
         call show_msg
         ld hl, CURRENT_LOCATION  ; get current location
@@ -2284,6 +2330,8 @@ PLAYER_TURN_COUNT_END:
         db 0x0a, 0x0d,"$"
 LOOK_FUNCTION_PREFIX:
         db 0x0a, 0x0d, "You are in $"
+LOOK_AT:
+        db "LOOK AT "
 
 ;
 ; Location text
