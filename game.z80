@@ -56,6 +56,12 @@ BDOS_READ_INPUT:              EQU 0x0A
 BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
 
 
+; Game over if you don't win in this many turns
+MAX_TURN_LIMIT: EQU 100
+
+
+
+
 ;********************************************************************
 ; Macros
 ;********************************************************************
@@ -170,7 +176,7 @@ game_loop:
         ; 0. Have we died?
         ld hl, TURN_COUNT
         ld a, (hl)
-        cp 50
+        cp MAX_TURN_LIMIT
         jp c,game_loop_continue
 
         ld hl, PLAYER_DEAD
@@ -1740,6 +1746,12 @@ de_delay_loop:
          call BDOS_ENTRY_POINT
          POP_ALL
        djnz hl_delay
+
+       ; Double the turn-count.
+       ld hl,TURN_COUNT
+       ld a, (hl)
+       add a, a
+       ld (hl),a
 
        ld de, SLEEP_END_MSG
        call show_msg
