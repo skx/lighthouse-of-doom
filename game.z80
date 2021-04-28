@@ -205,6 +205,22 @@ not_won:
         ld c, BDOS_READ_INPUT
         call BDOS_ENTRY_POINT
 
+        ; Every five turns we show a message about the ship.
+        ;
+        ld hl, SHIP_WARNING
+        ld a, (hl)              ; get the value
+        cp 5                    ; five turns?
+        jr nz, no_ship_warning  ; nope?  Do nothing
+
+        ld (hl), 0              ; reset the count
+        ld de, ship_closer_msg  ; show the message
+        call show_msg
+
+        jp ship_warning_over
+
+no_ship_warning:
+        inc (hl)                ; increase our count
+ship_warning_over:
         ; If the input was zero-length (i.e. User pressed return) ignore it.
         ld hl, INPUT_BUFFER+1
         ld a,(hl)
@@ -246,8 +262,6 @@ no_handler:
 
         ;  8.  Goto 1
         jp game_loop              ; restart
-
-
 
 
 
@@ -2077,15 +2091,17 @@ use_generator_won_fn:
 ;********************************************************************
 
 TURN_COUNT:
-        db 0
+        db 0         ; count of turns
 CURRENT_LOCATION:
-        db 0
+        db 0         ; offset into location table
 PLAYER_DEAD:
-        db 0
+        db 0         ; 1 iff player is dead
 PLAYER_WON:
-        db 0
+        db 0         ; 1 iff player has won
 MAGIC_LOCATION
-        db 0
+        db 0         ; state for magic-function
+SHIP_WARNING:
+        db 0         ; State for showing a "ship closer" message.
 
 ;********************************************************************
 ; String Area
@@ -2215,6 +2231,8 @@ MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
 TORCH_ON_MSG:
         db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
+ship_closer_msg:
+        db 0x0a, 0x0d, "The ship is getting closer, hurry up!", 0x0a, 0x0d, "$"
 NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0a, 0x0d, "$"
 usage_message:
