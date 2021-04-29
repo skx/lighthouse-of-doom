@@ -2687,6 +2687,7 @@ THE:
         db " THE "
 usage_message:
         db 0x0a, 0x0d
+
         db "        .n.         ", 27, "[1;4mThe lighthouse of doom", 27, "[1;0m",  0x0a, 0x0d
         db "       /___\\ ", 0x0a, 0x0d
         db "       [|||]        ", 0x0a, 0x0d
@@ -2701,8 +2702,9 @@ usage_message:
         db "  `===-'-----'\"\"`  '-.              ~", 0x0a, 0x0d
         db "                 __.-'      ^", 0x0a, 0x0d
         db "", 0x0a, 0x0d
-        db "Written by Steve Kemp in 2021."
-        db 0x0a, 0x0d
+        db "Written by Steve Kemp in 2021, version "
+include "version.z80"
+        db ".", 0x0a, 0x0d
         db 0x0a, 0x0d
         db "  https://github.com/skx/lighthouse-of-doom"
         db 0x0a, 0x0d
