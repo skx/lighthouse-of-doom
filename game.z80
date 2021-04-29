@@ -550,17 +550,69 @@ uppercase_ok:
         ret
 
 
+
 ;
-; Helper function.  Remove " THE " from any input
+; Helper function, filter our input buffer, by removing some words
 ;
 filter_input_buffer:
+        call filter_input_buffer_on
+        call filter_input_buffer_the
+        ret
+
+
+;
+; Helper function.  Remove " ON " from any input
+;
+filter_input_buffer_on:
+        ld hl, INPUT_BUFFER+1
+        ld a, (hl)
+        ld b, a                ; b contains the number of chacters
+        inc hl                 ; hl points to the text the user entered
+
+compare_loop_on:
+        push bc    ; preserve count
+        push hl    ; preserve starting char
+
+        ld b, 4  ; strlen(" ON " )
+        ld de, ON
+
+        call CompareStringsWithLength
+        jp z, we_found_on
+
+        pop hl
+        pop bc
+
+        inc hl
+        djnz compare_loop_on
+
+        ; Didn't find " THE " at any character position in the input-buffer.
+        ret
+
+we_found_on:
+        pop hl
+        pop de
+
+        ; we have " THE " at the location HL points to
+        ld a, " "
+        ld (hl), a   ; " " -> " "
+        inc hl
+        ld (hl), a   ; "O" -> " "
+        inc hl
+        ld (hl), a   ; "N" -> " "
+        ret
+
+
+;
+; Helper function.  Remove " THE " from any input.
+;
+filter_input_buffer_the:
 
         ld hl, INPUT_BUFFER+1
         ld a, (hl)
         ld b, a                ; b contains the number of chacters
         inc hl                 ; hl points to the text the user entered
 
-compare_loop:
+compare_loop_the:
         push bc    ; preserve count
         push hl    ; preserve starting char
 
@@ -574,7 +626,7 @@ compare_loop:
         pop bc
 
         inc hl
-        djnz compare_loop
+        djnz compare_loop_the
 
         ; Didn't find " THE " at any character position in the input-buffer.
         ret
@@ -2685,6 +2737,8 @@ NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0a, 0x0d, "$"
 THE:
         db " THE "
+ON:
+        db " ON "
 usage_message:
         db 0x0a, 0x0d
 
@@ -2936,6 +2990,10 @@ command_table:
         DEFB 4, 'READ', 1
           DEFW use_function
         DEFB 5, 'LIGHT', 1
+          DEFW use_function
+        DEFB 6, 'SWITCH', 1   ; switch on generator, etc
+          DEFW use_function
+        DEFB 4, 'TURN', 1     ; turn on torch, etc.
           DEFW use_function
         ;; easter-eges
         DEFB 4, 'CALL', 1
