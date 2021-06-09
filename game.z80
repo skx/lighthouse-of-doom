@@ -2757,7 +2757,14 @@ usage_message:
         db "                 __.-'      ^", 0x0a, 0x0d
         db "", 0x0a, 0x0d
         db "Written by Steve Kemp in 2021, version "
+
+;
+; This file is updated with the current git-tag by `make release`.
+;
+; The github action/pipeline will do that when a new release is issued.
+;
 include "version.z80"
+
         db ".", 0x0a, 0x0d
         db 0x0a, 0x0d
         db "  https://github.com/skx/lighthouse-of-doom"
