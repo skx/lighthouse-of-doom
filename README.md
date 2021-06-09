@@ -88,8 +88,6 @@ property of the object itself.
 ### Z80 Changes
 
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
-* There is no grue in this version.
-  * It will come.
 * There are __two__ victory conditions.
 * The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
   * This stops users from looking through the binary for hints.
