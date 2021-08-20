@@ -2621,7 +2621,7 @@ magic_three_msg:
 magic_four_msg:
         db 0x0a, 0x0d , "You couldn't draw the line, could you?", 0x0a, 0x0d, 0x0a, 0x0d
         db "The magic flooding your body is too powerful, and you're finding it impossible", 0x0a, 0x0d
-        db "to breath.  With a wail of frustration you topple backwards, clutching", 0x0a, 0x0d
+        db "to breathe.  With a wail of frustration you topple backwards, clutching", 0x0a, 0x0d
         db "at your chest.", 0x0a, 0x0d, 0x0a, 0x0d
         db "You're dying, soon the end will come.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 
@@ -2657,8 +2657,8 @@ use_gen_location:
         db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
         db 0x0a, 0x0d, "$"
 use_generator_won:
-        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on", 0x0a, 0x0d
-        db "with a steady thrum the generator begins to provide power.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.", 0x0a, 0x0d
+        db "With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
         db 0x0a, 0x0d
         db "Success!  The main-light turns on.", 0x0a, 0x0d,0x0a, 0x0d
         db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
@@ -2812,7 +2812,7 @@ location_0_long:
         db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
         db "Through the window you can see the lights of an approaching ship, and you know", 0x0a, 0x0d
         db "that without the lighthouse's beacon it will surely crash upon the rocks your", 0x0a, 0x0d
-        db "lighthouse is built upon.  If the ship crashes not only with the sailors drown", 0x0a, 0x0d
+        db "lighthouse is built upon.  If the ship crashes not only will the sailors drown,", 0x0a, 0x0d
         db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
         db "Too bad the lighthouse light doesn't seem to be working, it looks like", 0x0a, 0x0d
         db "there's a problem with the power.", 0x0a, 0x0d
