@@ -1,5 +1,5 @@
 /*
- * Load `game.com` and scramble the strings.
+ * Load `lihouse.com` and scramble the strings, saving to `lihouse2.com`.
  */
 
 #include <stdio.h>
