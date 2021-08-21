@@ -271,13 +271,15 @@ ship_warning_over:
         call find_command
         cp 255
         jp z, no_handler
-
-        ; Call the handler
-        call JP_HL
+        push hl
 
         ; Valid command - increase turn count
         ld hl, TURN_COUNT
         inc (hl)
+
+        ; Call the handler
+        pop hl
+        call JP_HL
 
         ; Did we get eaten?
         call maybe_grue_death
@@ -1881,7 +1883,6 @@ turns_function:
         call show_msg
         ld hl, TURN_COUNT
         ld a, (hl)
-        inc a
         call show_a_register
         ld de, PLAYER_TURN_COUNT_END
         call show_msg
