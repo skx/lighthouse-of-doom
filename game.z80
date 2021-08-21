@@ -412,12 +412,7 @@ CompareStringsWithLength:
 ; Helper function, to allow indirection.
 ;
 JP_HL:
-        ld bc, ret_obj
-        push bc
-	push hl
-ret_obj:
-        ret
-
+    jp (hl)
 
 
 ;
