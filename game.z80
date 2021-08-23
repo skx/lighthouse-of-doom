@@ -154,8 +154,7 @@ ENDIF
 
         ; Present the game intro-text.
         ld de, usage_message
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+        call show_msg
 
         ; Pause for input here.
         ld c,BDOS_CHARACTER_READ
@@ -214,8 +213,7 @@ not_dead:
 not_won:
         ; 3. show the prompt
         ld de, prompt_message
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+        call show_msg
 
         ; 4. Erase our input buffer.
         ld hl, INPUT_BUFFER+2
@@ -1542,8 +1540,8 @@ help_func_loop:  ; copy the command-name to the buffer
         jr z, help_skip_this
         call show_tab
         ld de, TMP_BUFFER
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+        call show_msg
+
 help_skip_this:
         pop de
         inc de  ; skip hidden-flag
@@ -2017,17 +2015,10 @@ show_newline:
         jp show_msg
 
 show_tab:
-        push af
-        push bc
-        push de
-        push hl
+        PUSH_ALL
         ld de, TAB
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        pop hl
-        pop de
-        pop bc
-        pop af
+        call show_msg
+        POP_ALL
         ret
 
 
