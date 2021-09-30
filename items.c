@@ -194,19 +194,27 @@ void drop_generator(int id)
 
 void get_book(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the book.\n");
 }
 void get_torch(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the torch.\n");
 }
 void get_torch_lit(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the lit torch.\n");
 }
 
 void get_rug(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the rug, and as you do so you notice a trapdoor underneath it.\n");
     location_add_item("trapdoor-closed", location);
 }
@@ -214,6 +222,8 @@ void get_rug(int id)
 // When the user "USES TORCH" it becomes lit
 void use_torch(char *txt)
 {
+    UNUSED(txt);
+
     location_remove_item("torch", location);
     location_add_item("torch-lit", location);
 
@@ -238,11 +248,15 @@ void use_torch_carried(char *txt)
 
 void get_generator(int id)
 {
+    UNUSED(id);
+
     printf("You take the generator, struggling under the weight.\n");
 }
 void use_generator(char *txt)
 {
-    printf("You study the diagram drawn on the side of the generator,\n"
+    UNUSED(txt);
+
+        printf("You study the diagram drawn on the side of the generator,\n"
            "and connect it to the side of the lighting console.\n");
     printf("With a mighty pull of the starting mechanism the machine\n"
            "comes to life, and power returns to the console\n\n");
@@ -255,25 +269,35 @@ void use_generator(char *txt)
 
 void use_generator_carried(char *txt)
 {
+    UNUSED(txt);
+
     printf("You try to use the generator, but that seems impossible while\n"
            "you're still carrying it.");
 }
 
 void get_mirror(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the mirror.\n");
 }
 void get_mirror_broken(int id)
 {
+    UNUSED(id);
+
     printf("You pickup the broken mirror.\n");
 }
 void use_mirror(char *txt)
 {
+    UNUSED(txt);
+
     printf("The mirror doesn't seem to be anything special.\n"
            "But your reflection?  It looks fabulous.\n");
 }
 void use_mirror_broken(char *txt)
 {
+    UNUSED(txt);
+
     printf("The mirror looks like it was once small and delicate.\n"
            "But now it shows a distorted reflection of yourself,\n"
            "which is oddly unsettling.\n");
@@ -282,5 +306,7 @@ void use_mirror_broken(char *txt)
 
 void use_telephone(char *txt)
 {
+    UNUSED(txt);
+
     printf("To use the telephone you must CALL somebody!\n");
 }

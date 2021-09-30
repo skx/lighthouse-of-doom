@@ -28,6 +28,9 @@ int inv[MAX_INV] = {0};
 
 int main(int argc, char *argv[])
 {
+    UNUSED(argc);
+    UNUSED(argv);
+
     srand(time(NULL));
     char line[1024];
 
@@ -74,7 +77,7 @@ int main(int argc, char *argv[])
         }
 
         // strip newlines
-        for (int i = 0; i < sizeof(line) - 1; i++)
+        for (size_t i = 0; i < sizeof(line) - 1; i++)
         {
             if (line[i] == '\n' ||
                     line[i] == '\r')

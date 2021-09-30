@@ -54,6 +54,8 @@ word_t dictionary[] =
 
 void cls_fn(char *input)
 {
+    UNUSED(input);
+
     printf("\e[1;1H\e[2J");
 }
 
@@ -85,6 +87,8 @@ void call_fn(char *input)
 
 void inventory_fn(char *input)
 {
+    UNUSED(input);
+
     int found = 0;
 
     for (int i = 0; i < MAX_INV; i++)
@@ -121,11 +125,15 @@ void inventory_fn(char *input)
 
 void language_fn(char *input)
 {
+    UNUSED(input);
+
     printf("Such bad language!\n");
 }
 
 void magic_fn(char *input)
 {
+    UNUSED(input);
+
     static int count = 0;
     count++;
 
@@ -205,12 +213,16 @@ void look_fn(char *input)
 
 void quit_fn(char *input)
 {
+    UNUSED(input);
+
     printf("Game over man, game over!\n");
     exit(0);
 }
 
 void help_fn(char *input)
 {
+    UNUSED(input);
+
     int dict = 0;
     printf("The following commands are available:\n");
 
