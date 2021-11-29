@@ -63,7 +63,7 @@ too much state to care about:
 
 Build the game by running `make`, and then run `./lighthouse`
 
-If you get stuck you can see command by entering `help`.
+If you get stuck you can see most of the available commands by entering `help`.
 
 
 
