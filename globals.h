@@ -10,6 +10,9 @@
 // The number of rooms
 #define MAX_ROOMS 4
 
+// Unused function argument
+#define UNUSED(x) (void)(x)
+
 // Handler for an input/command function.
 typedef void (*actionPtr)(char *input);
 

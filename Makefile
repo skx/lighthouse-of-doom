@@ -6,7 +6,7 @@ VERSION := $(or ${GITHUB_REF},${GITHUB_REF},"unreleased-git")
 all: lighthouse
 
 lighthouse: handlers.c  inventory.c  items.c  main.c  world.c util.c
-	gcc -o lighthouse -Os -Wall -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
+	gcc  -o lighthouse -Os -Wall -Wextra -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
 
 clean:
 	rm -f lighthouse game.com lihouse.com lihouse2.com encrypt || true
