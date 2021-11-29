@@ -855,7 +855,7 @@ maybe_grue_death:
         ret nz
 
         ; Get the item-state, we use that to count how
-        ; many times we've been down here, and increas
+        ; many times we've been down here, and increase
         ; the count too.
         push hl
         ld de, ITEM_TABLE_STATE_OFFSET
