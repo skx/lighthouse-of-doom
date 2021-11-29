@@ -147,7 +147,7 @@ void magic_fn(char *input)
         printf("The magic flooding your body is too powerful, and you're finding it impossible\n"
                "to breath.  With a wail of frustration you topple backwards.\n"
                "\nYou're dead.\n");
-        dead = 1;
+        state = Dead;
     }
 }
 
@@ -244,7 +244,7 @@ void up_fn(char *input)
             printf("You panic, and fall to the ground.\n");
             printf("The darkness is a mercy, as the grue attacks..\n");
             printf("Too bad the ship will crash; more food for the grue though.\n");
-            dead = 1;
+            state = Dead;
         }
     }
 
@@ -330,7 +330,7 @@ void down_fn(char *input)
             printf("You panic, and fall to the ground.\n");
             printf("The darkness is a mercy, as the grue attacks..\n");
             printf("Too bad the ship will crash; more food for the grue though.\n");
-            dead = 1;
+	    state = Dead;
         }
     }
 

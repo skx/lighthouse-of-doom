@@ -250,7 +250,7 @@ void use_generator(char *txt)
            "distance you hear a horn from the approaching boat.\n");
     printf("It obviously sees you, and starts to turn.  It looks like\n"
            "everything is going to be OK!\n");
-    won = 1;
+    state = Won;
 }
 
 void use_generator_carried(char *txt)

@@ -15,11 +15,8 @@ int location = 0;
 // Count of elapsed turns
 int turn = 0;
 
-// Did you win?
-int won = 0;
-
-// Did you die?
-int dead = 0;
+// The game-state
+enum gameState state;
 
 // The player's inventory
 int inv[MAX_INV] = {0};
@@ -59,7 +56,7 @@ int main(int argc, char *argv[])
     // Show the opening location
     look_fn("LOOK");
 
-    while ((won == 0) && (dead == 0))
+    while ( state == Playing )
     {
 
         // show prompt

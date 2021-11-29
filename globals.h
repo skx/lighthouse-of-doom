@@ -27,10 +27,10 @@ typedef void (*dropPtr)(int id);
 // Our "game world" is made up of a collection of these locations.
 typedef struct location
 {
-    // one-line description of the light-house
+    // one-line description of the location.
     char desc[100];
 
-    // extended description of the light-house
+    // extended description of the location.
     char edesc[512];
 
     // have we seen this?  If so we show the short-description
@@ -91,6 +91,9 @@ typedef struct word
 } word_t;
 
 
+// Game state
+enum gameState{ Playing, Won, Dead };
+
 // The player's location
 extern int location;
 
@@ -101,8 +104,7 @@ extern int turn;
 extern int inv[MAX_INV];
 
 // Dead? Won?
-extern int dead;
-extern int won;
+extern enum gameState state;
 
 // world locations
 extern location_t world[];
