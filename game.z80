@@ -2510,6 +2510,8 @@ use_generator_won_fn:
 
 ;}
 
+include "bios.z80"
+
 
 
 
@@ -3367,7 +3369,5 @@ TMP_BUFFER_LEN: EQU 50
 ; launch - if that support is enabled.
 ;
 end_of_source:
-
-include "bios.z80"
 
 END ENTRYPOINT

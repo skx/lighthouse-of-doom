@@ -158,21 +158,7 @@ ENDIF
 bios_read_input:
 IF SPECTRUM
         PUSH_ALL
-        push de
-        pop hl
-
-        ld a,4
-        inc hl
-        ld (hl),a
-        inc hl
-        ld (hl), "h"
-        inc hl
-        ld (hl), "e"
-        inc hl
-        ld (hl), "l"
-        inc hl
-        ld (hl), "p"
-        POPALL
+        POP_ALL
         ret
 ELSE
         ld c, 0x0A
