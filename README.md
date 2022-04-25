@@ -2,7 +2,7 @@
 
 This repository contain a simple text-based adventure game, implemented
 twice, once in portable C, and once in Z80 assembly language, targetted
-at the CP/M operating system.
+at both the CP/M operating system and the humble 48k ZX Spectrum.
 
 My intention was to write a simple text-based adventure game to run under
 CP/M.  Starting large projects in Z80 assembly language from scratch
@@ -78,15 +78,16 @@ The implementation uses a simple set of structures:
 * An item-table to store details about each object in the game.
 * A person table to store telephone messages.
 
-The whole implementation is defined in the file [game.z80](game.z80).
+The main implementation can be found in the file [game.z80](game.z80),
+but because we support two targets (CP/M 2.x and the ZX Spectrum) there
+is a small amount of platform-specific code found in [bios.z80](bios.z80).
 
-Along the way I did realize that having fixed inventory slots made the
-coding more of a challenge, so I made the location of each object a
-property of the object itself.
-
+The `Makefile` should build everything appropriately for both systems,
+defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 
 ### Z80 Changes
 
+* Along the way I realized that having fixed inventory slots made the coding more of a challenge, so I made the location of each object a property of the object itself.
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
 * There are __two__ victory conditions.
 * The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
