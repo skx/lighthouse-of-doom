@@ -35,6 +35,7 @@ IF SPECTRUM
    ld hl, 23692
    ld (hl),255
    ret
+
 ELSE
    ret
 ENDIF
@@ -55,7 +56,7 @@ IF SPECTRUM
 
 ELSE
         ld de, cpm_clear_screen_msg
-        call show_msg
+        call bios_output_string
         ret
 
 cpm_clear_screen_msg:
@@ -80,11 +81,11 @@ wkey:  CP   (HL)
        ; get the key, and return it.
        ld a,(HL)
        ret
-ELSE
-        ld c,  0x01
-        call 0x0005
-        ret
 
+ELSE
+       ld c,  0x01
+       call 0x0005
+       ret
 ENDIF
 
 
@@ -101,9 +102,9 @@ IF SPECTRUM
         POP_ALL
         ret
 ELSE
-         ld c, 0x02
-         call 0x005
-         ret
+        ld c, 0x02
+        call 0x005
+        ret
 ENDIF
 
 
@@ -112,7 +113,9 @@ ENDIF
 ;
 ; The address of the string is stored in DE
 ;
-; NOTE: / TODO: The Spectrum only wants a newline, not a character return.
+; NOTE: / TODO: The Spectrum will process the string character by
+;               character to skip the CR/NL things it can't show.
+;
 bios_output_string:
 
 IF SPECTRUM
@@ -135,6 +138,7 @@ skip:
 bios_output_done:
         POP_ALL
         ret
+
 ELSE
         ld c, 0x09
         call 0x005
@@ -154,9 +158,20 @@ ENDIF
 bios_read_input:
 IF SPECTRUM
         PUSH_ALL
-        xor a
-        inc de
-        ld (de),a
+        push de
+        pop hl
+
+        ld a,4
+        inc hl
+        ld (hl),a
+        inc hl
+        ld (hl), "h"
+        inc hl
+        ld (hl), "e"
+        inc hl
+        ld (hl), "l"
+        inc hl
+        ld (hl), "p"
         POPALL
         ret
 ELSE

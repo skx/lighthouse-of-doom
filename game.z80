@@ -148,7 +148,7 @@ ENDIF
 
         ; Present the game intro-text.
         ld de, usage_message
-        call show_msg
+        call bios_output_string
 
         ; Pause for input here.
         call bios_await_keypress
@@ -186,7 +186,7 @@ game_loop_continue:
 
         ; The player is dead.  Oops.
         ld de, PLAYER_DEAD_MESSAGE
-        call show_msg
+        call bios_output_string
         call turns_function
         jp 0x0000
 
@@ -199,14 +199,14 @@ not_dead:
 
         ; The player won.  Yay!
         ld de, PLAYER_WON_MESSAGE
-        call show_msg
+        call bios_output_string
         call turns_function
         jp 0x0000
 
 not_won:
         ; 3. show the prompt
         ld de, prompt_message
-        call show_msg
+        call bios_output_string
 
         ; 4. Erase our input buffer.
         ld hl, INPUT_BUFFER+2
@@ -226,7 +226,7 @@ not_won:
 
         ld (hl), 0              ; reset the count
         ld de, ship_closer_msg  ; show the message
-        call show_msg
+        call bios_output_string
 
         jp ship_warning_over
 
@@ -281,7 +281,7 @@ ship_warning_over:
 no_handler:
         ; Show the user that their command wasn't understood.
         ld de, invalid_msg
-        call show_msg
+        call bios_output_string
 
         ; Did we get eaten?
         call maybe_grue_death
@@ -435,14 +435,7 @@ de_delay_loop:
 
        ret
 
-;
-; Show a message, terminated with "$"
-;
-; Address in DE.
-;
-show_msg:
-        call bios_output_string
-        ret
+
 
 
 
@@ -858,12 +851,12 @@ maybe_grue_death:
 
         call show_dots
         ld de, grue_message
-        call show_msg
+        call bios_output_string
         ret
 
 death_by_grue_grue:
         ld de, you_were_eaten
-        call show_msg
+        call bios_output_string
 
         ld hl,PLAYER_DEAD
         inc (hl)
@@ -976,7 +969,7 @@ input_second_term_end:
 ;
 bad_language_function:
         ld de, BAD_LANGUAGE_MSG
-        jp show_msg
+        jp bios_output_string
 
 
 
@@ -998,7 +991,7 @@ down_function:
         ; fall-through other options will show "NO DOWN"
 no_down:
         ld de, no_down_msg
-        call show_msg
+        call bios_output_string
         ret
 
 down_on_top_floor:
@@ -1015,7 +1008,7 @@ down_on_ground_floor:
         jr z, down_found_trap
 
         ld de, failed_find_trapdoor_open_msg
-        call show_msg
+        call bios_output_string
         ret
 down_found_trap:
 
@@ -1090,7 +1083,7 @@ drop_function:
         jp z, drop_object
 
         ld de, DROP_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 drop_object:
@@ -1104,7 +1097,7 @@ drop_object:
         ; if we didn't find it in the current location or inventory
         ; then we're not carrying it.
         ld de, not_carrying_item_msg
-        call show_msg
+        call bios_output_string
         ret
 
 drop_found_it:
@@ -1143,7 +1136,7 @@ drop_found_it:
         or e
         jr nz, drop_invoke_handler
         ld de, you_drop_it
-        call show_msg
+        call bios_output_string
         ret
 
 drop_invoke_handler:
@@ -1176,7 +1169,7 @@ examine_function:
         jp z, examine_object
 
         ld de, EXAMINE_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 examine_object:
@@ -1190,7 +1183,7 @@ examine_object:
         jp z,examine_found_it
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 examine_found_it:
@@ -1229,7 +1222,7 @@ show_ext_desc:
         ld d,(hl)
 
         ; show it
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1248,7 +1241,7 @@ go_function:
 
 go_unknown:
         ld de, GO_WHERE_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 go_somewhere:
@@ -1284,7 +1277,7 @@ call_function:
 
         ; not in the phone-room?  Show an error and return
         ld de, NO_PHONE_HERE
-        call show_msg
+        call bios_output_string
         ret
 
 call_proceed:
@@ -1294,7 +1287,7 @@ call_proceed:
 
         ; missing person
         ld de, CALL_WHO_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 call_person:
@@ -1311,7 +1304,7 @@ next_person_test:
         ; show the error-message and return
         pop de
         ld de, call_unknown_msg
-        call show_msg
+        call bios_output_string
         ret
 
         ; OK we've got an entry
@@ -1352,7 +1345,7 @@ skip_string2:
         ld e, (hl)
         inc hl
         ld d, (hl)
-        call show_msg
+        call bios_output_string
         ret
 
 ;
@@ -1370,7 +1363,7 @@ get_function:
         jp z, get_object
 
         ld de, GET_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 get_object:
@@ -1382,7 +1375,7 @@ get_object:
         jp z,get_found_it
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 get_found_it:
@@ -1427,7 +1420,7 @@ take_as_normal:
         jr z, get_found_it_take
 
         ld de, cant_take_that_msg
-        call show_msg
+        call bios_output_string
         ret
 
 get_found_it_take:
@@ -1458,7 +1451,7 @@ make_trapdoor_visible:
         jp z, place_trapdoor
 
         ld de, failed_find_trapdoor_msg
-        call show_msg
+        call bios_output_string
         ret
 
 place_trapdoor:
@@ -1492,7 +1485,7 @@ place_trapdoor:
 ;
 help_function:
         ld de, HELP_MSG
-        call show_msg
+        call bios_output_string
         ld de,command_table
 help_function_again: ; have we run out of commands?
         ld a, (de) ; length of string
@@ -1521,7 +1514,7 @@ help_func_loop:  ; copy the command-name to the buffer
         jr z, help_skip_this
         call show_tab
         ld de, TMP_BUFFER
-        call show_msg
+        call bios_output_string
 
 help_skip_this:
         pop de
@@ -1541,12 +1534,12 @@ inventory_function:
         jp z, inventory_show_items      ; Yes.  Go show
 
         ld de,inventory_empty_message   ; Otherwise "Carrying nothing"
-        call show_msg
+        call bios_output_string
         ret
 
 inventory_show_items:
         ld de,you_carrying_message
-        call show_msg
+        call bios_output_string
 
         ;
         ; We know there are items being carried, look for them
@@ -1581,7 +1574,7 @@ inventory_test_item:
 
         PUSH_ALL
           call show_tab
-          call show_msg
+          call bios_output_string
           call show_newline
         POP_ALL
 
@@ -1652,7 +1645,7 @@ look_function:
 
 look_at_environment:
         ld de,LOOK_FUNCTION_PREFIX
-        call show_msg
+        call bios_output_string
         ld hl, CURRENT_LOCATION  ; get current location
         ld a, (hl)
         ld b, a                  ; multiply by the length of each entry
@@ -1668,7 +1661,7 @@ look_function_show:
         ld d, (hl)
         inc hl
         push hl
-        call show_msg
+        call bios_output_string
         call show_newline
         call show_newline
         pop hl
@@ -1692,7 +1685,7 @@ look_function_show:
         ret z
 look_show_extended:
         push hl
-        call show_msg
+        call bios_output_string
         pop hl
 
         ld a, 1
@@ -1706,7 +1699,7 @@ look_show_extended:
 
         ; Show "You see .."
         ld de,you_see_message
-        call show_msg
+        call bios_output_string
 
         ;
         ; OK at this point we have looked at the room, and
@@ -1757,7 +1750,7 @@ look_item_loop:
 
         PUSH_ALL
           call show_tab
-          call show_msg
+          call bios_output_string
           call show_newline
         POP_ALL
 item_not_present:
@@ -1795,7 +1788,7 @@ magic_function:
 
         ; magic four
         ld de, magic_four_msg
-        call show_msg
+        call bios_output_string
 
         ; you're dead
         ld hl, PLAYER_DEAD
@@ -1803,15 +1796,15 @@ magic_function:
         ret
 magic_one:
         ld de, magic_one_msg
-        call show_msg
+        call bios_output_string
         ret
 magic_two:
         ld de, magic_two_msg
-        call show_msg
+        call bios_output_string
         ret
 magic_three:
         ld de, magic_three_msg
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1824,7 +1817,7 @@ magic_three:
 ;
 quit_function:
         ld de, QUIT_MSG
-        call show_msg
+        call bios_output_string
         call turns_function
         jp 0x0000
 
@@ -1837,7 +1830,7 @@ quit_function:
 sleep_function:
 
        ld de, SLEEP_START_MSG
-       call show_msg
+       call bios_output_string
 
        call show_dots
 
@@ -1848,7 +1841,7 @@ sleep_function:
        ld (hl),a
 
        ld de, SLEEP_END_MSG
-       call show_msg
+       call bios_output_string
        ret
 
 
@@ -1860,12 +1853,12 @@ sleep_function:
 turns_function:
         call show_newline
         ld de, PLAYER_TURN_COUNT
-        call show_msg
+        call bios_output_string
         ld hl, TURN_COUNT
         ld a, (hl)
         call show_a_register
         ld de, PLAYER_TURN_COUNT_END
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1880,7 +1873,7 @@ use_function:
         jp z, use_object
 
         ld de, USE_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 use_object:
@@ -1892,7 +1885,7 @@ use_object:
         jp z, use_found_object
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_found_object:
@@ -1920,7 +1913,7 @@ use_found_object:
         ret
 use_is_futile:
         ld de, use_generic
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1970,12 +1963,12 @@ up_on_middle_floor:
 
         ; Show the successful result
         ld de, meteor_saves_the_day
-        call show_msg
+        call bios_output_string
         ret
 
 no_up:
         ld de, no_up_msg
-        call show_msg
+        call bios_output_string
         ret
 
 up_on_dark_room:
@@ -1994,12 +1987,12 @@ up_on_basement_floor:
 
 show_newline:
         ld de, NEWLINE
-        jp show_msg
+        jp bios_output_string
 
 show_tab:
         PUSH_ALL
         ld de, TAB
-        call show_msg
+        call bios_output_string
         POP_ALL
         ret
 
@@ -2011,7 +2004,7 @@ show_tab:
 ;
 wait_function:
         ld de, WAIT_CMD_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 ; }
@@ -2067,7 +2060,7 @@ drop_mirror_fn:
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2113,13 +2106,13 @@ examine_rug_fn:
         inc hl
         ld d,(hl)
 
-        call show_msg
+        call bios_output_string
         ret
 
 rug_on_ground:
 
         ld de, rug_detail_msg
-        call show_msg
+        call bios_output_string
         call make_trapdoor_visible
         ret
 
@@ -2150,7 +2143,7 @@ examine_desk_fn:
         jr z, meteor_hidden
 
         ld de, item_9_long
-        call show_msg
+        call bios_output_string
         ret
 
 meteor_hidden:
@@ -2164,11 +2157,11 @@ meteor_hidden:
 
         ; desk description
         ld de, item_9_long
-        call show_msg
+        call bios_output_string
 
         ; desk addendum
         ld de, desk_has_meteor
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2195,7 +2188,7 @@ take_meteor_fn:
         jr nz, take_meteor
 
         ld de,item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 take_meteor:
@@ -2270,7 +2263,7 @@ take_rug_fn:
 
         ; show a message telling the user about the trapdoor.
         ld de, rug_taken_msg
-        call show_msg
+        call bios_output_string
 
         ; And make the trapdoor visible
         call make_trapdoor_visible
@@ -2307,7 +2300,7 @@ use_book_fn:
         ld d,(hl)
 
         ; show it
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2325,7 +2318,7 @@ use_torch_fn:
         jp z,use_torch_found_t
 
         ld de, failed_find_torch_msg
-        call show_msg
+        call bios_output_string
         ret
 use_torch_found_t:
 
@@ -2354,7 +2347,7 @@ use_torch_found_t:
 
         pop af; fixup
         ld de, failed_find_torch_lit_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_torch_found_t2:
@@ -2375,7 +2368,7 @@ use_torch_found_t2:
 
         ; Show the message
         ld de, TORCH_ON_MSG
-        call show_msg
+        call bios_output_string
 
         ; If you're in the dark-place we'll now warp you to the
         ; normal basement.
@@ -2387,7 +2380,7 @@ use_torch_found_t2:
 
         ; show that you can see where you are
         ld de,NOW_YOU_SEE
-        call show_msg
+        call bios_output_string
 
         ; show the location
         FAKE_LOOK
@@ -2411,7 +2404,7 @@ use_trapdoor_fn:
         jp z,use_trapdoor_found_t
 
         ld de, failed_find_trapdoor_msg
-        call show_msg
+        call bios_output_string
         ret
 use_trapdoor_found_t:
 
@@ -2431,7 +2424,7 @@ use_trapdoor_found_t:
         jr z, open_trapdoor_present
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 open_trapdoor_present:
@@ -2452,7 +2445,7 @@ open_trapdoor_present:
         jp z,use_trapdoor_found_t2
 
         ld de, failed_find_trapdoor_open_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_trapdoor_found_t2:
@@ -2476,7 +2469,7 @@ use_trapdoor_found_t2:
 
         ; Show the message
         ld de, TRAPDOOR_OPEN_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2493,7 +2486,7 @@ use_generator_fn:
         jp z,use_generator_found_t
 
         ld de, failed_find_generator_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_generator_found_t:
@@ -2505,14 +2498,14 @@ use_generator_found_t:
         jr z, use_generator_won_fn
 
         ld de, use_gen_location
-        call show_msg
+        call bios_output_string
         ret
 use_generator_won_fn:
         ld hl, PLAYER_WON
         ld (hl),1
 
         ld de, use_generator_won
-        call show_msg
+        call bios_output_string
         ret
 
 ;}
