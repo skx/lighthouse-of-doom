@@ -1,0 +1,166 @@
+; bios.z80
+;
+; This file contains the common primitives we use for interfacing
+; with CP/M or the ZX Spectrum (48k).
+;
+; We don't use many primitives, but we do need some facilities from
+; the operating system, or the Spectrum ROM:
+;
+;  1.  Pause for a keypress.
+;
+;  2.  Clear the screen.
+;
+;  3.  Output a string.
+;
+;  4.  Allow the user to enter input
+;
+; The routines here will work for both systems, and contain the only
+; platform-specific code we need.
+;
+
+
+; Last keyboard input as set by the Spectrum ROM
+LASTK: EQU 0x5C08
+
+
+;
+; Initialization routine for the BIOS, if needed
+;
+bios_init:
+
+IF SPECTRUM
+   ld a,2
+   call 5633    ; CHAN_OPEN
+
+   ld hl, 23692
+   ld (hl),255
+   ret
+ELSE
+   ret
+ENDIF
+
+
+;
+; Clear the screen.
+;
+bios_clear_screen:
+
+IF SPECTRUM
+        PUSH_ALL
+        ld a,2
+        call 0x1601  ; ROM_OPEN_CHANNEL
+        call 0x0DAF  ; ROM_CLS
+        POP_ALL
+        ret
+
+ELSE
+        ld de, cpm_clear_screen_msg
+        call show_msg
+        ret
+
+cpm_clear_screen_msg:
+        db 27, "[2J"            ; "clear"
+        db 27, "[H"             ; "home"
+        db "$"
+ENDIF
+
+
+;
+; Await a keypress, which is ignored
+;
+bios_await_keypress:
+
+IF SPECTRUM
+       LD   HL,LASTK
+       LD   A,255
+       LD (HL),A
+wkey:  CP   (HL)
+       JR   Z,wkey
+
+       ; get the key, and return it.
+       ld a,(HL)
+       ret
+ELSE
+        ld c,  0x01
+        call 0x0005
+        ret
+
+ENDIF
+
+
+
+;
+; Output a single character, stored in the E register
+;
+bios_output_character:
+
+IF SPECTRUM
+        PUSH_ALL
+        ld a,e
+        RST 0x10
+        POP_ALL
+        ret
+ELSE
+         ld c, 0x02
+         call 0x005
+         ret
+ENDIF
+
+
+;
+; Output a string, terminated by "$".
+;
+; The address of the string is stored in DE
+;
+; NOTE: / TODO: The Spectrum only wants a newline, not a character return.
+bios_output_string:
+
+IF SPECTRUM
+        PUSH_ALL
+        push DE
+        pop HL      ; HL contains the string
+bios_output_repeat:
+        ld a,(hl)   ; Get the character
+        cp 0x0d     ; Ignore the newline & cr.
+        jr z, skip
+        cp 0x0a
+        jr z, skip
+        cp '$'      ; end of string?
+        jr z, bios_output_done
+        ld e,a      ; output the single character
+        call bios_output_character
+skip:
+        inc hl
+        jr bios_output_repeat
+bios_output_done:
+        POP_ALL
+        ret
+ELSE
+        ld c, 0x09
+        call 0x005
+        ret
+ENDIF
+
+
+;
+; Prompt the user for a line of input
+;
+; The way this works is you pass the address of a region of memory,
+; in the DE register.  The first byte is the length of the buffer.
+;
+; On return the second byte of the buffer will be populated by the
+; amount of text which was read, then the input itself:
+;
+bios_read_input:
+IF SPECTRUM
+        PUSH_ALL
+        xor a
+        inc de
+        ld (de),a
+        POPALL
+        ret
+ELSE
+        ld c, 0x0A
+        call 0x005
+        ret
+ENDIF

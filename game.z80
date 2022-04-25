@@ -46,16 +46,6 @@
 
 
 
-; BIOS entry-point
-BDOS_ENTRY_POINT:    EQU 5
-
-; BIOS functions we call
-BDOS_CHARACTER_READ:          EQU 0x01
-BDOS_OUTPUT_STRING:           EQU 0x09
-BDOS_READ_INPUT:              EQU 0x0A
-BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
-
-
 ; Game over if you don't win in this many turns
 MAX_TURN_LIMIT: EQU 100
 
@@ -111,7 +101,11 @@ MACRO POP_ALL
         ;
         ;     https://en.wikipedia.org/wiki/Zero_page_(CP/M)
         ;
-        ORG 100h
+        ORG ENTRYPOINT
+
+        ; Call system-specific setup routine before we
+        ; do anything else.
+        call bios_init
 
         ;
         ; Our game can be compiled with optional "encryption", which uses
@@ -150,16 +144,15 @@ enc_end:
 ENDIF
 
         ; Clear the screen
-        call cls_function
+        call bios_clear_screen
 
         ; Present the game intro-text.
         ld de, usage_message
         call show_msg
 
         ; Pause for input here.
-        ld c,BDOS_CHARACTER_READ
-        call BDOS_ENTRY_POINT
-        call cls_function
+        call bios_await_keypress
+        call bios_clear_screen
 
         ; Show the starting-location.
         call show_newline
@@ -222,8 +215,7 @@ not_won:
 
         ; 5. Read a line of input from the player.
         ld de, INPUT_BUFFER
-        ld c, BDOS_READ_INPUT
-        call BDOS_ENTRY_POINT
+        call bios_read_input
 
         ; Every five turns we show a message about the ship.
         ;
@@ -436,9 +428,8 @@ de_delay_loop:
          jr nz, hl_delay_loop
 
          PUSH_ALL
-         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
          ld e, "."
-         call BDOS_ENTRY_POINT
+         call bios_output_character
          POP_ALL
        djnz hl_delay
 
@@ -447,11 +438,10 @@ de_delay_loop:
 ;
 ; Show a message, terminated with "$"
 ;
-; Address in DE
+; Address in DE.
 ;
 show_msg:
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+        call bios_output_string
         ret
 
 
@@ -496,9 +486,8 @@ Num2:	inc	a
 
         PUSH_ALL
 
-        ld c, BDOS_OUTPUT_SINGLE_CHARACTER
         ld e, a
-        call BDOS_ENTRY_POINT
+        call bios_output_character
 
         POP_ALL
 	ret
@@ -990,14 +979,6 @@ bad_language_function:
         jp show_msg
 
 
-
-;
-; Command-Handler CLS
-;
-;  Clear the screen
-cls_function:
-        ld de, CLS_MSG
-        jp show_msg
 
 ;
 ; Command-Handler DOWN
@@ -1629,6 +1610,7 @@ inv_item_not_carried:
 ; If we see "LOOK AT XXX" then we replace the command with "EXAMINE YYYY"
 ;
 look_function:
+
         ld de, LOOK_AT                ;; "LOOK AT "
         ld b, 7                       ;; strlen("LOOK_AT ")
         ld hl, INPUT_BUFFER+2
@@ -2538,7 +2520,6 @@ use_generator_won_fn:
 
 
 
-
 ;********************************************************************
 ; Data / State Storage
 ;********************************************************************
@@ -2636,10 +2617,6 @@ failed_find_torch_lit_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
-CLS_MSG:
-        db 27, "[2J"            ; "clear"
-        db 27, "[H"             ; "home"
-        db "$"
 use_gen_location:
         db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
         db 0x0a, 0x0d, "$"
@@ -2728,7 +2705,17 @@ ON:
         db " ON "
 usage_message:
         db 0x0a, 0x0d
-
+IF SPECTRUM
+        db "                                "
+        db "                                "
+        db "                                "
+        db "The lighthouse of Doom          "
+        db "                                "
+        db "            (c) 2022 Steve Kemp "
+        db "                                "
+        db "                                "
+        db " Press any key to start.        $"
+ELSE
         db "        .n.         ", 27, "[1;4mThe lighthouse of doom", 27, "[1;0m",  0x0a, 0x0d
         db "       /___\\ ", 0x0a, 0x0d
         db "       [|||]        ", 0x0a, 0x0d
@@ -2760,6 +2747,7 @@ include "version.z80"
         db "Any references to the Paw Patrol are entirely deliberate."
         db 0x0a, 0x0d, 0x0a, 0x0d
         db "Press any key to start.$"
+ENDIF
 
 PLAYER_DEAD_MESSAGE:
         db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
@@ -2949,7 +2937,7 @@ item_16_long: db "The dog-basket is a faded red colour, and covered with dog-hai
 ;
 command_table:
         DEFB 3, 'CLS', 1
-          DEFW cls_function
+          DEFW bios_clear_screen
         DEFB 4, 'DOWN', 0
           DEFW down_function
         DEFB 4, 'DROP', 0
@@ -3386,3 +3374,7 @@ TMP_BUFFER_LEN: EQU 50
 ; launch - if that support is enabled.
 ;
 end_of_source:
+
+include "bios.z80"
+
+END ENTRYPOINT
