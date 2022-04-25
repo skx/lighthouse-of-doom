@@ -25,7 +25,7 @@ version:
 
 # build the game for CP/M
 game-cpm: game.z80 bios.z80 version Makefile
-	pasmo --equ ENTRYPOINT=100 --equ ENCRYPT_STRINGS=0 --equ SPECTRUM=0 game.z80 lihouse.com
+	pasmo --equ ENTRYPOINT=100h --equ ENCRYPT_STRINGS=0 --equ SPECTRUM=0 game.z80 lihouse.com
 
 # build the game for the ZX Spectrum
 game-spectrum: game.z80 bios.z80 version Makefile
@@ -37,7 +37,7 @@ encrypt: encrypt.c
 
 # Build the game for release - with strings encrypted
 release: game.z80 encrypt version
-	pasmo --equ ENTRYPOINT=100 --equ ENCRYPT_STRINGS=1 --equ SPECTRUM=0 game.z80 lihouse.com
+	pasmo --equ ENTRYPOINT=100h --equ ENCRYPT_STRINGS=1 --equ SPECTRUM=0 game.z80 lihouse.com
 	./encrypt
 	mv lihouse2.com lihouse.com
 
