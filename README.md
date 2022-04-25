@@ -85,6 +85,7 @@ is a small amount of platform-specific code found in [bios.z80](bios.z80).
 The `Makefile` should build everything appropriately for both systems,
 defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 
+
 ### Z80 Changes
 
 * Along the way I realized that having fixed inventory slots made the coding more of a challenge, so I made the location of each object a property of the object itself.
@@ -92,14 +93,15 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 * There are __two__ victory conditions.
 * The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
   * This stops users from looking through the binary for hints.
-  * Run `make release` to build the _protected_ version.
-  * Run `make game` to build a raw version.
+  * Run `make release` to build the _protected_ CP/M version.
+  * Run `make game-cpm` to build a raw CP/M version.
+  * Run `make game-spectrum` to build the ZX Spectrum version.
 
 
 ### Compiling & Running It
 
 Ensure you have the `pasmo` assembler installed, then build the code
-by running `make game`, or `make release`.
+by running `make`, or `make release`.
 
 In either case the output will be a binary named `lihouse.com` which you
 should be able to run upon your system - or under a CP/M emulator.

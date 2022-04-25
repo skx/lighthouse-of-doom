@@ -2704,7 +2704,6 @@ THE:
 ON:
         db " ON "
 usage_message:
-        db 0x0a, 0x0d
 IF SPECTRUM
         db "                                "
         db "                                "
@@ -2716,6 +2715,7 @@ IF SPECTRUM
         db "                                "
         db " Press any key to start.        $"
 ELSE
+        db 0x0a, 0x0d
         db "        .n.         ", 27, "[1;4mThe lighthouse of doom", 27, "[1;0m",  0x0a, 0x0d
         db "       /___\\ ", 0x0a, 0x0d
         db "       [|||]        ", 0x0a, 0x0d
