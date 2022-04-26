@@ -67,11 +67,12 @@ ENDIF
 
 
 ;
-; Await a keypress, which is ignored
+; Await a keypress, which is returned in the A-register
 ;
 bios_await_keypress:
 
 IF SPECTRUM
+       push hl
        LD   HL,LASTK
        LD   A,255
        LD (HL),A
@@ -80,6 +81,7 @@ wkey:  CP   (HL)
 
        ; get the key, and return it.
        ld a,(HL)
+       pop hl
        ret
 
 ELSE
@@ -147,7 +149,7 @@ ENDIF
 
 
 ;
-; Prompt the user for a line of input
+; Prompt the user for a line of input.
 ;
 ; The way this works is you pass the address of a region of memory,
 ; in the DE register.  The first byte is the length of the buffer.
@@ -155,9 +157,53 @@ ENDIF
 ; On return the second byte of the buffer will be populated by the
 ; amount of text which was read, then the input itself:
 ;
+; DE points to the memory buffer;
+;
+;  0x00 - buffer size
+;  0x01 - read-length
+;  0x02 ... char..
 bios_read_input:
 IF SPECTRUM
         PUSH_ALL
+
+        push de
+        pop  hl   ; buffer -> hl
+
+        inc hl    ; skip to the returned size
+        inc de
+
+        xor a
+        ld (hl),a  ; size is now zero
+        inc hl ; point to the character
+
+read_input_again:
+        ; read a char
+        call bios_await_keypress
+
+        cp 13
+        jr z, read_input_over
+
+        ; display it
+        push de
+        ld e,a
+        call bios_output_character
+        pop de
+
+        ; add the character to the buffer
+        ld (hl),a
+        inc hl
+
+        ; increase the input count
+        ld a,(de)
+        inc a
+        ld (de),a
+
+        ; repeat
+        jr read_input_again
+
+read_input_over:
+        push af
+        pop af
         POP_ALL
         ret
 ELSE
