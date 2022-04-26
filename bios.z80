@@ -166,7 +166,8 @@ bios_read_input:
 IF SPECTRUM
         PUSH_ALL
 
-        ; Move the cursor to the bottom of the screen
+        ; Move the cursor to the bottom of the screen, and
+        ; display a prompt
         PUSH_ALL
         ld a,22          ; AT code.
         rst 16
@@ -174,6 +175,9 @@ IF SPECTRUM
         rst 16           ; set the vertical coord
         ld a,0           ; horizontal position.
         rst 16           ; set the horizontal coord.
+
+        ld e, ">"
+        call bios_output_character
         POP_ALL
 
         push de
@@ -212,12 +216,20 @@ read_input_again:
         jr read_input_again
 
 read_input_over:
-        push af
-        pop af
+        ; move the cursor to the top of the screen, and
+        ; prepare for output again.
+        call bios_clear_screen
+
         POP_ALL
         ret
 ELSE
+        ; 3. show the prompt
+        ld de, prompt_message
+        call bios_output_string
+
         ld c, 0x0A
         call 0x005
         ret
+prompt_message:
+        db 0x0a, 0x0d,">$"
 ENDIF

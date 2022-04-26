@@ -204,16 +204,13 @@ not_dead:
         jp 0x0000
 
 not_won:
-        ; 3. show the prompt
-        ld de, prompt_message
-        call bios_output_string
 
-        ; 4. Erase our input buffer.
+        ; 3. Erase our input buffer.
         ld hl, INPUT_BUFFER+2
         ld b, 0xff
         call erase_buffer
 
-        ; 5. Read a line of input from the player.
+        ; 4. Read a line of input from the player.
         ld de, INPUT_BUFFER
         call bios_read_input
 
@@ -239,7 +236,7 @@ ship_warning_over:
         cp 0
         jr z, not_won
 
-        ; 6. Convert the input to upper-case.
+        ; 5. Convert the input to upper-case.
         ld b,a
         inc hl
         call uppercase_buffer
@@ -254,7 +251,7 @@ ship_warning_over:
         ; Not ideal, but more useable
         call filter_input_buffer
 
-        ;  7.  Take the input from the user, and see if we have a registered
+        ; 6.  Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
         ld hl, INPUT_BUFFER+2
@@ -2656,8 +2653,6 @@ cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
         db 0x0a, 0x0d, "You drop it", 0x0a, 0x0d, "$"
-prompt_message:
-        db 0x0a, 0x0d,">$"
 inventory_empty_message:
         db 0x0a, 0x0d, "You are not carrying anything", 0x0a, 0x0d, "$"
 you_carrying_message:
