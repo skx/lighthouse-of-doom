@@ -287,7 +287,6 @@ read_input_over:
         POP_ALL
         ret
 ELSE
-        ; 3. show the prompt
         push de
         ld de, prompt_message
         call bios_output_string
