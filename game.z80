@@ -176,13 +176,13 @@ game_start:
         call bios_clear_screen
 
         ; Show the starting-location.
-        call show_newline
         FAKE_LOOK
 
         ; The start of our game loop.
         ;
-        ; Here we basically read a line of input, attempt to call the
-        ; appropriate handler and then repeat.
+        ; Here we basically read a line of input, process it, then
+        ; attempt to call the appropriate handler.  This repeats until
+        ; the game is over, one way or another.
         ;
         ; We upper-case all input to allow easier matching to our
         ; command/dispatch-table.

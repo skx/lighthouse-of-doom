@@ -15,7 +15,6 @@ Quick links within this README file:
 
 * [Plot of the game](#game-plot)
 * [C Implementation](#c-implementation)
-  * [Building & running it](#building--running-it)
 * [Z80 Implementation](#z80-implementation)
   * [Z80 Changes](#z80-changes)
 * [Compiling & running it](#compiling--running-it)
@@ -60,13 +59,6 @@ too much state to care about:
 * Whether you won/lost.
 
 
-### Building & Running It
-
-Build the game by running `make`, and then run `./lighthouse`
-
-If you get stuck you can see most of the available commands by entering `help`.
-
-
 
 ## Z80 Implementation
 
@@ -95,7 +87,6 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 * The CP/M version of the game can be built with the text-strings, and game code, protected by simple XOR encryption:
   * This stops users from looking through the binary for hints.
   * Run `make release` to build the _protected_ CP/M version.
-  * Run `make game-cpm` to build a raw CP/M version.
 
 
 ## Compiling & Running It
@@ -104,7 +95,7 @@ Ensure you have the `pasmo` assembler installed, and then use the supplied Makef
 
 Running `make` will generate the default targets:
 
-* `make lighthouse` -> Build the game for linux.
+* `make lighthouse`  -> Build the game for linux.
 * `make lihouse.com` -> Build the game for CP/M, without the XOR encryption.
 * `make lihouse.tap` -> Build the game for the 48k ZX Spectrum.
 
