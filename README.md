@@ -1,14 +1,15 @@
 # The Lighthouse of Doom
 
 This repository contain a simple text-based adventure game, implemented
-twice, once in portable C, and once in Z80 assembly language, targetted
-at the CP/M operating system.
+twice, once in portable C, and once in Z80 assembly language, available
+for both the CP/M operating system and the humble 48k ZX Spectrum.
 
 My intention was to write a simple text-based adventure game to run under
 CP/M.  Starting large projects in Z80 assembly language from scratch
 is a bit of a daunting prospect, so I decided to code the game in C first,
 so that I could get the design right, and avoid getting stuck in too many
-low-level details initially.
+low-level details initially.  Later I ported to the Spectrum, because
+it seemed like a fun challenge for myself!
 
 Quick links within this README file:
 
@@ -17,8 +18,8 @@ Quick links within this README file:
   * [Building & running it](#building--running-it)
 * [Z80 Implementation](#z80-implementation)
   * [Z80 Changes](#z80-changes)
-  * [Compiling & running it](#compiling--running-it)
-  * [Downloading It](#downloading-it)
+* [Compiling & running it](#compiling--running-it)
+* [Downloading It](#downloading-it)
 * [Bugs?](#bugs)
 
 
@@ -78,37 +79,50 @@ The implementation uses a simple set of structures:
 * An item-table to store details about each object in the game.
 * A person table to store telephone messages.
 
-The whole implementation is defined in the file [game.z80](game.z80).
+The main implementation can be found in the file [game.z80](game.z80),
+but because we support two targets (CP/M 2.x and the ZX Spectrum) there
+is a small amount of platform-specific code found in [bios.z80](bios.z80).
 
-Along the way I did realize that having fixed inventory slots made the
-coding more of a challenge, so I made the location of each object a
-property of the object itself.
+The `Makefile` should build everything appropriately for both systems,
+defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 
 
 ### Z80 Changes
 
+* Along the way I realized that having fixed inventory slots made the coding more of a challenge, so I made the location of each object a property of the object itself.
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
 * There are __two__ victory conditions.
-* The Z80 version can be built with the text-strings, and game code, protected by simple XOR encryption
+* The CP/M version of the game can be built with the text-strings, and game code, protected by simple XOR encryption:
   * This stops users from looking through the binary for hints.
-  * Run `make release` to build the _protected_ version.
-  * Run `make game` to build a raw version.
+  * Run `make release` to build the _protected_ CP/M version.
+  * Run `make game-cpm` to build a raw CP/M version.
 
 
-### Compiling & Running It
+## Compiling & Running It
 
-Ensure you have the `pasmo` assembler installed, then build the code
-by running `make game`, or `make release`.
+Ensure you have the `pasmo` assembler installed, and then use the supplied Makefile to compile the game.
 
-In either case the output will be a binary named `lihouse.com` which you
-should be able to run upon your system - or under a CP/M emulator.
+Running `make` will generate the default targets:
+
+* `make lighthouse` -> Build the game for linux.
+* `make lihouse.com` -> Build the game for CP/M, without the XOR encryption.
+* `make lihouse.tap` -> Build the game for the 48k ZX Spectrum.
+
+If you wish to build only individual things then :
+
+* `make game-cpm` to build a normal CP/M version.
+* `make game-spectrum` to build the ZX Spectrum version.
+* `make lighthouse` will build the C-game for Linux
+* `make release` will build the _protected_ CP/M version.
 
 
-### Downloading It
+
+## Downloading It
 
 If you look on our [release page](https://github.com/skx/lighthouse-of-doom/releases/) you can find the latest stable build.
 
-Transfer `lihouse.com` to your system, and run `LIHOUSE` to launch it.
+* For CP/M download `lihouse.com` to your system, and then run `LIHOUSE` to launch it.
+* For the ZX Spectrum download `lihouse.tap` to your system, and then launch in your favourite emulator.
 
 
 ## Bugs?
@@ -118,7 +132,7 @@ Report any bugs as you see them:
 * A crash of the game is a bug.
 * Bad spelling, grammar, or broken punctuation are also bugs.
 * Getting into a zombie-state where winning or losing are impossible is a bug.
-  * Albeit unlikely!
+
 
 
 Steve

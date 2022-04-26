@@ -1,0 +1,301 @@
+; bios.z80
+;
+; This file contains the common primitives we use for interfacing
+; with CP/M or the ZX Spectrum (48k).
+;
+; We don't use many primitives, but we do need some facilities from
+; the operating system, or the Spectrum ROM:
+;
+;  Pause for a keypress.
+;
+;  Clear the screen.
+;
+;  Output a string.
+;
+;  Allow the user to enter input
+;
+;  Pause for a "small delay"
+;
+; The routines here will work for both systems, and contain the only
+; platform-specific code we need.
+;
+
+
+;
+; Initialization routine for the BIOS, if needed
+; {{
+bios_init:
+
+IF SPECTRUM
+   ld a,2
+   call 5633    ; CHAN_OPEN
+ENDIF
+   ret
+; }}
+
+;
+; Delay for "a short while".
+;
+; This is used for showing "dots" in the SLEEP command, or when the
+; grue is threatening you..
+;
+; {{
+bios_delay:
+
+IF SPECTRUM
+   PUSH_ALL
+wait:
+   ld hl,pretim        ; previous time setting
+   ld a,(23672)        ; current timer setting set by ZX Spectrum
+   sub (hl)            ; difference between the two.
+   cp 2                ; have two frames elapsed yet?
+   jr nc,wait0         ; yes, no more delay.
+   jp wait
+wait0:
+   ld a,(23672)        ; current timer.
+   ld (hl),a           ; store this setting.
+   POP_ALL
+   ret
+
+pretim: defb 0
+
+ELSE
+    ; Random values found by experimentation with my own system
+    ld hl,0xffff / 8
+hl_delay_loop:
+    inc hl
+    ld de, 0xffff - 10
+de_delay_loop:
+    inc de
+    ld a, d
+    or e
+    jr nz, de_delay_loop
+    ld a,h
+    or l
+    jr nz, hl_delay_loop
+    ret
+
+ENDIF
+;; }}
+
+
+
+;
+; Clear the screen.
+;
+; {{
+bios_clear_screen:
+
+IF SPECTRUM
+        PUSH_ALL
+        ld a,2
+        call 0x1601  ; ROM_OPEN_CHANNEL
+        call 0x0DAF  ; ROM_CLS
+        POP_ALL
+        ret
+
+ELSE
+        ld de, cpm_clear_screen_msg
+        call bios_output_string
+        ret
+
+cpm_clear_screen_msg:
+        db 27, "[2J"            ; "clear"
+        db 27, "[H"             ; "home"
+        db "$"
+ENDIF
+; }}
+
+;
+; Await a keypress.  The pressed-key will be returned in the A-register.
+;
+; {{
+bios_await_keypress:
+
+IF SPECTRUM
+       push hl
+       ld   hl, 0x5C08   ; LASTK - Set by the Spectrum ROM
+       ld   a,255
+       ld (hl),a
+await_key:
+       cp   (hl)
+       jr   z,await_key
+
+       ; get the key, and return it.
+       ld a,(hl)
+       pop hl
+       ret
+ELSE
+       ld c,  0x01
+       call 0x0005
+       ret
+ENDIF
+; }}
+
+
+;
+; Output a single character, stored in the E register.
+;
+; {{
+bios_output_character:
+        PUSH_ALL
+IF SPECTRUM
+        ; output the character
+        ld a,e
+        RST 0x10
+ELSE
+        ld c, 0x02
+        call 0x005
+ENDIF
+        POP_ALL
+        ret
+; }}
+
+;
+; Output a string, terminated by "$".
+;
+; The address of the string is stored in DE.  The spectrum version
+; will replace unprintable character from the \r\n pair with a space.
+;
+; To cope with inline newlines we'll count the length of the string
+; and call the ROM printing routine.
+;
+; NOTE/TODO: This means we need to beware of the SCROLL (Y/N) prompt
+;
+; {{
+bios_output_string:
+        PUSH_ALL
+IF SPECTRUM
+        ; DE contains the string
+        ; We want to get BC containing the string length
+        push de
+        ld bc, 0
+length_check:
+        ld a,(de)
+
+        ; replace 0x0a with a space
+        cp 0x0a
+        jr nz, continue_print
+        ld a,32
+        ld (de),a
+continue_print:
+        cp '$'
+        jr z, length_found
+        inc bc
+        inc de
+        jr length_check
+length_found:
+        pop de
+        call 0x203C
+ELSE
+        ld c, 0x09
+        call 0x005
+ENDIF
+        POP_ALL
+        ret
+; }}
+
+;
+; Prompt the user for a line of input.
+;
+; The way this works is you pass the address of a region of memory,
+; in the DE register.  The first byte is the length of the buffer.
+;
+; On return the second byte of the buffer will be populated by the
+; amount of text which was read, then the input itself:
+;
+; DE points to the memory buffer;
+;
+;  0x00 - buffer size
+;  0x01 - read-length
+;  0x02 ... char..
+; {{
+bios_read_input:
+IF SPECTRUM
+        PUSH_ALL
+
+        ; Move the cursor to the bottom of the screen, and
+        ; display a prompt
+        PUSH_ALL
+        ld a,22          ; AT code.
+        rst 16
+        ld a,21          ; vertical coord.
+        rst 16           ; set the vertical coord
+        ld a,0           ; horizontal position.
+        rst 16           ; set the horizontal coord.
+
+        ld e, ">"
+        call bios_output_character
+        POP_ALL
+
+        push de
+        pop  hl   ; buffer -> hl
+
+        inc hl    ; skip to the returned size
+        inc de
+
+        xor a
+        ld (hl),a  ; size is now zero
+        inc hl ; point to the character
+
+read_input_again:
+        ; read a char
+        call bios_await_keypress
+
+        ; return?  Then we're done
+        cp 13
+        jr z, read_input_over
+
+        ; delete?  trash the input and start again.
+        cp 12
+        jr z, reset_line
+
+        ; escape? trash the input and start again.
+        cp 7
+        jr z, reset_line
+
+not_backspace:
+        ; display it
+        push de
+        ld e,a
+        call bios_output_character
+        pop de
+
+        ; add the character to the buffer
+        ld (hl),a
+        inc hl
+
+        ; increase the input count
+        ld a,(de)
+        inc a
+        ld (de),a
+
+        ; repeat
+        jr read_input_again
+
+reset_line:
+        ; clear the screen, and restart the input process
+        call bios_clear_screen
+        POP_ALL
+        jr bios_read_input
+
+read_input_over:
+        ; move the cursor to the top of the screen, and
+        ; prepare for output again.
+        call bios_clear_screen
+
+        POP_ALL
+        ret
+ELSE
+        ; 3. show the prompt
+        push de
+        ld de, prompt_message
+        call bios_output_string
+        pop de
+        ld c, 0x0A
+        call 0x005
+        ret
+prompt_message:
+        db 0x0a, 0x0d,">$"
+ENDIF
+; }}

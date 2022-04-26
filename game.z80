@@ -8,13 +8,11 @@
 ;
 ;
 ; This is a port of the lighthouse-of-doom game from C to Z80 assembly, such
-; that it will run under CP/M 2.x.
-;
+; that it will run under CP/M 2.x and the 48k ZX Spectrum.
 ;
 ; Although the game has been ported that process has resulted in some changes
 ; to the text, and the command-handlers.  If you've played the C game, and
 ; completed it, there will be no significant new surprises.
-;
 ;
 ; Rather than having a global player-inventory store, and a place
 ; in each location for object storage we've instead make the location
@@ -46,21 +44,11 @@
 
 
 
-; BIOS entry-point
-BDOS_ENTRY_POINT:    EQU 5
-
-; BIOS functions we call
-BDOS_CHARACTER_READ:          EQU 0x01
-BDOS_OUTPUT_STRING:           EQU 0x09
-BDOS_READ_INPUT:              EQU 0x0A
-BDOS_OUTPUT_SINGLE_CHARACTER: EQU 0x02
-
-
 ; Game over if you don't win in this many turns
 MAX_TURN_LIMIT: EQU 100
 
 ; Maximum number of turns you can survive being near a grue
-MAX_GRUE_EXPOSURE: EQU 5
+MAX_GRUE_EXPOSURE: EQU 3
 
 
 
@@ -81,7 +69,7 @@ MACRO FAKE_LOOK
 
 
 ;
-; Simple macro to push all registers
+; Simple macro to push all (important) registers.
 ;
 MACRO PUSH_ALL
         push af
@@ -93,7 +81,7 @@ MACRO PUSH_ALL
 
 
 ;
-; Simple macro to pop all registers
+; Simple macro to pop all (important) registers.
 ;
 MACRO POP_ALL
         pop hl
@@ -105,13 +93,17 @@ MACRO POP_ALL
 
 
         ;
-        ; Entry-point of CP/M binaries is 0x100.
-        ;
-        ; The zero-page, or PSP, is located before that:
+        ; Entry-point of CP/M binaries is 0x100, as the zero-page, or PSP,
+        ; is located before that:
         ;
         ;     https://en.wikipedia.org/wiki/Zero_page_(CP/M)
         ;
-        ORG 100h
+        ; Entry-point for the ZX Spectrum port is 32768, chosen randomly.
+        ;
+        ORG ENTRYPOINT
+
+        ; Call system-specific setup routine before we do anything else.
+        call bios_init
 
         ;
         ; Our game can be compiled with optional "encryption", which uses
@@ -139,7 +131,6 @@ enc_loop:
         or e
         jr nz,enc_loop     ; no, then repeat
 
-
         jp enc_end         ; Jump over our marker to the start of the game.
 
         ;
@@ -149,17 +140,40 @@ enc_loop:
 enc_end:
 ENDIF
 
+        ; Here we're going to copy our game-state to the end of RAM
+        ;
+        ; We do this so that everything "resets" if the player dies/wins
+        ; and then chooses to play again when prompted.
+        ;
+        ; We don't know for sure how big the data is, but we assume it'll
+        ; fit from 0xD000..
+        ld hl, per_game_state_start
+        ld de, 0xD000
+        ld bc, end_of_source - per_game_state_start
+        ldir
+
+game_start:
+
+        ; Reset the state of the the inventory, the game-world, etc.
+        ;
+        ; This is pointless at the start of the game, as nothing is
+        ; modified, but we jump here if the user chooses to replay the
+        ; game, so we have it here for that reason.
+        ld hl, 0xD000
+        ld de, per_game_state_start
+        ld bc, end_of_source - per_game_state_start
+        ldir
+
         ; Clear the screen
-        call cls_function
+        call bios_clear_screen
 
         ; Present the game intro-text.
         ld de, usage_message
-        call show_msg
+        call bios_output_string
 
         ; Pause for input here.
-        ld c,BDOS_CHARACTER_READ
-        call BDOS_ENTRY_POINT
-        call cls_function
+        call bios_await_keypress
+        call bios_clear_screen
 
         ; Show the starting-location.
         call show_newline
@@ -174,59 +188,60 @@ ENDIF
         ; command/dispatch-table.
 game_loop:
 
-        ; 0. Have we died?
+        ; Have we exceeded the turn-count?
         ld hl, TURN_COUNT
         ld a, (hl)
         cp MAX_TURN_LIMIT
         jp c,game_loop_continue
 
-        ld hl, PLAYER_DEAD
+        ld hl, PLAYER_DEAD_FLAG
         inc (hl)
 
 game_loop_continue:
 
-        ; 1. Is the player dead?
-        ld hl, PLAYER_DEAD
+        ; Did the player die of a magic-overdoes
+        ld hl, PLAYER_MAGIC_OVERDOSE_FLAG
+        ld a, (hl)
+        cp 1
+        jp z, play_again
+
+        ; Is the player dead?
+        ld hl, PLAYER_DEAD_FLAG
         ld a, (hl)
         cp 1
         jp nz,not_dead
 
         ; The player is dead.  Oops.
         ld de, PLAYER_DEAD_MESSAGE
-        call show_msg
+        call bios_output_string
         call turns_function
-        jp 0x0000
+        jr play_again
 
 not_dead:
-        ; 2. Did the player win?
-        ld hl, PLAYER_WON
+        ; Did the player win?
+        ld hl, PLAYER_WON_FLAG
         ld a, (hl)
         cp 1
         jp nz, not_won
 
         ; The player won.  Yay!
         ld de, PLAYER_WON_MESSAGE
-        call show_msg
+        call bios_output_string
         call turns_function
-        jp 0x0000
+        jr play_again
 
 not_won:
-        ; 3. show the prompt
-        ld de, prompt_message
-        call show_msg
 
-        ; 4. Erase our input buffer.
+        ; Erase our input buffer.
         ld hl, INPUT_BUFFER+2
         ld b, 0xff
         call erase_buffer
 
-        ; 5. Read a line of input from the player.
+        ; Read a line of input from the player.
         ld de, INPUT_BUFFER
-        ld c, BDOS_READ_INPUT
-        call BDOS_ENTRY_POINT
+        call bios_read_input
 
         ; Every five turns we show a message about the ship.
-        ;
         ld hl, SHIP_WARNING
         ld a, (hl)              ; get the value
         cp 5                    ; five turns?
@@ -234,7 +249,7 @@ not_won:
 
         ld (hl), 0              ; reset the count
         ld de, ship_closer_msg  ; show the message
-        call show_msg
+        call bios_output_string
 
         jp ship_warning_over
 
@@ -247,7 +262,7 @@ ship_warning_over:
         cp 0
         jr z, not_won
 
-        ; 6. Convert the input to upper-case.
+        ; Convert the input to upper-case.
         ld b,a
         inc hl
         call uppercase_buffer
@@ -262,7 +277,7 @@ ship_warning_over:
         ; Not ideal, but more useable
         call filter_input_buffer
 
-        ;  7.  Take the input from the user, and see if we have a registered
+        ; Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
         ld hl, INPUT_BUFFER+2
@@ -289,15 +304,51 @@ ship_warning_over:
 no_handler:
         ; Show the user that their command wasn't understood.
         ld de, invalid_msg
-        call show_msg
+        call bios_output_string
 
         ; Did we get eaten?
         call maybe_grue_death
 
-        ;  8.  Goto 1
-        jp game_loop              ; restart
+        ; Return to the start of our game-loop.
+        jp game_loop
 
 
+
+;
+; Ask the user if they wish to play again
+;
+play_again:
+        ld de, play_again_msg
+        call bios_output_string
+
+        call bios_await_keypress
+        cp 'y'
+        jr z, play_again_yes
+        cp 'Y'
+        jr z, play_again_yes
+        cp 'n'
+        jr z, play_again_no
+        cp 'N'
+        jr z, play_again_no
+        call bios_clear_screen
+        jr play_again
+
+
+; User chose "Y" to "play again?"
+play_again_yes:
+        jp game_start
+
+; User chose "N" to "play again?"
+play_again_no:
+        ld de, play_again_no
+        call bios_output_string
+IF SPECTRUM
+        ret
+ELSE
+        ld c, 0x0
+        call 0x0005
+        ret
+ENDIF
 
 
 ; This will be a major part of our code so it is perhaps a little more
@@ -419,40 +470,18 @@ JP_HL:
 ; Show some significant dots
 ;
 show_dots:
+        ; forty dots
         ld b, 40
-
-hl_delay:
-         ld hl,0xffff / 8
-hl_delay_loop:
-         inc hl
-            ld de, 0xffff - 10
-de_delay_loop:
-            inc de
-            ld a, d
-            or e
-            jr nz, de_delay_loop
-         ld a,h
-         or l
-         jr nz, hl_delay_loop
-
-         PUSH_ALL
-         ld c, BDOS_OUTPUT_SINGLE_CHARACTER
-         ld e, "."
-         call BDOS_ENTRY_POINT
-         POP_ALL
-       djnz hl_delay
-
-       ret
-
-;
-; Show a message, terminated with "$"
-;
-; Address in DE
-;
-show_msg:
-        ld c, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
+dot_loop:
+        PUSH_ALL
+         call bios_delay
+         ld e, '.'
+         call bios_output_character
+        POP_ALL
+        djnz dot_loop
         ret
+
+
 
 
 
@@ -496,9 +525,8 @@ Num2:	inc	a
 
         PUSH_ALL
 
-        ld c, BDOS_OUTPUT_SINGLE_CHARACTER
         ld e, a
-        call BDOS_ENTRY_POINT
+        call bios_output_character
 
         POP_ALL
 	ret
@@ -869,18 +897,18 @@ maybe_grue_death:
 
         call show_dots
         ld de, grue_message
-        call show_msg
+        call bios_output_string
         ret
 
 death_by_grue_grue:
         ld de, you_were_eaten
-        call show_msg
+        call bios_output_string
 
-        ld hl,PLAYER_DEAD
+        ld hl,PLAYER_DEAD_FLAG
         inc (hl)
 
         call turns_function
-        jp 0x0000
+        jp play_again
         ret
 
 ;
@@ -987,17 +1015,9 @@ input_second_term_end:
 ;
 bad_language_function:
         ld de, BAD_LANGUAGE_MSG
-        jp show_msg
+        jp bios_output_string
 
 
-
-;
-; Command-Handler CLS
-;
-;  Clear the screen
-cls_function:
-        ld de, CLS_MSG
-        jp show_msg
 
 ;
 ; Command-Handler DOWN
@@ -1017,7 +1037,7 @@ down_function:
         ; fall-through other options will show "NO DOWN"
 no_down:
         ld de, no_down_msg
-        call show_msg
+        call bios_output_string
         ret
 
 down_on_top_floor:
@@ -1034,7 +1054,7 @@ down_on_ground_floor:
         jr z, down_found_trap
 
         ld de, failed_find_trapdoor_open_msg
-        call show_msg
+        call bios_output_string
         ret
 down_found_trap:
 
@@ -1109,7 +1129,7 @@ drop_function:
         jp z, drop_object
 
         ld de, DROP_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 drop_object:
@@ -1123,7 +1143,7 @@ drop_object:
         ; if we didn't find it in the current location or inventory
         ; then we're not carrying it.
         ld de, not_carrying_item_msg
-        call show_msg
+        call bios_output_string
         ret
 
 drop_found_it:
@@ -1162,7 +1182,7 @@ drop_found_it:
         or e
         jr nz, drop_invoke_handler
         ld de, you_drop_it
-        call show_msg
+        call bios_output_string
         ret
 
 drop_invoke_handler:
@@ -1195,7 +1215,7 @@ examine_function:
         jp z, examine_object
 
         ld de, EXAMINE_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 examine_object:
@@ -1209,7 +1229,7 @@ examine_object:
         jp z,examine_found_it
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 examine_found_it:
@@ -1248,7 +1268,7 @@ show_ext_desc:
         ld d,(hl)
 
         ; show it
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1267,7 +1287,7 @@ go_function:
 
 go_unknown:
         ld de, GO_WHERE_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 go_somewhere:
@@ -1303,7 +1323,7 @@ call_function:
 
         ; not in the phone-room?  Show an error and return
         ld de, NO_PHONE_HERE
-        call show_msg
+        call bios_output_string
         ret
 
 call_proceed:
@@ -1313,7 +1333,7 @@ call_proceed:
 
         ; missing person
         ld de, CALL_WHO_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 call_person:
@@ -1330,7 +1350,7 @@ next_person_test:
         ; show the error-message and return
         pop de
         ld de, call_unknown_msg
-        call show_msg
+        call bios_output_string
         ret
 
         ; OK we've got an entry
@@ -1371,7 +1391,7 @@ skip_string2:
         ld e, (hl)
         inc hl
         ld d, (hl)
-        call show_msg
+        call bios_output_string
         ret
 
 ;
@@ -1389,7 +1409,7 @@ get_function:
         jp z, get_object
 
         ld de, GET_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 get_object:
@@ -1401,7 +1421,7 @@ get_object:
         jp z,get_found_it
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 get_found_it:
@@ -1446,7 +1466,7 @@ take_as_normal:
         jr z, get_found_it_take
 
         ld de, cant_take_that_msg
-        call show_msg
+        call bios_output_string
         ret
 
 get_found_it_take:
@@ -1477,7 +1497,7 @@ make_trapdoor_visible:
         jp z, place_trapdoor
 
         ld de, failed_find_trapdoor_msg
-        call show_msg
+        call bios_output_string
         ret
 
 place_trapdoor:
@@ -1511,7 +1531,7 @@ place_trapdoor:
 ;
 help_function:
         ld de, HELP_MSG
-        call show_msg
+        call bios_output_string
         ld de,command_table
 help_function_again: ; have we run out of commands?
         ld a, (de) ; length of string
@@ -1540,7 +1560,7 @@ help_func_loop:  ; copy the command-name to the buffer
         jr z, help_skip_this
         call show_tab
         ld de, TMP_BUFFER
-        call show_msg
+        call bios_output_string
 
 help_skip_this:
         pop de
@@ -1560,12 +1580,12 @@ inventory_function:
         jp z, inventory_show_items      ; Yes.  Go show
 
         ld de,inventory_empty_message   ; Otherwise "Carrying nothing"
-        call show_msg
+        call bios_output_string
         ret
 
 inventory_show_items:
         ld de,you_carrying_message
-        call show_msg
+        call bios_output_string
 
         ;
         ; We know there are items being carried, look for them
@@ -1600,7 +1620,7 @@ inventory_test_item:
 
         PUSH_ALL
           call show_tab
-          call show_msg
+          call bios_output_string
           call show_newline
         POP_ALL
 
@@ -1629,6 +1649,7 @@ inv_item_not_carried:
 ; If we see "LOOK AT XXX" then we replace the command with "EXAMINE YYYY"
 ;
 look_function:
+
         ld de, LOOK_AT                ;; "LOOK AT "
         ld b, 7                       ;; strlen("LOOK_AT ")
         ld hl, INPUT_BUFFER+2
@@ -1670,7 +1691,7 @@ look_function:
 
 look_at_environment:
         ld de,LOOK_FUNCTION_PREFIX
-        call show_msg
+        call bios_output_string
         ld hl, CURRENT_LOCATION  ; get current location
         ld a, (hl)
         ld b, a                  ; multiply by the length of each entry
@@ -1686,7 +1707,7 @@ look_function_show:
         ld d, (hl)
         inc hl
         push hl
-        call show_msg
+        call bios_output_string
         call show_newline
         call show_newline
         pop hl
@@ -1710,7 +1731,7 @@ look_function_show:
         ret z
 look_show_extended:
         push hl
-        call show_msg
+        call bios_output_string
         pop hl
 
         ld a, 1
@@ -1724,7 +1745,7 @@ look_show_extended:
 
         ; Show "You see .."
         ld de,you_see_message
-        call show_msg
+        call bios_output_string
 
         ;
         ; OK at this point we have looked at the room, and
@@ -1775,7 +1796,7 @@ look_item_loop:
 
         PUSH_ALL
           call show_tab
-          call show_msg
+          call bios_output_string
           call show_newline
         POP_ALL
 item_not_present:
@@ -1797,7 +1818,7 @@ item_not_present:
 ; Show a different message each time this is called, until you are killed.
 ;
 magic_function:
-        ld hl, MAGIC_LOCATION
+        ld hl, MAGIC_COUNT
         ld a,(hl)
         inc a
         ld (hl),a
@@ -1813,23 +1834,23 @@ magic_function:
 
         ; magic four
         ld de, magic_four_msg
-        call show_msg
+        call bios_output_string
 
         ; you're dead
-        ld hl, PLAYER_DEAD
+        ld hl, PLAYER_MAGIC_OVERDOSE_FLAG
         inc (hl)
         ret
 magic_one:
         ld de, magic_one_msg
-        call show_msg
+        call bios_output_string
         ret
 magic_two:
         ld de, magic_two_msg
-        call show_msg
+        call bios_output_string
         ret
 magic_three:
         ld de, magic_three_msg
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1842,12 +1863,124 @@ magic_three:
 ;
 quit_function:
         ld de, QUIT_MSG
-        call show_msg
+        call bios_output_string
         call turns_function
-        jp 0x0000
+        jp play_again
 
 
 
+;
+; Command-handler: BIOS
+;
+bios_function:
+        call bios_clear_screen
+        ld de, BIOS_MSG
+        call bios_output_string
+
+bios_function_menu:
+        call bios_await_keypress
+        cp '1'
+        jr nz, not_one
+
+        ; 1. Clear screen
+        call bios_clear_screen
+        jr bios_function
+
+not_one:
+        cp '2'
+        jr nz, not_two
+
+        ; 2. Show a character
+        ld e, '*'
+        call bios_output_character
+        jr bios_function_menu
+
+not_two:
+        cp '3'
+        jr nz, not_three
+
+        ; 3. Input test
+        call bios_clear_screen
+
+        ; 24 characters, default to zero read
+        ld hl, INPUT_BUFFER
+        ld (hl),24
+        inc hl
+        ld (hl), 0
+
+        ld de, INPUT_BUFFER
+        call bios_read_input
+
+        ld hl, INPUT_BUFFER+1
+        ld a,(hl)
+        cp 0
+        jr nz, show_input_buffer
+
+        ld de, no_input
+        call bios_output_string
+        jr pause_for_key
+
+show_input_buffer:
+        ld hl, INPUT_BUFFER
+        inc hl
+        ld b, (hl)
+skip_forward:
+        inc hl
+        djnz skip_forward
+        inc hl
+        ld (hl), '$'
+
+        ld de, you_entered_message
+        call bios_output_string
+        ld de, INPUT_BUFFER+2
+        call bios_output_string
+
+pause_for_key:
+        ld de, press_key_continue
+        call bios_output_string
+        call bios_await_keypress
+bios_function_indirect:
+        jr bios_function
+not_three:
+        cp '4'
+        jr nz,  not_four
+
+        ; 4. delay test
+        call bios_clear_screen
+        ld b, 10
+delay_loop:
+        PUSH_ALL
+         call bios_delay
+         ld e, '.'
+         call bios_output_character
+        POP_ALL
+        djnz delay_loop
+        jr bios_function_indirect
+
+not_four:
+        cp '5'
+        jr nz, not_five
+        ld de, you_pressed
+        call bios_output_string
+        call bios_await_keypress
+        push af
+        call show_a_register
+        ld e, "<"
+        call bios_output_character
+        pop af
+        ld e,a
+        call bios_output_character
+        ld e, ">"
+        call bios_output_character
+
+        jr pause_for_key
+
+not_five:
+        cp '6'
+        jr nz, bios_function_indirect
+        call bios_clear_screen
+        FAKE_LOOK
+        ret
 
 ;
 ; Command-Handler SLEEP
@@ -1855,7 +1988,7 @@ quit_function:
 sleep_function:
 
        ld de, SLEEP_START_MSG
-       call show_msg
+       call bios_output_string
 
        call show_dots
 
@@ -1866,7 +1999,7 @@ sleep_function:
        ld (hl),a
 
        ld de, SLEEP_END_MSG
-       call show_msg
+       call bios_output_string
        ret
 
 
@@ -1878,12 +2011,12 @@ sleep_function:
 turns_function:
         call show_newline
         ld de, PLAYER_TURN_COUNT
-        call show_msg
+        call bios_output_string
         ld hl, TURN_COUNT
         ld a, (hl)
         call show_a_register
         ld de, PLAYER_TURN_COUNT_END
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1898,7 +2031,7 @@ use_function:
         jp z, use_object
 
         ld de, USE_WHAT_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 use_object:
@@ -1910,7 +2043,7 @@ use_object:
         jp z, use_found_object
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_found_object:
@@ -1938,7 +2071,7 @@ use_found_object:
         ret
 use_is_futile:
         ld de, use_generic
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -1983,17 +2116,17 @@ up_on_middle_floor:
 
         ; We're on the middle-floor, going up, carrying the meteor.
         ; That's an easy victory.
-        ld hl, PLAYER_WON
+        ld hl, PLAYER_WON_FLAG
         inc (hl)
 
         ; Show the successful result
         ld de, meteor_saves_the_day
-        call show_msg
+        call bios_output_string
         ret
 
 no_up:
         ld de, no_up_msg
-        call show_msg
+        call bios_output_string
         ret
 
 up_on_dark_room:
@@ -2012,12 +2145,12 @@ up_on_basement_floor:
 
 show_newline:
         ld de, NEWLINE
-        jp show_msg
+        jp bios_output_string
 
 show_tab:
         PUSH_ALL
         ld de, TAB
-        call show_msg
+        call bios_output_string
         POP_ALL
         ret
 
@@ -2029,7 +2162,7 @@ show_tab:
 ;
 wait_function:
         ld de, WAIT_CMD_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 ; }
@@ -2085,7 +2218,7 @@ drop_mirror_fn:
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2131,13 +2264,13 @@ examine_rug_fn:
         inc hl
         ld d,(hl)
 
-        call show_msg
+        call bios_output_string
         ret
 
 rug_on_ground:
 
         ld de, rug_detail_msg
-        call show_msg
+        call bios_output_string
         call make_trapdoor_visible
         ret
 
@@ -2168,7 +2301,7 @@ examine_desk_fn:
         jr z, meteor_hidden
 
         ld de, item_9_long
-        call show_msg
+        call bios_output_string
         ret
 
 meteor_hidden:
@@ -2182,11 +2315,11 @@ meteor_hidden:
 
         ; desk description
         ld de, item_9_long
-        call show_msg
+        call bios_output_string
 
         ; desk addendum
         ld de, desk_has_meteor
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2213,7 +2346,7 @@ take_meteor_fn:
         jr nz, take_meteor
 
         ld de,item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 take_meteor:
@@ -2288,7 +2421,7 @@ take_rug_fn:
 
         ; show a message telling the user about the trapdoor.
         ld de, rug_taken_msg
-        call show_msg
+        call bios_output_string
 
         ; And make the trapdoor visible
         call make_trapdoor_visible
@@ -2325,7 +2458,7 @@ use_book_fn:
         ld d,(hl)
 
         ; show it
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2343,7 +2476,7 @@ use_torch_fn:
         jp z,use_torch_found_t
 
         ld de, failed_find_torch_msg
-        call show_msg
+        call bios_output_string
         ret
 use_torch_found_t:
 
@@ -2372,7 +2505,7 @@ use_torch_found_t:
 
         pop af; fixup
         ld de, failed_find_torch_lit_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_torch_found_t2:
@@ -2393,7 +2526,7 @@ use_torch_found_t2:
 
         ; Show the message
         ld de, TORCH_ON_MSG
-        call show_msg
+        call bios_output_string
 
         ; If you're in the dark-place we'll now warp you to the
         ; normal basement.
@@ -2405,7 +2538,7 @@ use_torch_found_t2:
 
         ; show that you can see where you are
         ld de,NOW_YOU_SEE
-        call show_msg
+        call bios_output_string
 
         ; show the location
         FAKE_LOOK
@@ -2429,7 +2562,7 @@ use_trapdoor_fn:
         jp z,use_trapdoor_found_t
 
         ld de, failed_find_trapdoor_msg
-        call show_msg
+        call bios_output_string
         ret
 use_trapdoor_found_t:
 
@@ -2449,7 +2582,7 @@ use_trapdoor_found_t:
         jr z, open_trapdoor_present
 
         ld de, item_not_present_msg
-        call show_msg
+        call bios_output_string
         ret
 
 open_trapdoor_present:
@@ -2470,7 +2603,7 @@ open_trapdoor_present:
         jp z,use_trapdoor_found_t2
 
         ld de, failed_find_trapdoor_open_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_trapdoor_found_t2:
@@ -2494,7 +2627,7 @@ use_trapdoor_found_t2:
 
         ; Show the message
         ld de, TRAPDOOR_OPEN_MSG
-        call show_msg
+        call bios_output_string
         ret
 
 
@@ -2511,7 +2644,7 @@ use_generator_fn:
         jp z,use_generator_found_t
 
         ld de, failed_find_generator_msg
-        call show_msg
+        call bios_output_string
         ret
 
 use_generator_found_t:
@@ -2523,18 +2656,19 @@ use_generator_found_t:
         jr z, use_generator_won_fn
 
         ld de, use_gen_location
-        call show_msg
+        call bios_output_string
         ret
 use_generator_won_fn:
-        ld hl, PLAYER_WON
+        ld hl, PLAYER_WON_FLAG
         ld (hl),1
 
         ld de, use_generator_won
-        call show_msg
+        call bios_output_string
         ret
 
 ;}
 
+include "bios.z80"
 
 
 
@@ -2543,15 +2677,18 @@ use_generator_won_fn:
 ; Data / State Storage
 ;********************************************************************
 ; {
+per_game_state_start:
 TURN_COUNT:
         db 0         ; count of turns
 CURRENT_LOCATION:
         db 0         ; offset into location table
-PLAYER_DEAD:
+PLAYER_MAGIC_OVERDOSE_FLAG:
+        db 0
+PLAYER_DEAD_FLAG:
         db 0         ; 1 iff player is dead
-PLAYER_WON:
+PLAYER_WON_FLAG:
         db 0         ; 1 iff player has won
-MAGIC_LOCATION
+MAGIC_COUNT:
         db 0         ; state for magic-function
 SHIP_WARNING:
         db 0         ; State for showing a "ship closer" message.
@@ -2636,10 +2773,6 @@ failed_find_torch_lit_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
-CLS_MSG:
-        db 27, "[2J"            ; "clear"
-        db 27, "[H"             ; "home"
-        db "$"
 use_gen_location:
         db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
         db 0x0a, 0x0d, "$"
@@ -2668,6 +2801,24 @@ meteor_saves_the_day:
 
 QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
+BIOS_MSG:
+        db 0x0a, 0x0d, "BIOS test-function"
+        db 0x0a, 0x0d, "1.  Clear the screen"
+        db 0x0a, 0x0d, "2.  Write a character"
+        db 0x0a, 0x0d, "3.  Input test"
+        db 0x0a, 0x0d, "4.  Delay test"
+        db 0x0a, 0x0d, "5.  Input character display"
+        db 0x0a, 0x0d, "6.  Return to the game"
+        db 0x0a, 0x0d
+        db "$"
+you_entered_message:
+        db 0x0a, 0x0d, 0x0a, 0x0d, "You entered: $"
+no_input:
+        db "You didn't enter anything.$"
+you_pressed:
+        db 0x0a,0x0d,0x0a,0x0d, "You pressed:$"
+press_key_continue:
+        db 0x0a, 0x0d, 0x0a, 0x0d, "Press a key to continue$"
 HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
 EXAMINE_WHAT_MSG:
@@ -2684,8 +2835,6 @@ cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
         db 0x0a, 0x0d, "You drop it", 0x0a, 0x0d, "$"
-prompt_message:
-        db 0x0a, 0x0d,">$"
 inventory_empty_message:
         db 0x0a, 0x0d, "You are not carrying anything", 0x0a, 0x0d, "$"
 you_carrying_message:
@@ -2727,8 +2876,18 @@ THE:
 ON:
         db " ON "
 usage_message:
+IF SPECTRUM
+        db "                                "
+        db "                                "
+        db "                                "
+        db "The lighthouse of Doom          "
+        db "                                "
+        db "            (c) 2022 Steve Kemp "
+        db "                                "
+        db "                                "
+        db " Press any key to start.        $"
+ELSE
         db 0x0a, 0x0d
-
         db "        .n.         ", 27, "[1;4mThe lighthouse of doom", 27, "[1;0m",  0x0a, 0x0d
         db "       /___\\ ", 0x0a, 0x0d
         db "       [|||]        ", 0x0a, 0x0d
@@ -2760,20 +2919,20 @@ include "version.z80"
         db "Any references to the Paw Patrol are entirely deliberate."
         db 0x0a, 0x0d, 0x0a, 0x0d
         db "Press any key to start.$"
+ENDIF
 
+play_again_msg:
+        db 0x0a, 0x0d, "Play again? (y/n)$"
+play_again_no_msg:
+        db 0x0a, 0x0d, "Resetting$"
 PLAYER_DEAD_MESSAGE:
         db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
-        db 0x0a, 0x0d
         db 0x0a, 0x0d, "The ship ploughs into the base of your lighthouse, causing it to collapse around"
         db 0x0a, 0x0d, "you."
-        db 0x0a, 0x0d
         db 0x0a, 0x0d, "You're buried and helpless, and as the darkness consumes you the sounds of the"
         db 0x0a, 0x0d, "sailors thrashing in the water reach you, from a distance."
-        db 0x0a, 0x0d
         db 0x0a, 0x0d, "Let us hope some of them can swim to shore.."
 
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
         db "Game over - you're dead."
         db 0x0a, 0x0d,"$"
 PLAYER_WON_MESSAGE:
@@ -2796,21 +2955,27 @@ LOOK_AT:
 location_0_short:
         db "the top floor of the lighthouse.$"
 location_0_long:
+IF SPECTRUM
+ELSE
         db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
+ENDIF
         db "Through the window you can see the lights of an approaching ship, and you know", 0x0a, 0x0d
         db "that without the lighthouse's beacon it will surely crash upon the rocks your", 0x0a, 0x0d
-        db "lighthouse is built upon.  If the ship crashes not only will the sailors drown,", 0x0a, 0x0d
+        db "lighthouse is built upon. "
+
+IF SPECTRUM
+        db 0x0a, 0x0d
+ELSE
+        db "If the ship crashes not only will the sailors drown,", 0x0a, 0x0d
+ENDIF
         db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "Too bad the lighthouse light doesn't seem to be working, it looks like", 0x0a, 0x0d
-        db "there's a problem with the power.", 0x0a, 0x0d
+        db "Too bad the lighthouse light doesn't seem to be working..", 0x0a, 0x0d
         db "$"
 
 location_1_short:
         db "the middle floor of the lighthouse.$"
 location_1_long:
-        db "The middle floor of the lighthouse seems to be a relaxation-room,", 0x0a, 0x0d
-        db "you see some comfy chairs, a work-desk, as well as various odds and", 0x0a, 0x0d
-        db "ends.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends.", 0x0a, 0x0d
         db "An impressive painting hangs over the desk, and a dog sleeps in a basket", 0x0a, 0x0d
         db "to the side of it.", 0x0a, 0x0d
         db "$"
@@ -2949,7 +3114,7 @@ item_16_long: db "The dog-basket is a faded red colour, and covered with dog-hai
 ;
 command_table:
         DEFB 3, 'CLS', 1
-          DEFW cls_function
+          DEFW bios_clear_screen
         DEFB 4, 'DOWN', 0
           DEFW down_function
         DEFB 4, 'DROP', 0
@@ -2960,12 +3125,14 @@ command_table:
           DEFW get_function
         DEFB 4, 'HELP', 0
           DEFW help_function
-        DEFB 4, 'LOOK', 0
-          DEFW look_function
         DEFB 9, 'INVENTORY', 0
           DEFW inventory_function
+        DEFB 4, 'LOOK', 0
+          DEFW look_function
         DEFB 4, 'QUIT', 0
           DEFW quit_function
+        DEFB 4, 'BIOS', 1
+          DEFW bios_function
         DEFB 5, 'TURNS', 0
           DEFW turns_function
         DEFB 2, 'UP', 0
@@ -3386,3 +3553,5 @@ TMP_BUFFER_LEN: EQU 50
 ; launch - if that support is enabled.
 ;
 end_of_source:
+
+END ENTRYPOINT
