@@ -166,6 +166,16 @@ bios_read_input:
 IF SPECTRUM
         PUSH_ALL
 
+        ; Move the cursor to the bottom of the screen
+        PUSH_ALL
+        ld a,22          ; AT code.
+        rst 16
+        ld a,21          ; vertical coord.
+        rst 16           ; set the vertical coord
+        ld a,0           ; horizontal position.
+        rst 16           ; set the horizontal coord.
+        POP_ALL
+
         push de
         pop  hl   ; buffer -> hl
 
