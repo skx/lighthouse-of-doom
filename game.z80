@@ -1873,32 +1873,42 @@ quit_function:
 ; Command-handler: BIOS
 ;
 bios_function:
+        ; clear the screen & show the menu text
         call bios_clear_screen
         ld de, BIOS_MSG
         call bios_output_string
-
 bios_function_menu:
+        ; wait for a keypress
         call bios_await_keypress
+        ; process the responses
         cp '1'
-        jr nz, not_one
+        jr z, bios_function_clear
+        cp '2'
+        jr z, bios_show_character
+        cp '3'
+        jr z, bios_input_test
+        cp '4'
+        jr z, bios_delay_test
+        cp '5'
+        jr z, bios_char_display
+        cp '6'
+        jr z, bios_return_to_game_indirect
+        cp 'q'
+        jr z, bios_return_to_game_indirect
+        jr bios_function_menu
 
+bios_function_clear:
         ; 1. Clear screen
         call bios_clear_screen
         jr bios_function
 
-not_one:
-        cp '2'
-        jr nz, not_two
-
+bios_show_character:
         ; 2. Show a character
         ld e, '*'
         call bios_output_character
         jr bios_function_menu
 
-not_two:
-        cp '3'
-        jr nz, not_three
-
+bios_input_test:
         ; 3. Input test
         call bios_clear_screen
 
@@ -1907,16 +1917,13 @@ not_two:
 
         ld de, INPUT_BUFFER
         call bios_read_input
-
         ld hl, INPUT_BUFFER+1
         ld a,(hl)
         cp 0
         jr nz, show_input_buffer
-
         ld de, no_input
         call bios_output_string
         jr pause_for_key
-
 show_input_buffer:
         ld hl, INPUT_BUFFER
         inc hl
@@ -1926,22 +1933,23 @@ skip_forward:
         djnz skip_forward
         inc hl
         ld (hl), '$'
-
         ld de, you_entered_message
         call bios_output_string
         ld de, INPUT_BUFFER+2
         call bios_output_string
-
 pause_for_key:
         ld de, press_key_continue
         call bios_output_string
         call bios_await_keypress
 bios_function_indirect:
         jr bios_function
-not_three:
-        cp '4'
-        jr nz,  not_four
 
+
+; work around the fact that our handler is too far away for a relative jump.
+bios_return_to_game_indirect:
+        jr bios_return_to_game
+
+bios_delay_test:
         ; 4. delay test
         call bios_clear_screen
         ld de, delay_test_message
@@ -1957,11 +1965,8 @@ delay_loop:
         djnz delay_loop
         jr bios_function_indirect
 
-not_four:
-        cp '5'
-        jr nz, not_five
-
-        ; character code display
+bios_char_display:
+        ; 5. character code display
         ld de, press_key_continue
         call bios_output_string
 
@@ -1987,16 +1992,14 @@ not_four:
         ld e, ">"
         call bios_output_character
 
-        jr pause_for_key
+        ld de, press_key_continue
+        call bios_output_string
+        call bios_await_keypress
+        jr bios_function_indirect
 
-not_five:
-        cp 'q'
-        jr z, return_to_game
-        cp '6'
-        jr nz, bios_function_indirect
 
+bios_return_to_game:
         ; 6. return to game
-return_to_game:
         call bios_clear_screen
         FAKE_LOOK
         ret
