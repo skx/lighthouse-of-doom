@@ -1990,10 +1990,13 @@ not_four:
         jr pause_for_key
 
 not_five:
+        cp 'q'
+        jr z, return_to_game
         cp '6'
         jr nz, bios_function_indirect
 
         ; 6. return to game
+return_to_game:
         call bios_clear_screen
         FAKE_LOOK
         ret
@@ -2820,12 +2823,12 @@ QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
 BIOS_MSG:
         db 0x0a, 0x0d, "BIOS test-function", 0x0a, 0x0d
-        db 0x0a, 0x0d, "1.  Clear the screen"
-        db 0x0a, 0x0d, "2.  Write a character"
-        db 0x0a, 0x0d, "3.  Input test"
-        db 0x0a, 0x0d, "4.  Delay test"
-        db 0x0a, 0x0d, "5.  Input character display"
-        db 0x0a, 0x0d, "6.  Return to the game"
+        db 0x0a, 0x0d, " 1 Clear the screen"
+        db 0x0a, 0x0d, " 2 Write a character"
+        db 0x0a, 0x0d, " 3 Input test"
+        db 0x0a, 0x0d, " 4 Delay test"
+        db 0x0a, 0x0d, " 5 Input character display"
+        db 0x0a, 0x0d, " 6 Return to the game"
         db 0x0a, 0x0d
         db "$"
 input_test_message:
