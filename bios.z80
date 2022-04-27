@@ -20,6 +20,11 @@
 ; platform-specific code we need.
 ;
 
+IF SPECTRUM
+  MAX_INPUT_LENGTH: EQU 30
+ELSE
+  MAX_INPUT_LENGTH: EQU 78
+ENDIF
 
 ;
 ; Initialization routine for the BIOS, if needed
@@ -236,7 +241,7 @@ IF SPECTRUM
 
         xor a
         ld (hl),a  ; size is now zero
-        inc hl ; point to the character
+        inc hl     ; point to the start of the character buffer
 
 read_input_again:
         ; read a char
@@ -244,7 +249,7 @@ read_input_again:
 
         ; return?  Then we're done
         cp 13
-        jr z, read_input_over
+        jp z, read_input_over
 
         ; delete?  remove the last character
         cp 12
@@ -253,6 +258,25 @@ read_input_again:
         ; escape? trash the input and start again.
         cp 7
         jr z, reset_line
+
+        ; too many characters?
+        push de
+        push af
+          ld a,(de)                  ; get the count of characters we've entered
+          cp MAX_INPUT_LENGTH        ; ignore input if too long
+          jr nc,too_many_characters
+          jr z, too_many_characters
+        pop af
+        pop de
+        jr continue_input
+
+too_many_characters:
+        ; too many characters, cleanup stack and ignore the character
+        pop af
+        pop de
+        jr read_input_again
+
+continue_input:
 
         ; display the new character
         push de
@@ -344,7 +368,7 @@ loopy:
         pop bc
         pop de
         pop hl
-        jr read_input_again
+        jp read_input_again
 
 reset_line:
         ; clear the screen, and restart the input process

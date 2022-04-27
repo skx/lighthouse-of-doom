@@ -2729,8 +2729,8 @@ NEWLINE:
 TAB:
         db "     $"
 invalid_msg:
-        db 0x0a, 0x0d, "I did not understand your command.", 0x0a, 0x0d
-        db "For a list of several of our recognized words type 'HELP'.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "I did not understand your input.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "Enter 'HELP' to see some of our commands.", 0x0a, 0x0d, "$"
 BAD_LANGUAGE_MSG:
         db 0x0a, 0x0d, "What language!", 0x0a, 0x0d, "$"
 NO_PHONE_HERE:
@@ -3607,8 +3607,8 @@ ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
 ;    http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm#Function_10
 ;
 INPUT_BUFFER:
-        db 100  ; size of our input-buffer
-        db 0x00 ; Count of characters returned.
+        db MAX_INPUT_LENGTH  ; size of our input-buffer
+        db 0x00              ; Count of characters returned.
 
 
 
