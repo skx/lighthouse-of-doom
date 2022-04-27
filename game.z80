@@ -3105,7 +3105,7 @@ item_19_name: db "CHAIRS"
 item_19_long: db "The chairs look very comfortable, but also covered in slightly too much dog-hair.", 0x0a, 0x0d, "$"
 
 item_20_name: db "BOOTS"
-item_20_long: db "The boots are black, and shiny.", 0x0a, 0x0d, 0x0a, 0x0d,
+item_20_long: db "The boots are black, and shiny.", 0x0a, 0x0d, 0x0a, 0x0d
               db "They're probably made for walking?", 0x0a, 0x0d, "$"
 
 item_21_name: db "JUNK"
