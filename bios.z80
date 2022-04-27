@@ -49,20 +49,12 @@ bios_delay:
 
 IF SPECTRUM
    PUSH_ALL
+   ld b,5
 wait:
-   ld hl,pretim        ; previous time setting
-   ld a,(23672)        ; current timer setting set by ZX Spectrum
-   sub (hl)            ; difference between the two.
-   cp 2                ; have two frames elapsed yet?
-   jr nc,wait0         ; yes, no more delay.
-   jp wait
-wait0:
-   ld a,(23672)        ; current timer.
-   ld (hl),a           ; store this setting.
+   halt
+   djnz wait
    POP_ALL
    ret
-
-pretim: defb 0
 
 ELSE
     ; Random values found by experimentation with my own system
