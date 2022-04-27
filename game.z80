@@ -3095,6 +3095,25 @@ item_15_name: db "GRUE"
 item_16_name: db "BASKET"
 item_16_long: db "The dog-basket is a faded red colour, and covered with dog-hairs.", 0x0a, 0x0d, "$"
 
+item_17_name: db "COAT-RACK"
+item_17_long: db "The coat-rack looks normal.", 0x0a, 0x0d, "$"
+
+item_18_name: db "CHAIR"
+item_18_long: db "The chair is just a chair", 0x0a, 0x0d, "$"
+
+item_19_name: db "CHAIRS"
+item_19_long: db "The chairs look very comfortable, but also covered in slightly too much dog-hair.", 0x0a, 0x0d, "$"
+
+item_20_name: db "BOOTS"
+item_20_long: db "The boots are black, and shiny.", 0x0a, 0x0d, 0x0a, 0x0d,
+              db "They're probably made for walking?", 0x0a, 0x0d, "$"
+
+item_21_name: db "JUNK"
+item_21_long: db "The junk seems too fragile to move around and examine.", 0x0a, 0x0d, "$"
+
+item_22_name: db "MACHINERY"
+item_22_long: db "The machinery doesn't seem very special.", 0x0a, 0x0d, "$"
+
 ;}
 
 
@@ -3290,7 +3309,7 @@ item_state:
 item_collectable:
         DEFB 1            ; this item can be picked up
 item_location:
-         DEFB 0x03         ; basement
+        DEFB 0x03         ; basement
 
 
 ;
@@ -3483,7 +3502,7 @@ item_first:
         DEFB 0               ; this item cannot be picked up
         DEFB 0xFE            ; hidden.
 
-        DEFW item_16_name      ; dog-basket
+        DEFW item_16_name     ; dog-basket
         DEFB 0,0              ; NO DESCRIPTION - hidden item
         DEFW item_16_long
         DEFB 0,0              ; No take function
@@ -3493,6 +3512,72 @@ item_first:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+
+        DEFW item_17_name     ; coat-rack
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_17_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x02             ; ground-floor
+
+        DEFW item_18_name     ; chair
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_18_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x01             ; middle-floor
+
+        DEFW item_19_name     ; chairs
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_19_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x01             ; middle-floor
+
+        DEFW item_20_name     ; boots
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_20_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x02             ; ground-floor
+
+        DEFW item_21_name     ; junk
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_21_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x03             ; basement
+
+        DEFW item_22_name     ; machinery
+        DEFB 0,0              ; NO DESCRIPTION - hidden item
+        DEFW item_22_long
+        DEFB 0,0              ; No take function
+        DEFB 0,0              ; No drop function
+        DEFB 0,0              ; No custom examine function.
+        DEFB 0,0              ; No use function
+        DEFB 0                ; item state
+        DEFB 0                ; this item cannot be picked up
+        DEFB 0x03             ; basement
 
 item_last:
 
