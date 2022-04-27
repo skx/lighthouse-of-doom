@@ -1902,11 +1902,8 @@ not_two:
         ; 3. Input test
         call bios_clear_screen
 
-        ; 24 characters, default to zero read
-        ld hl, INPUT_BUFFER
-        ld (hl),24
-        inc hl
-        ld (hl), 0
+        ld de, input_test_message
+        call bios_output_string
 
         ld de, INPUT_BUFFER
         call bios_read_input
@@ -1947,7 +1944,10 @@ not_three:
 
         ; 4. delay test
         call bios_clear_screen
-        ld b, 10
+        ld de, delay_test_message
+        call bios_output_string
+
+        ld b, 30
 delay_loop:
         PUSH_ALL
          call bios_delay
@@ -1960,11 +1960,25 @@ delay_loop:
 not_four:
         cp '5'
         jr nz, not_five
-        ld de, you_pressed
+
+        ; character code display
+        ld de, press_key_continue
         call bios_output_string
+
+        ; Await a keypress, and save it
         call bios_await_keypress
         push af
+
+        ; show explaination
+        ld de,you_pressed
+        call bios_output_string
+
+        ; show decimal keycode
         call show_a_register
+
+        ; and the character itself
+        ld e, " "
+        call bios_output_character
         ld e, "<"
         call bios_output_character
         pop af
@@ -1978,6 +1992,8 @@ not_four:
 not_five:
         cp '6'
         jr nz, bios_function_indirect
+
+        ; 6. return to game
         call bios_clear_screen
         FAKE_LOOK
         ret
@@ -2803,7 +2819,7 @@ meteor_saves_the_day:
 QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
 BIOS_MSG:
-        db 0x0a, 0x0d, "BIOS test-function"
+        db 0x0a, 0x0d, "BIOS test-function", 0x0a, 0x0d
         db 0x0a, 0x0d, "1.  Clear the screen"
         db 0x0a, 0x0d, "2.  Write a character"
         db 0x0a, 0x0d, "3.  Input test"
@@ -2812,8 +2828,12 @@ BIOS_MSG:
         db 0x0a, 0x0d, "6.  Return to the game"
         db 0x0a, 0x0d
         db "$"
+input_test_message:
+        db "Please enter a string:$"
+delay_test_message:
+        db "Test our delay function:", 0x0a, 0x0d,0x0a, 0x0d,"$"
 you_entered_message:
-        db 0x0a, 0x0d, 0x0a, 0x0d, "You entered: $"
+        db "You entered: $"
 no_input:
         db "You didn't enter anything.$"
 you_pressed:
