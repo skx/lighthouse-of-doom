@@ -246,16 +246,15 @@ read_input_again:
         cp 13
         jr z, read_input_over
 
-        ; delete?  trash the input and start again.
+        ; delete?  remove the last character
         cp 12
-        jr z, reset_line
+        jr z, backspace
 
         ; escape? trash the input and start again.
         cp 7
         jr z, reset_line
 
-not_backspace:
-        ; display it
+        ; display the new character
         push de
         ld e,a
         call bios_output_character
@@ -273,11 +272,85 @@ not_backspace:
         ; repeat
         jr read_input_again
 
+backspace:
+        ; remove size of the line by one
+        ; unless it was empty
+        ld a,(de)
+        cp 0
+        jr z, read_input_again
+        dec a
+        ld (de),a
+
+        ; remove character
+        dec hl
+        ld (hl), 'X'
+
+        ; move cursor to start
+        PUSH_ALL
+        ld a,22          ; AT code.
+        rst 16
+        ld a,21          ; vertical coord.
+        rst 16           ; set the vertical coord
+        ld a,0           ; horizontal position.
+        rst 16           ; set the horizontal coord.
+
+        ; output spaces - to overwrite what was previously input
+        ; Line length is 32 characters
+        ld b, 32
+        ld e, " "
+spaces:
+        call bios_output_character
+        djnz spaces
+
+        ; move cursor to start
+        ld a,22          ; AT code.
+        rst 16
+        ld a,21          ; vertical coord.
+        rst 16           ; set the vertical coord
+        ld a,0           ; horizontal position.
+        rst 16           ; set the horizontal coord.
+
+        ; show the prompt
+        ld e, ">"
+        call bios_output_character
+        POP_ALL
+
+        ; save registers
+        push hl
+        push de
+        push bc
+
+        ; is the input line empty?  If so return,
+        ; cleaning up the stack.
+        ld a,(de)
+        cp 0
+        jr nz, non_empty
+           pop bc
+           pop de
+           pop hl
+           jr read_input_again
+non_empty:
+        ; OK we're gonna show the input the user
+        ; entered.
+        ld b,a
+        push de
+        pop hl
+        inc hl
+loopy:
+        ld e,(hl)
+        call bios_output_character
+        inc hl
+        djnz loopy
+        pop bc
+        pop de
+        pop hl
+        jr read_input_again
+
 reset_line:
         ; clear the screen, and restart the input process
         call bios_clear_screen
         POP_ALL
-        jr bios_read_input
+        jp bios_read_input
 
 read_input_over:
         ; move the cursor to the top of the screen, and
