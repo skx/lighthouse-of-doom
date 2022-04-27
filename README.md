@@ -13,6 +13,7 @@ it seemed like a fun challenge for myself!
 
 Quick links within this README file:
 
+* [Play Online](#play-online)
 * [Plot of the game](#game-plot)
 * [C Implementation](#c-implementation)
 * [Z80 Implementation](#z80-implementation)
@@ -20,6 +21,14 @@ Quick links within this README file:
 * [Compiling & running it](#compiling--running-it)
 * [Downloading It](#downloading-it)
 * [Bugs?](#bugs)
+
+
+## Play Online
+
+Thanks to the excellent [jsspeccy](https://github.com/gasman/jsspeccy3) ZX Spectrum emulator you can play this game with your browser here:</p>
+
+* [https://steve.fi/software/lighthouse/](https://steve.fi/software/lighthouse/)
+
 
 
 ## Game Plot
