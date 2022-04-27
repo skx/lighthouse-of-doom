@@ -2616,7 +2616,8 @@ use_trapdoor_found_t2:
 
         ; The item-table entry will be stored in HL.
         ;
-        ; Update the location of that object to be something random
+        ; Update the location to be the current one.
+        ;
         push hl
         push de
         ld de, ITEM_TABLE_LOCATION_OFFSET
