@@ -218,7 +218,7 @@ IF SPECTRUM
         rst 16
         ld a,21          ; vertical coord.
         rst 16           ; set the vertical coord
-        ld a,0           ; horizontal position.
+        xor a            ; horizontal position.
         rst 16           ; set the horizontal coord.
 
         ld e, ">"
@@ -307,7 +307,7 @@ backspace:
         rst 16
         ld a,21          ; vertical coord.
         rst 16           ; set the vertical coord
-        ld a,0           ; horizontal position.
+        xor a            ; horizontal position.
         rst 16           ; set the horizontal coord.
 
         ; output spaces - to overwrite what was previously input
@@ -323,7 +323,7 @@ spaces:
         rst 16
         ld a,21          ; vertical coord.
         rst 16           ; set the vertical coord
-        ld a,0           ; horizontal position.
+        xor a            ; horizontal position.
         rst 16           ; set the horizontal coord.
 
         ; show the prompt

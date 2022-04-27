@@ -455,7 +455,7 @@ CompareStringsWithLength:
     inc hl
     inc de
     djnz CompareStringsWithLength
-    ld a,0
+    xor a
     ret
 
 
@@ -992,7 +992,7 @@ input_second_term_found_space:
 
 input_second_term_found_word:
         ; HL points to the word
-        ld a,0
+        xor a
         ret
 
 input_second_term_end:
