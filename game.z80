@@ -1912,19 +1912,26 @@ bios_input_test:
         ; 3. Input test
         call bios_clear_screen
 
+        ; show the input-prompt
         ld de, input_test_message
         call bios_output_string
 
+        ; read a line of text
         ld de, INPUT_BUFFER
         call bios_read_input
+
+        ; get the amount of text entered
         ld hl, INPUT_BUFFER+1
         ld a,(hl)
+
+        ; zero?
         cp 0
         jr nz, show_input_buffer
         ld de, no_input
         call bios_output_string
         jr pause_for_key
 show_input_buffer:
+        ; ok user entered something, get the length in B
         ld hl, INPUT_BUFFER
         inc hl
         ld b, (hl)
@@ -1932,7 +1939,10 @@ skip_forward:
         inc hl
         djnz skip_forward
         inc hl
+        ; terminate the buffer with '$'
         ld (hl), '$'
+
+        ; now show the prompt, and the users' input
         ld de, you_entered_message
         call bios_output_string
         ld de, INPUT_BUFFER+2
@@ -1992,10 +2002,7 @@ bios_char_display:
         ld e, ">"
         call bios_output_character
 
-        ld de, press_key_continue
-        call bios_output_string
-        call bios_await_keypress
-        jr bios_function_indirect
+        jr pause_for_key
 
 
 bios_return_to_game:
