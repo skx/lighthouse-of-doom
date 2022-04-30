@@ -3226,6 +3226,8 @@ command_table:
           DEFW get_function
         DEFB 4, 'OPEN', 1
           DEFW use_function
+        DEFB 5, 'CLOSE', 1
+          DEFW use_function
         DEFB 4, 'READ', 1
           DEFW use_function
         DEFB 5, 'LIGHT', 1
