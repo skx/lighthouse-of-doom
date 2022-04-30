@@ -2713,7 +2713,7 @@ TURN_COUNT:
 CURRENT_LOCATION:
         db 0         ; offset into location table
 PLAYER_MAGIC_OVERDOSE_FLAG:
-        db 0
+        db 0         ; 1 iff the player overdosed on magic.
 PLAYER_DEAD_FLAG:
         db 0         ; 1 iff player is dead
 PLAYER_WON_FLAG:
@@ -3231,12 +3231,6 @@ command_table:
           DEFW look_function
         DEFB 3, 'INV', 1
           DEFW inventory_function
-        DEFB 1, 'I', 1
-          DEFW inventory_function
-        DEFB 1, 'U', 1
-          DEFW up_function
-        DEFB 1, 'D', 1
-          DEFW down_function
         ;; end of table
         DEFB 0
 
