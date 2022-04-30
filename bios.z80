@@ -49,7 +49,7 @@ bios_delay:
 
 IF SPECTRUM
    PUSH_ALL
-   ld b,5
+   ld b,4
 wait:
    halt
    djnz wait
