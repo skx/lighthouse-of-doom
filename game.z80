@@ -2754,10 +2754,8 @@ call_police_msg:
         db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted in a lack of", 0x0a, 0x0d
         db "a functioning police force.", 0x0a, 0x0d
         db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
-
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
-
 call_ghostbusters_msg:
         db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
 call_ryder_msg:
@@ -2768,8 +2766,8 @@ call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
 call_rubble_msg:
-        db 0x0a, 0x0d, "Rubble doesn't answer your phone call, but at this time of day he's probably", 0x0a, 0x0d
-        db "enjoying a nap.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Rubble doesn't answer your call."
+        db 0x0a, 0x0d,,"he's probably enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
         ; FALL-THROUGH
@@ -2880,15 +2878,15 @@ press_key_continue:
 HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
 EXAMINE_WHAT_MSG:
-        db 0x0a, 0x0d, "Examine what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Examine what? Please try again.", 0x0a, 0x0d, "$"
 GO_WHERE_MSG:
-        db 0x0a, 0x0d, "Go where?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Go where?  Please try again.", 0x0a, 0x0d, "$"
 GET_WHAT_MSG:
-        db 0x0a, 0x0d, "Take what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Take what? Please try again.", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
-        db 0x0a, 0x0d, "Drop what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Drop what? Please try again.", 0x0a, 0x0d, "$"
 USE_WHAT_MSG:
-        db 0x0a, 0x0d, "Use what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Use what? Please try again.", 0x0a, 0x0d, "$"
 cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
@@ -2908,7 +2906,7 @@ not_carrying_item_msg:
 MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
 SLEEP_START_MSG:
-        db 0x0a, 0x0d, "You lay down and try to take a small nap.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You lay down and take a small nap.", 0x0a, 0x0d
         db "$"
 SLEEP_END_MSG:
         db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat,", 0x0a, 0x0d
@@ -3224,11 +3222,11 @@ command_table:
           DEFW get_function
         DEFB 6, 'PICKUP', 1
           DEFW get_function
-        DEFB 4, 'OPEN', 1
+        DEFB 4, 'OPEN', 1     ; open trapdoor
           DEFW use_function
-        DEFB 5, 'CLOSE', 1
+        DEFB 5, 'CLOSE', 1    ; close trapdoor
           DEFW use_function
-        DEFB 4, 'READ', 1
+        DEFB 4, 'READ', 1     ; read book
           DEFW use_function
         DEFB 5, 'LIGHT', 1
           DEFW use_function
