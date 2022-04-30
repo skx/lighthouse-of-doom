@@ -2767,7 +2767,7 @@ call_skye_msg:
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
 call_rubble_msg:
         db 0x0a, 0x0d, "Rubble doesn't answer your call."
-        db 0x0a, 0x0d,,"he's probably enjoying a nap.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
         ; FALL-THROUGH
