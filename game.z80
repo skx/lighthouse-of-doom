@@ -66,9 +66,10 @@ TORCH_STATE_UNLIT:      EQU 0
 TORCH_STATE_LIT:        EQU 1
 
 ; 2. Trapdoor may be hidden, visible, or opened.
-;TRAPDOOR_STATE_HIDDEN:  EQU 0
-;TRAPDOOR_STATE_CLOSED:  EQU 1
-;TRAPDOOR_STATE_OPEN:    EQU 2
+;
+; hiding is handled via the location for historical reasons.
+TRAPDOOR_STATE_CLOSED:  EQU 0
+TRAPDOOR_STATE_OPEN:    EQU 1
 
 
 
@@ -1068,33 +1069,17 @@ down_on_middle_floor:
         ret
 
 down_on_ground_floor:
-        ; find the trapdoor-open - if it isn't there you can't go down
-        ld hl, item_12_name
+        ; The trapdoor must be open for us to go down.
+        ; Find the item, and get it's state.
+        ld hl, item_11_name
         call get_item_by_name
-        cp 0
-        jr z, down_found_trap
-
-        ld de, failed_find_trapdoor_open_msg
-        call bios_output_string
-        ret
-down_found_trap:
-
-        ; HL points to the open-trapdoor.
-        ; Is the location the basement?  If not we can't go down
-        ; skip past the name
-
-        ; Get the location of the trapdoor in A, leaving the entry
-        ; item pointer alone.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
+        ; find the offset for the state, and then get it.
+        ld de, ITEM_TABLE_STATE_OFFSET
         add hl,de
         ld a, (hl)
-        pop de
-        pop hl
 
-        cp 2
-        jr nz, no_down ; not on the basement?  Then we can't go down
+        cp TRAPDOOR_STATE_OPEN
+        jr nz, no_down ; not open?  Then we can't go down
 
         ; Does the user have the (lit) torch?
         call user_has_lit_torch
@@ -2629,84 +2614,68 @@ torch_was_on:
 
 ;  When you OPEN the TRAPDOOR it opens.
 ;
-;  Remove the "trapdoor" item from the current location.
-;  Add the "trapdoor-open" item to the current location.
+;  Find the trapdoor, and update the state to be "OPEN".
 ;
 use_trapdoor_fn:
         ; find the trapdoor
         ld hl, item_11_name
         call get_item_by_name
 
-        cp 0
-        jp z,use_trapdoor_found_t
-
-        ld de, failed_find_trapdoor_msg
-        call bios_output_string
-        ret
-use_trapdoor_found_t:
-
-        ; The item-table entry will be stored in HL.
-
-        ; Get the location of the object in A, leaving HL alone
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
+        ; get the state offset
+        ld de, ITEM_TABLE_STATE_OFFSET
         add hl,de
-        ld a,(hl)
-        pop de
-        pop hl
 
-        ; Is the trapdoor in the basement?
-        cp 2
-        jr z, open_trapdoor_present
+        ; update the state to be open
+        ld a, (hl)
+        cp TRAPDOOR_STATE_CLOSED
+        jr z, trapdoor_was_closed
+        cp TRAPDOOR_STATE_OPEN
+        jr z, trapdoor_was_open
 
-        ld de, item_not_present_msg
+        ; bug
+        ld de,trapdoor_bogus_state_msg
         call bios_output_string
         ret
 
-open_trapdoor_present:
-        ; Update the location of that object to be something random
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), 0x55
-        pop de
-        pop hl
+trapdoor_was_closed:
+        ; change the state
+        ld (hl), TRAPDOOR_STATE_OPEN
 
-        ; find the trapdoor-open
-        ld hl, item_12_name
-        call get_item_by_name
-
-        cp 0
-        jp z,use_trapdoor_found_t2
-
-        ld de, failed_find_trapdoor_open_msg
-        call bios_output_string
-        ret
-
-use_trapdoor_found_t2:
-
-        ; Get the current location
-        push hl
-        ld hl, CURRENT_LOCATION
-        ld a,(hl)
-        pop hl
-
-        ; The item-table entry will be stored in HL.
-        ;
-        ; Update the location to be the current one.
-        ;
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), a
-        pop de
-        pop hl
+        ; update the description
+        ld hl, trapdoor_desc
+        ld de, item_11_open
+        ld (hl),e
+        inc hl
+        ld (hl),d
+        ld hl, trapdoor_edesc
+        ld de, item_11_desc_open
+        ld (hl),e
+        inc hl
+        ld (hl),d
 
         ; Show the message
         ld de, TRAPDOOR_OPEN_MSG
+        call bios_output_string
+        ret
+
+trapdoor_was_open:
+        ; change the state
+        ld (hl), TRAPDOOR_STATE_CLOSED
+
+        ; update the description
+        ld hl, trapdoor_desc
+        ld de, item_11_closed
+        ld (hl),e
+        inc hl
+        ld (hl),d
+        ld hl, trapdoor_edesc
+        ld de, item_11_desc_closed
+        ld (hl),e
+        inc hl
+        ld (hl),d
+
+        ; Show the message
+        ld de, TRAPDOOR_CLOSED_MSG
         call bios_output_string
         ret
 
@@ -2842,6 +2811,8 @@ failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
 torch_bogus_state_msg:
         db 0x0a, 0x0d, "BUG:Bogus state for the torch", 0x0a, 0x0d, "$"
+trapdoor_bogus_state_msg:
+        db 0x0a, 0x0d, "BUG:Bogus state for the trapdoor", 0x0a, 0x0d, "$"
 failed_find_trapdoor_msg:
         db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
 rug_detail_msg:
@@ -2851,6 +2822,9 @@ failed_find_trapdoor_open_msg:
         db 0x0a, 0x0d, "BUG:Failed to find open trapdoor", 0x0a, 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
+TRAPDOOR_CLOSED_MSG:
+        db 0x0a, 0x0d, "The trapdoor is now closed."
+        db 0x0a, 0x0d, "Hopefully trapping the grue forevermore", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
 use_gen_location:
@@ -3160,13 +3134,12 @@ item_10_desc: db "A telephone, wired to the wall.$"
 item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.", 0x0a, 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
-item_11_desc: db "A trapdoor.$"
-item_11_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
+item_11_closed: db "A trapdoor.$"
+item_11_open: db "An open trapdoor.$"
+item_11_desc_closed: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
               db "Perhaps you should open it to explore further?", 0x0a, 0x0d, "$"
+item_11_desc_open: db "An average looking trapdoor.", 0x0a, 0x0d, "$"
 
-item_12_name: db "TRAPDOOR-OPEN"
-item_12_desc: db "An open trapdoor.$"
-item_12_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d, "$"
 
 item_13_name: db "METEOR"
 item_13_desc: db "A meteor fragment$"
@@ -3519,26 +3492,17 @@ torch_item_long:
         DEFB 0x01         ; middle-floor
 
         DEFW item_11_name ; trapdoor
-        DEFW item_11_desc
-        DEFW item_11_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; no custom examine function
-        DEFW use_trapdoor_fn ; open function
-        DEFB 0            ; item state
-        DEFB 0            ; this item cannot be picked up
-        DEFB 0xFE         ; hidden until the rug is moved
-
-        DEFW item_12_name ; trapdoor-open
-        DEFW item_12_desc
-        DEFW item_12_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; no custom examine function
-        DEFB 0,0          ; No use function
-        DEFB 0            ; item state
-        DEFB 0            ; this item cannot be picked up
-        DEFB 0xFE         ; hidden until the trapdoor is opened.
+trapdoor_desc:
+        DEFW item_11_closed
+trapdoor_edesc:
+        DEFW item_11_desc_closed
+        DEFB 0,0                   ; No take function
+        DEFB 0,0                   ; No drop function
+        DEFB 0,0                   ; no custom examine function
+        DEFW use_trapdoor_fn       ; open function
+        DEFB TRAPDOOR_STATE_CLOSED ; item state
+        DEFB 0                     ; this item cannot be picked up
+        DEFB 0xFE                  ; hidden until the rug is moved
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
