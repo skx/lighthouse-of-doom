@@ -50,6 +50,27 @@ MAX_TURN_LIMIT: EQU 100
 ; Maximum number of turns you can survive being near a grue
 MAX_GRUE_EXPOSURE: EQU 3
 
+; Later we have an object-table, containing entries for all of the
+; objects which are present in the game.  Some of these objects are
+; real in the sense that they can be used/taken.  Others exist only
+; so they may be examined.
+;
+; Each object has a description, a state, and a location, along with
+; dedicated handler-functions.
+;
+; Here we define some state attributes for a couple of special objects
+; which eases maintainance.
+;
+; 1. Torch may be lit or unlit.
+TORCH_STATE_UNLIT:      EQU 0
+TORCH_STATE_LIT:        EQU 1
+
+; 2. Trapdoor may be hidden, visible, or opened.
+;
+; hiding is handled via the location for historical reasons.
+TRAPDOOR_STATE_CLOSED:  EQU 0
+TRAPDOOR_STATE_OPEN:    EQU 1
+
 
 
 ;********************************************************************
@@ -250,7 +271,8 @@ not_won:
         ld (hl), 0              ; reset the count
         ld de, ship_closer_msg  ; show the message
         call bios_output_string
-
+        call show_dots
+        call bios_clear_screen
         jp ship_warning_over
 
 no_ship_warning:
@@ -470,8 +492,8 @@ JP_HL:
 ; Show some significant dots
 ;
 show_dots:
-        ; forty dots
-        ld b, 40
+        ; width of the screen
+        ld b, MAX_INPUT_LENGTH - 1
 dot_loop:
         PUSH_ALL
          call bios_delay
@@ -1047,67 +1069,30 @@ down_on_middle_floor:
         ret
 
 down_on_ground_floor:
-        ; find the trapdoor-open - if it isn't there you can't go down
-        ld hl, item_12_name
+        ; The trapdoor must be open for us to go down.
+        ; Find the item, and get it's state.
+        ld hl, item_11_name
         call get_item_by_name
-        cp 0
-        jr z, down_found_trap
-
-        ld de, failed_find_trapdoor_open_msg
-        call bios_output_string
-        ret
-down_found_trap:
-
-        ; HL points to the open-trapdoor.
-        ; Is the location the basement?  If not we can't go down
-        ; skip past the name
-
-        ; Get the location of the trapdoor in A, leaving the entry
-        ; item pointer alone.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
+        ; find the offset for the state, and then get it.
+        ld de, ITEM_TABLE_STATE_OFFSET
         add hl,de
         ld a, (hl)
-        pop de
-        pop hl
 
-        cp 2
-        jr nz, no_down ; not on the basement?  Then we can't go down
+        cp TRAPDOOR_STATE_OPEN
+        jr nz, no_down ; not open?  Then we can't go down
 
-        ; Does the user have the torch-lit?
-        ;
-        ; Note that if we can't find the torch that is because it
-        ; is not in the current locaton OR the player isn't carrying it
-        ;
-        ; That's OK, that just means they go to the dark place.
-        ld hl, item_4_name
-        call get_item_by_name
+        ; Does the user have the (lit) torch?
+        call user_has_lit_torch
         cp 0
-        jp nz, dark_destination
+        jr z, dark_destination
 
-        ; found the torch
-
-        ; Get the location of the torch in A
-        ; Get the location of the trapdoor in A, leaving the entry
-        ; item pointer alone.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop de
-        pop hl
-
-        ; is the player carrying it?
-        cp 255
-        jr nz,dark_destination
-
+        ; OK the user does have it, we can move to the basement
         ld hl, CURRENT_LOCATION
         ld (hl),3
         call look_function
         ret
 dark_destination:
+        ; user doesn't have lit torch - goes to the dark place
         ld hl, CURRENT_LOCATION
         ld (hl),4
         call look_function
@@ -1115,6 +1100,45 @@ dark_destination:
 
 
 
+;
+; Does the user have the torch, which is lit?
+;
+; Return 1 if the user does.
+;
+; Return 0 if the torch is unlit, or not carried.
+user_has_lit_torch:
+        ; get the torch
+        ld hl, item_3_name
+        call get_item_by_name
+
+        ; Get the location in A, leaving HL pointing to the start of the object
+        push hl
+        ld de, ITEM_TABLE_LOCATION_OFFSET
+        add hl,de
+        ld a, (hl)
+        pop hl
+
+        ; Are we carrying the item?
+        cp 255
+        jr nz, user_not_got_torch
+
+        ; OK HL still points to the start of the object get the state
+        ld de, ITEM_TABLE_STATE_OFFSET
+        add hl,de
+        ld a, (hl)
+
+        ; Is it lit?
+        cp TORCH_STATE_LIT
+        jr nz, user_got_torch_but_not_lit
+
+        ; OK the user has a torch, and it is lit
+        ld a,1
+        ret
+
+user_not_got_torch:
+user_got_torch_but_not_lit:
+        xor a
+        ret
 
 ;
 ; Command-Handler DROP
@@ -2493,8 +2517,7 @@ use_book_fn:
 
 ;  When you USE the TORCH it lights.
 ;
-;  Remove the "torch" item from the current location.
-;  Add the "torch-lit" item to the current location.
+;  This means updating the item-state to have the LIT attribute
 ;
 use_torch_fn:
         ; find the torch
@@ -2511,49 +2534,38 @@ use_torch_found_t:
 
         ; The item-table entry will be stored in HL.
         ;
-        ; Get the location of that object into A, and change the
-        ; location to be something random.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
+        ; Get the state in A
+        ld de, ITEM_TABLE_STATE_OFFSET
         add hl,de
-        ld a,(hl)
-        ld (hl), 0x55
-        pop de
-        pop hl
+        ld a, (hl)
 
-        ; save the location the torch had
-        push af
+        cp TORCH_STATE_UNLIT
+        jr z, torch_was_off
+        cp TORCH_STATE_LIT
+        jr z, torch_was_on
 
-        ; find the lit torch
-        ld hl, item_4_name
-        call get_item_by_name
-
-        cp 0
-        jp z,use_torch_found_t2
-
-        pop af; fixup
-        ld de, failed_find_torch_lit_msg
+        ld de, torch_bogus_state_msg
         call bios_output_string
         ret
 
-use_torch_found_t2:
+torch_was_off:
+        ; update state
+        ld (hl), TORCH_STATE_LIT
 
-        ; Restore the location of the old torch
-        pop af
+        ; update the description
+        ld hl, torch_item_desc
+        ld de, item_3_desc_on
+        ld (hl), e
+        inc hl
+        ld (hl), d
 
-        ; The item-table entry will be stored in HL.
-        ;
-        ; Set the location of the lit-torch to be that the torch had
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), a
-        pop de
-        pop hl
+        ld hl, torch_item_long
+        ld de, item_3_long_on
+        ld (hl), e
+        inc hl
+        ld (hl), d
 
-        ; Show the message
+        ; show message
         ld de, TORCH_ON_MSG
         call bios_output_string
 
@@ -2576,87 +2588,94 @@ out_of_here:
         ret
 
 
+torch_was_on:
+        ; update state
+        ld (hl), TORCH_STATE_UNLIT
+
+        ; update the description
+        ld hl, torch_item_desc
+        ld de, item_3_desc_off
+        ld (hl), e
+        inc hl
+        ld (hl), d
+
+        ld hl, torch_item_long
+        ld de, item_3_long_off
+        ld (hl), e
+        inc hl
+        ld (hl), d
+
+        ; show the message
+        ld de, TORCH_OFF_MSG
+        call bios_output_string
+        pop hl
+        ret
+
 
 ;  When you OPEN the TRAPDOOR it opens.
 ;
-;  Remove the "trapdoor" item from the current location.
-;  Add the "trapdoor-open" item to the current location.
+;  Find the trapdoor, and update the state to be "OPEN".
 ;
 use_trapdoor_fn:
         ; find the trapdoor
         ld hl, item_11_name
         call get_item_by_name
 
-        cp 0
-        jp z,use_trapdoor_found_t
-
-        ld de, failed_find_trapdoor_msg
-        call bios_output_string
-        ret
-use_trapdoor_found_t:
-
-        ; The item-table entry will be stored in HL.
-
-        ; Get the location of the object in A, leaving HL alone
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
+        ; get the state offset
+        ld de, ITEM_TABLE_STATE_OFFSET
         add hl,de
-        ld a,(hl)
-        pop de
-        pop hl
 
-        ; Is the trapdoor in the basement?
-        cp 2
-        jr z, open_trapdoor_present
+        ; update the state to be open
+        ld a, (hl)
+        cp TRAPDOOR_STATE_CLOSED
+        jr z, trapdoor_was_closed
+        cp TRAPDOOR_STATE_OPEN
+        jr z, trapdoor_was_open
 
-        ld de, item_not_present_msg
+        ; bug
+        ld de,trapdoor_bogus_state_msg
         call bios_output_string
         ret
 
-open_trapdoor_present:
-        ; Update the location of that object to be something random
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), 0x55
-        pop de
-        pop hl
+trapdoor_was_closed:
+        ; change the state
+        ld (hl), TRAPDOOR_STATE_OPEN
 
-        ; find the trapdoor-open
-        ld hl, item_12_name
-        call get_item_by_name
-
-        cp 0
-        jp z,use_trapdoor_found_t2
-
-        ld de, failed_find_trapdoor_open_msg
-        call bios_output_string
-        ret
-
-use_trapdoor_found_t2:
-
-        ; Get the current location
-        push hl
-        ld hl, CURRENT_LOCATION
-        ld a,(hl)
-        pop hl
-
-        ; The item-table entry will be stored in HL.
-        ;
-        ; Update the location to be the current one.
-        ;
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), a
-        pop de
-        pop hl
+        ; update the description
+        ld hl, trapdoor_desc
+        ld de, item_11_open
+        ld (hl),e
+        inc hl
+        ld (hl),d
+        ld hl, trapdoor_edesc
+        ld de, item_11_desc_open
+        ld (hl),e
+        inc hl
+        ld (hl),d
 
         ; Show the message
         ld de, TRAPDOOR_OPEN_MSG
+        call bios_output_string
+        ret
+
+trapdoor_was_open:
+        ; change the state
+        ld (hl), TRAPDOOR_STATE_CLOSED
+
+        ; update the description
+        ld hl, trapdoor_desc
+        ld de, item_11_closed
+        ld (hl),e
+        inc hl
+        ld (hl),d
+        ld hl, trapdoor_edesc
+        ld de, item_11_desc_closed
+        ld (hl),e
+        inc hl
+        ld (hl),d
+
+        ; Show the message
+        ld de, TRAPDOOR_CLOSED_MSG
         call bios_output_string
         ret
 
@@ -2735,10 +2754,8 @@ call_police_msg:
         db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted in a lack of", 0x0a, 0x0d
         db "a functioning police force.", 0x0a, 0x0d
         db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
-
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
-
 call_ghostbusters_msg:
         db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
 call_ryder_msg:
@@ -2749,8 +2766,8 @@ call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
         db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
 call_rubble_msg:
-        db 0x0a, 0x0d, "Rubble doesn't answer your phone call, but at this time of day he's probably", 0x0a, 0x0d
-        db "enjoying a nap.", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Rubble doesn't answer your call."
+        db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
         ; FALL-THROUGH
@@ -2790,6 +2807,10 @@ rug_taken_msg:
         db "you notice that it was covering a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
+torch_bogus_state_msg:
+        db 0x0a, 0x0d, "BUG:Bogus state for the torch", 0x0a, 0x0d, "$"
+trapdoor_bogus_state_msg:
+        db 0x0a, 0x0d, "BUG:Bogus state for the trapdoor", 0x0a, 0x0d, "$"
 failed_find_trapdoor_msg:
         db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
 rug_detail_msg:
@@ -2799,8 +2820,9 @@ failed_find_trapdoor_open_msg:
         db 0x0a, 0x0d, "BUG:Failed to find open trapdoor", 0x0a, 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
-failed_find_torch_lit_msg:
-        db 0x0a, 0x0d, "BUG:Failed to find the lit torch.", 0x0a, 0x0d, "$"
+TRAPDOOR_CLOSED_MSG:
+        db 0x0a, 0x0d, "The trapdoor is now closed."
+        db 0x0a, 0x0d, "Hopefully trapping the grue forevermore", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
 use_gen_location:
@@ -2856,15 +2878,15 @@ press_key_continue:
 HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
 EXAMINE_WHAT_MSG:
-        db 0x0a, 0x0d, "Examine what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Examine what? Please try again.", 0x0a, 0x0d, "$"
 GO_WHERE_MSG:
-        db 0x0a, 0x0d, "Go where?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Go where?  Please try again.", 0x0a, 0x0d, "$"
 GET_WHAT_MSG:
-        db 0x0a, 0x0d, "Take what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Take what? Please try again.", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
-        db 0x0a, 0x0d, "Drop what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Drop what? Please try again.", 0x0a, 0x0d, "$"
 USE_WHAT_MSG:
-        db 0x0a, 0x0d, "Use what?", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "Use what? Please try again.", 0x0a, 0x0d, "$"
 cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
@@ -2884,7 +2906,7 @@ not_carrying_item_msg:
 MIRROR_DROP_FUN:
         db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
 SLEEP_START_MSG:
-        db 0x0a, 0x0d, "You lay down and try to take a small nap.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You lay down and take a small nap.", 0x0a, 0x0d
         db "$"
 SLEEP_END_MSG:
         db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat,", 0x0a, 0x0d
@@ -2894,6 +2916,8 @@ WAIT_CMD_MSG:
         db 0x0a, 0x0d, "You wait for a moment, lost in thought.", 0x0a, 0x0d, "$"
 TORCH_ON_MSG:
         db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
+TORCH_OFF_MSG:
+        db 0x0a, 0x0d, "You turn the torch off.", 0x0a, 0x0d, "$"
 you_were_eaten:
         db 0x0a, 0x0d, "You were eaten by a grue.", 0x0a, 0x0d,0x0a, 0x0d
         db "At least you were spared the sight of the ship crashing into the rocks, and no", 0x0a, 0x0d
@@ -2902,7 +2926,8 @@ you_were_eaten:
 grue_message:
         db 0x0a, 0x0d, "You hear the scrabble of claws getting closer, is the grue about to attack?", 0x0a, 0x0d, "$"
 ship_closer_msg:
-        db 0x0a, 0x0d, "The ship is getting closer, hurry up!", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "The ship is getting closer!", 0x0a, 0x0d, 0x0a, 0x0d
+        db "Hurry up, or you'll all be dead!", 0x0a, 0x0d, "$"
 NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0a, 0x0d, "$"
 THE:
@@ -3061,15 +3086,14 @@ item_2_long:  db "The mirror was once small and delicate.", 0x0a, 0x0d
               db "$"
 
 item_3_name:  db "TORCH"
-item_3_desc:  db "A small torch.$"
-item_3_long:  db "The torch doesn't seem to be anything special,", 0x0a, 0x0d
-              db "but you do notice that it contains batteries and can be turned on easily.", 0x0a, 0x0d
-              db "$"
-
-item_4_name:  db "TORCH-LIT"
-item_4_desc:  db "A small torch, which is turned on.$"
-item_4_long:  db "The torch doesn't seem to be anything special.", 0x0a, 0x0d
-              db "$"
+item_3_desc_off:  db "A small torch.$"
+item_3_desc_on:   db "A small torch, which is turned on.$"
+item_3_long_off:  db "The torch doesn't seem to be anything special,"
+                  db 0x0a, 0x0d
+                  db "but you do notice that it contains batteries and can be turned on easily.", 0x0a, 0x0d
+                  db "$"
+item_3_long_on:  db "The torch doesn't seem to be anything special."
+                 db 0x0a, 0x0d, "$"
 
 item_5_name:  db "DOG"
 item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him ", 0x0a, 0x0d
@@ -3108,13 +3132,12 @@ item_10_desc: db "A telephone, wired to the wall.$"
 item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.", 0x0a, 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
-item_11_desc: db "A trapdoor.$"
-item_11_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
+item_11_closed: db "A trapdoor.$"
+item_11_open: db "An open trapdoor.$"
+item_11_desc_closed: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
               db "Perhaps you should open it to explore further?", 0x0a, 0x0d, "$"
+item_11_desc_open: db "An average looking trapdoor.", 0x0a, 0x0d, "$"
 
-item_12_name: db "TRAPDOOR-OPEN"
-item_12_desc: db "An open trapdoor.$"
-item_12_long: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d, "$"
 
 item_13_name: db "METEOR"
 item_13_desc: db "A meteor fragment$"
@@ -3199,9 +3222,11 @@ command_table:
           DEFW get_function
         DEFB 6, 'PICKUP', 1
           DEFW get_function
-        DEFB 4, 'OPEN', 1
+        DEFB 4, 'OPEN', 1     ; open trapdoor
           DEFW use_function
-        DEFB 4, 'READ', 1
+        DEFB 5, 'CLOSE', 1    ; close trapdoor
+          DEFW use_function
+        DEFB 4, 'READ', 1     ; read book
           DEFW use_function
         DEFB 5, 'LIGHT', 1
           DEFW use_function
@@ -3273,23 +3298,23 @@ people_table:
 ; a long description, and a seen-flag.
 ;
 location_table:
-        DEFW location_0_short
+        DEFW location_0_short   ; top-floor
         DEFW location_0_long
         DB 0 ; seen-flag
 location_first:
-        DEFW location_1_short
+        DEFW location_1_short   ; middle-floor
         DEFW location_1_long
         DB 0 ; seen-flag
 
-        DEFW location_2_short
+        DEFW location_2_short   ; ground-floor
         DEFW location_2_long
         DB 0 ; seen-flag
 
-        DEFW location_3_short
+        DEFW location_3_short   ; basement
         DEFW location_3_long
         DB 0 ; seen-flag
 
-        DEFW location_4_short
+        DEFW location_4_short   ; dark-place
         DEFW location_4_long
         DB 0 ; seen-flag
 
@@ -3388,26 +3413,17 @@ item_first:
         DEFB 0xFe         ; not visible anywhere
 
         DEFW item_3_name  ; torch
-        DEFW item_3_desc
-        DEFW item_3_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; No examine function
-        DEFW use_torch_fn ; USE TORCH
-        DEFB 0            ; item state
-        DEFB 1            ; this item can be picked up
-        DEFB 0x00         ; top-floor
-
-        DEFW item_4_name  ; torch-lit
-        DEFW item_4_desc
-        DEFW item_4_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
-        DEFB 0            ; item state
-        DEFB 1            ; this item can be picked up
-        DEFB 0xFE         ; not visible anywhere
+torch_item_desc:
+        DEFW item_3_desc_off
+torch_item_long:
+        DEFW item_3_long_off
+        DEFB 0,0                ; No take function
+        DEFB 0,0                ; No drop function
+        DEFB 0,0                ; No examine function
+        DEFW use_torch_fn       ; USE TORCH
+        DEFB TORCH_STATE_UNLIT  ; item state
+        DEFB 1                  ; this item can be picked up
+        DEFB 0x00               ; top-floor
 
         DEFW item_5_name  ; dog
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3476,26 +3492,17 @@ item_first:
         DEFB 0x01         ; middle-floor
 
         DEFW item_11_name ; trapdoor
-        DEFW item_11_desc
-        DEFW item_11_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; no custom examine function
-        DEFW use_trapdoor_fn ; open function
-        DEFB 0            ; item state
-        DEFB 0            ; this item cannot be picked up
-        DEFB 0xFE         ; hidden until the rug is moved
-
-        DEFW item_12_name ; trapdoor-open
-        DEFW item_12_desc
-        DEFW item_12_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; no custom examine function
-        DEFB 0,0          ; No use function
-        DEFB 0            ; item state
-        DEFB 0            ; this item cannot be picked up
-        DEFB 0xFE         ; hidden until the trapdoor is opened.
+trapdoor_desc:
+        DEFW item_11_closed
+trapdoor_edesc:
+        DEFW item_11_desc_closed
+        DEFB 0,0                   ; No take function
+        DEFB 0,0                   ; No drop function
+        DEFB 0,0                   ; no custom examine function
+        DEFW use_trapdoor_fn       ; open function
+        DEFB TRAPDOOR_STATE_CLOSED ; item state
+        DEFB 0                     ; this item cannot be picked up
+        DEFB 0xFE                  ; hidden until the rug is moved
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
