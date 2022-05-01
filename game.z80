@@ -1495,10 +1495,8 @@ place_trapdoor:
         ; NOTE: We could just hardcode this to location "3".
         ;
         ; Get the current location.
-        push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        pop hl
 
         ; Save the location in the item.
         ld (IX+ITEM_TABLE_LOCATION_OFFSET),a
@@ -2086,14 +2084,10 @@ up_on_middle_floor:
         ld hl, item_13_name
         call get_item_by_name
 
-        ; Get the location in A, leaving HL pointing to the start of the object
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop hl
+        ; Get the location of the meteor.
+        ld a, (IX + ITEM_TABLE_LOCATION_OFFSET)
 
-        ; Are we carrying the item?
+        ; Are we carrying it ?
         cp ITEM_CARRIED
         jr nz, up_on_ground_floor
 
@@ -2174,7 +2168,7 @@ drop_mirror_fn:
         ; Change the location to the current one
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        ld  (IX + ITEM_TABLE_LOCATION_OFFSET), a
+        ld (IX + ITEM_TABLE_LOCATION_OFFSET), a
 
         ; Was the mirror already dropped?
         ld a,(IX + ITEM_TABLE_STATE_OFFSET)
@@ -2318,7 +2312,7 @@ take_meteor_fn:
 
 take_meteor:
         ; update the object location to be in the player's posession
-        ld (IX + ITEM_TABLE_STATE_OFFSET), ITEM_CARRIED
+        ld (IX + ITEM_TABLE_LOCATION_OFFSET), ITEM_CARRIED
 
         ; Now we've taken the item show the users (updated)
         ; inventory.
@@ -2593,13 +2587,13 @@ use_generator_found_t:
         jr z, use_generator_won_fn
 
         ld de, use_gen_location
-        call bios_output_string
-        ret
+        jr print_and_return
 use_generator_won_fn:
         ld hl, PLAYER_WON_FLAG
         ld (hl),1
 
         ld de, use_generator_won
+print_and_return:
         call bios_output_string
         ret
 
