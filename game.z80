@@ -1128,14 +1128,13 @@ user_got_torch_but_not_lit:
         xor a
         ret
 
+
 ;
 ; Command-Handler DROP
 ;
 ; If the item is carried by the player it is dropped
 ;
 ; If there is a non-zero drop-function it is invoked.
-;
-; TODO: Use index-register
 ;
 drop_function:
         call input_second_term
@@ -1161,49 +1160,34 @@ drop_object:
         ret
 
 drop_found_it:
-        ; HL points to the item's table-entry
+        ; IX points to the item's table-entry
 
         ; Get the current location
-        push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        pop hl
 
         ; Update the item to have its location-field set to the
         ; location we just discovered.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld  (hl), a
-        pop de
-        pop hl
+        ld (IX + ITEM_TABLE_LOCATION_OFFSET),a
 
-        ; HL points to the start of the entry
-        ; get the location of the drop pointer
-        push de
-        ld de, ITEM_TABLE_DROP_OFFSET
-        add hl, de
-        pop de
-
-        ; Get the drop-handler
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
+        ; IX still points to the start of the item's entry,
+        ; now look for a custom drop-function.
+        ld l, (IX+ITEM_TABLE_DROP_OFFSET)
+        ld h, (IX+ITEM_TABLE_DROP_OFFSET+1)
 
         ; is the handler empty?
-        ld a, d
-        or e
+        ld a, l
+        or h
         jr nz, drop_invoke_handler
         ld de, you_drop_it
         call bios_output_string
         ret
 
 drop_invoke_handler:
-        push de
-        pop hl
-        call JP_HL
-        ret
+        ; jump to the handler, the ret at the end
+        ; of that handler will return here.
+        jp JP_HL
+
 
 
 
@@ -1252,19 +1236,19 @@ examine_found_it:
         ;
         ; Find the name of the custom examine-handler, if any, using
         ; the index-register.
-        ld e,(IX+ITEM_TABLE_EXAMINE_OFFSET)
-        ld d,(IX+ITEM_TABLE_EXAMINE_OFFSET+1)
+        ld l,(IX+ITEM_TABLE_EXAMINE_OFFSET)
+        ld h,(IX+ITEM_TABLE_EXAMINE_OFFSET+1)
 
         ; If the custom examine function is non-empty call
         ; it and return, otherwise show the extended message
-        ld a, d
-        or e
+        ld a, l
+        or h
         jr z, show_ext_desc
 
-        push de
-        pop hl
-        call JP_HL
-        ret
+        ; The ret at the end of that handler will return
+        ; from this function.
+        jp JP_HL
+
 
 show_ext_desc:
         ; get the location of the extended-description pointer
@@ -1414,8 +1398,6 @@ skip_string2:
 ;  Otherwise the location of the item will be updated to mark it as
 ; within the player's inventory.
 ;
-;  TODO: Use index-register
-;
 get_function:
         call input_second_term
         cp 0
@@ -1445,17 +1427,15 @@ get_found_it:
         ;
         ; Find the name of the custom take-handler, if any, using
         ; the index-register.
-        ld e, (IX+ITEM_TABLE_TAKE_OFFSET)
-        ld d, (IX+ITEM_TABLE_TAKE_OFFSET+1)
+        ld l, (IX+ITEM_TABLE_TAKE_OFFSET)
+        ld h, (IX+ITEM_TABLE_TAKE_OFFSET+1)
 
         ; Is there a custom function?
-        ld a, d
-        or e
+        ld a, h
+        or l
         jr z, take_as_normal
 
         ; OK there is a custom function.  Use it
-        push de
-        pop hl
         call JP_HL
         ret
 
@@ -2054,19 +2034,18 @@ use_found_object:
         ;
         ; Find the name of the custom use-handler, if any, using
         ; the index-register.
-        ld e, (IX+ITEM_TABLE_USE_OFFSET)
-        ld d, (IX+ITEM_TABLE_USE_OFFSET+1)
+        ld l, (IX+ITEM_TABLE_USE_OFFSET)
+        ld h, (IX+ITEM_TABLE_USE_OFFSET+1)
 
         ; is the use-handler empty?
-        ld a, d
-        or e
+        ld a, h
+        or l
         jr z, use_is_futile
 
-        ; jump to the use-handler
-        push de
-        pop hl
-        call JP_HL
-        ret
+        ; jump to the use-handler, the ret at the
+        ; end of that function will return from this handler
+        jp JP_HL
+
 use_is_futile:
         ld de, use_generic
         call bios_output_string
