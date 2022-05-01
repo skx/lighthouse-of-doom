@@ -1565,8 +1565,6 @@ help_skip_this:
 ;
 ; Command-handler INVENTORY
 ;
-; TODO: Use index-register
-;
 inventory_function:
         call player_has_objects         ; is the player carrying:
         cp 0
@@ -1581,49 +1579,39 @@ inventory_show_items:
         call bios_output_string
 
         ;
-        ; We know there are items being carried, look for them
+        ; We know there are items being carried, so now we'll loop
+        ; over them and print them out appropriately.
         ;
-        ld hl, items
+        ld IX, items
+        ld DE, ITEM_ENTRY_LENGTH
         ld b, ITEM_COUNT
 inventory_test_item:
 
-        ; HL points to the item-table
-        ; Get the description of the object in DE, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
-        add hl,de
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
-        pop hl
+        ; Get the location of the object.
+        ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
-        ; Get the location of the object in A, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop de
-        pop hl
-
+        ; Is this carried?
         cp ITEM_CARRIED ; 0xff means the item is being carried
         jr nz, inv_item_not_carried
 
+        ; OK the item is carried, show it out.
         PUSH_ALL
+
+          ; Show a tab
           call show_tab
+
+          ; show the item
+          ld e,(IX + ITEM_TABLE_DESCRIPTION_OFFSET)
+          ld d,(IX + ITEM_TABLE_DESCRIPTION_OFFSET+1)
           call bios_output_string
+
+          ; then a newline
           call show_newline
         POP_ALL
 
 inv_item_not_carried:
-        ; Since we have HL pointing to an entry we can move to the next
-        ; just by adding the length of the table-item.
-        push de
-        ld de, ITEM_ENTRY_LENGTH
-        add hl,de
-        pop de
+        ; bump to the next item
+        add ix,de
         djnz inventory_test_item
         ret
 
@@ -1640,8 +1628,6 @@ inv_item_not_carried:
 ;   LOOK AT XXX
 ;
 ; If we see "LOOK AT XXX" then we replace the command with "EXAMINE YYYY"
-;
-; TODO: Use index-register
 ;
 look_function:
 
@@ -1749,30 +1735,13 @@ look_show_extended:
         ; Walk over the list of items - and show any which
         ; are present in this room.
         ;
-        ld hl, items
+        ld IX, items
         ld b, ITEM_COUNT
+
 look_item_loop:
 
-        ; HL points to the item-table
-        ; Get the description of the object in DE, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
-        add hl,de
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
-        pop hl
-
-        ; Get the location of the object in C, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld c, (hl)
-        pop de
-        pop hl
+        ; Get the location of the object.
+        ld c, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; Get the current location
         push hl
@@ -1784,7 +1753,11 @@ look_item_loop:
         cp c
         jr nz, item_not_present
 
-        ; Is the description empty?  Then it is hidden.
+        ; Get the description of the object in DE
+        ld e,(IX+ITEM_TABLE_DESCRIPTION_OFFSET)
+        ld d,(IX+ITEM_TABLE_DESCRIPTION_OFFSET+1)
+
+        ; Is the description empty?  Then the item is hidden.
         ld a, d
         or e
         jr z, item_not_present
@@ -1797,10 +1770,8 @@ look_item_loop:
 item_not_present:
         ; Since we have HL pointing to an entry we can move to the next
         ; just by adding the length of the table-item.
-        push de
         ld de, ITEM_ENTRY_LENGTH
-        add hl,de
-        pop de
+        add IX,de
         djnz look_item_loop
         ret
 
@@ -2242,8 +2213,6 @@ examine_room_fn:
 ;    make the trapdoor appear
 ;
 ;  If the rug is in your posession just show the description
-;
-; TODO: Use the index register
 examine_rug_fn:
 
         ; Get the rug object
@@ -2251,11 +2220,7 @@ examine_rug_fn:
         call get_item_by_name
 
         ; Get the location which it appears
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a,(hl)
-        pop hl
+        ld a,(IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; Is the item in your possessions?
         cp ITEM_CARRIED
@@ -2263,17 +2228,10 @@ examine_rug_fn:
 
         ; The rug must be in your possession, just show the extended
         ; description.
-        push de
-        ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
-        add hl, de
-        pop de
-
-        ; Get the pointer to the string
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-
+        ld e, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
+        ld d, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
         call bios_output_string
+
         ret
 
 rug_on_ground:
@@ -2290,21 +2248,16 @@ rug_on_ground:
 ;  If the meteor is hidden
 ;   it will become visible
 ;
-;  Otherwise you just see the desk
+;  Otherwise you just see the desk.
 ;
-; TODO: Use index-register
 examine_desk_fn:
 
         ; Get the meteor item
         ld hl, item_13_name
         call get_item_by_name
 
-        ; Get the state in A, leaving HL pointing to the start of the object
-        push hl
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop hl
+        ; Get the state of the meteor
+        ld a, (IX+ITEM_TABLE_STATE_OFFSET)
 
         ; If the state of the meteor is hidden, then show it
         cp 0
@@ -2317,11 +2270,7 @@ examine_desk_fn:
 meteor_hidden:
 
         ; Update the state of the desk to show we've examined it
-        push hl
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld (hl), 1
-        pop hl
+        ld (IX+ITEM_TABLE_STATE_OFFSET), 1
 
         ; desk description
         ld de, item_9_long
@@ -2339,18 +2288,14 @@ meteor_hidden:
 ;
 ;  This is set by examine desk
 ;
-; TODO: Use index-register
 take_meteor_fn:
         ; Get the meteor item
         ld hl, item_13_name
         call get_item_by_name
 
-        ; Get the state in A, leaving HL pointing to the start of the object
-        push hl
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop hl
+        ; Get the state of the meteor - we must have discovered
+        ; it by examining the desk before we can take it.
+        ld a, (IX + ITEM_TABLE_STATE_OFFSET)
 
         ; State is 0?
         cp 0
@@ -2361,13 +2306,8 @@ take_meteor_fn:
         ret
 
 take_meteor:
-
         ; update the object location to be in the player's posession
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld  (hl), ITEM_CARRIED
-        pop hl
+        ld (IX + ITEM_TABLE_STATE_OFFSET), ITEM_CARRIED
 
         ; Now we've taken the item show the users (updated)
         ; inventory.
@@ -2381,26 +2321,19 @@ take_meteor:
 ;
 ;  - AND you're in the basement
 ;
-; TODO: Use index-register
 take_rug_fn:
 
         ; Get the rug object
         ld hl, item_7_name
         call get_item_by_name
 
-        ; Update the location, so that we've taken it.
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), ITEM_CARRIED
-        pop hl
+        ; Move the rug into the player's possession.
+        ld (IX+ITEM_TABLE_LOCATION_OFFSET),ITEM_CARRIED
 
         ; Taking the rug should only trigger this behaviour once.
         ;
         ; Since we have a piece of state with each object we can use that.
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
+        ld a, (IX + ITEM_TABLE_STATE_OFFSET)
 
         ; If the state contains non-zero we've done this
         ; before so we just show the inventory as we would
@@ -2409,7 +2342,7 @@ take_rug_fn:
         jr nz, get_rug_show_inv
 
         ; Store 1 in the state, so we don't do this again.
-        inc (hl)
+        ld (IX + ITEM_TABLE_STATE_OFFSET),1
 
         ; Is the trapdoor already present?  If so we don't need
         ; to do anything special.
@@ -2421,11 +2354,7 @@ take_rug_fn:
         ; get the location
         ; Get the location of the object in A, but leaving
         ; HL pointing to the start of the item's entry.
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop hl
+        ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; trapdoor in the basement?  No special action required
         cp 2
