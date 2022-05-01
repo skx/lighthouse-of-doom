@@ -56,7 +56,7 @@ MAX_GRUE_EXPOSURE: EQU 3
 ; so they may be examined.
 ;
 ; Each object has a description, a state, and a location, along with
-; dedicated handler-functions.
+; a collection of dedicated handler-functions.
 ;
 ; Here we define some state attributes for a couple of special objects
 ; which eases maintainance.
@@ -65,11 +65,25 @@ MAX_GRUE_EXPOSURE: EQU 3
 TORCH_STATE_UNLIT:      EQU 0
 TORCH_STATE_LIT:        EQU 1
 
-; 2. Trapdoor may be hidden, visible, or opened.
-;
-; hiding is handled via the location for historical reasons.
+; 2. The trapdoor may be open or closed.
+;    [It may also be invisible, but that is handled via another mechanism]
 TRAPDOOR_STATE_CLOSED:  EQU 0
 TRAPDOOR_STATE_OPEN:    EQU 1
+
+
+; We have a bunch of tables defined later, one for the locations,
+; one for the available commands, and one for the items.
+;
+; Each item has a byte which contains the "location" (i.e. index
+; into the location-map).  Two locations are special:
+;
+; A location of 0xff means the player is carrying the item.
+; A location of 0xfe means the item is available, but invisible.
+;
+; Define helpers for these values.
+;
+ITEM_CARRIED: EQU 0xff
+ITEM_INVISIBLE: EQU 0xfe
 
 
 
@@ -262,10 +276,10 @@ not_won:
         ld de, INPUT_BUFFER
         call bios_read_input
 
-        ; Every five turns we show a message about the ship.
+        ; Every ten turns we show a message about the ship.
         ld hl, SHIP_WARNING
         ld a, (hl)              ; get the value
-        cp 5                    ; five turns?
+        cp 10                   ; ten turns?
         jr nz, no_ship_warning  ; nope?  Do nothing
 
         ld (hl), 0              ; reset the count
@@ -768,15 +782,16 @@ item_not_present_loop:
 
 
 ;
-; Helper function.  Get an item by name.
+; Helper function to return an item, by name.
 ;
-; On entry the name of the item to be found  will be stored in HL.
+; This is used a lot because the item-entries contain a series of
+; pointers for various purposes - handlers to be invoked for object-specific
+; behaviour, the location of the object within our world-map, and
+; a byte representing per-item state.
 ;
-; On exit A will be 00 if all is OK, and HL will point to the item.
-;
+; On entry the name of the item to be found will be stored in HL.
+; On exit A will be 00 if all is OK, and both IX & HL will point to the item.
 ; On exit A will be ff if there was a failure.
-;
-; This is a bit hairy, but not too bad.
 ;
 get_item_by_name:
 
@@ -831,9 +846,9 @@ gibn_item_loop:
         ; Is this object carried, in the current location, or
         ; otherwise available?
         ld a,(hl)
-        cp 0xFF ; 0xff means the item is being carried
+        cp ITEM_CARRIED ; 0xff means the item is being carried
         jr z, gibn_item_carried
-        cp 0xFE ; 0xfe means the item can be found/used/examined
+        cp ITEM_INVISIBLE ; The item can be found/used/examined
         jr z, gibn_item_available
         push hl
         ld hl, CURRENT_LOCATION
@@ -961,7 +976,7 @@ player_has_objects_loop:
 
         ; If the location is 0xff then the player is carrying
         ; something.
-        cp 0xff
+        cp ITEM_CARRIED
         jr nz, player_not_carrying_loop
 
         ; Report success
@@ -1501,7 +1516,7 @@ get_found_it_take:
         push de
         ld de, ITEM_TABLE_LOCATION_OFFSET
         add hl,de
-        ld (hl), 0xff
+        ld (hl), ITEM_CARRIED
         pop de
         pop hl
 
@@ -1639,7 +1654,7 @@ inventory_test_item:
         pop de
         pop hl
 
-        cp 0xff ; 0xff means the item is being carried
+        cp ITEM_CARRIED ; 0xff means the item is being carried
         jr nz, inv_item_not_carried
 
         PUSH_ALL
@@ -2302,7 +2317,7 @@ examine_rug_fn:
         pop hl
 
         ; Is the item in your possessions?
-        cp 0xff
+        cp ITEM_CARRIED
         jr nz, rug_on_ground
 
         ; The rug must be in your possession, just show the extended
@@ -2408,7 +2423,7 @@ take_meteor:
         push hl
         ld de, ITEM_TABLE_LOCATION_OFFSET
         add hl,de
-        ld  (hl), 0xff
+        ld  (hl), ITEM_CARRIED
         pop hl
 
         ; Now we've taken the item show the users (updated)
@@ -2433,7 +2448,7 @@ take_rug_fn:
         push hl
         ld de, ITEM_TABLE_LOCATION_OFFSET
         add hl,de
-        ld (hl), 0xff
+        ld (hl), ITEM_CARRIED
         pop hl
 
         ; Taking the rug should only trigger this behaviour once.
@@ -3404,13 +3419,13 @@ item_first:
         DEFW item_2_name  ; mirror-broken
         DEFW item_2_desc
         DEFW item_2_long
-        DEFB 0,0          ; No take function
-        DEFB 0,0          ; No drop function
-        DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
-        DEFB 0            ; item state
-        DEFB 1            ; this item can be picked up
-        DEFB 0xFe         ; not visible anywhere
+        DEFB 0,0            ; No take function
+        DEFB 0,0            ; No drop function
+        DEFB 0,0            ; No examine function
+        DEFB 0,0            ; No use function
+        DEFB 0              ; item state
+        DEFB 1              ; this item can be picked up
+        DEFB ITEM_INVISIBLE ; not visible anywhere
 
         DEFW item_3_name  ; torch
 torch_item_desc:
@@ -3502,7 +3517,7 @@ trapdoor_edesc:
         DEFW use_trapdoor_fn       ; open function
         DEFB TRAPDOOR_STATE_CLOSED ; item state
         DEFB 0                     ; this item cannot be picked up
-        DEFB 0xFE                  ; hidden until the rug is moved
+        DEFB ITEM_INVISIBLE        ; hidden until the rug is moved
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
@@ -3513,7 +3528,7 @@ trapdoor_edesc:
         DEFB 0,0            ; No use function
         DEFB 0              ; item state
         DEFB 0              ; this item cannot be picked up
-        DEFB 0xFE           ; hidden until the desk is examined
+        DEFB ITEM_INVISIBLE ; hidden until the desk is examined
 
         DEFW item_14_name    ; room
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3524,7 +3539,7 @@ trapdoor_edesc:
         DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
-        DEFB 0xFE            ; hidden.
+        DEFB ITEM_INVISIBLE  ; hidden.
 
         DEFW item_15_name    ; grue
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3535,7 +3550,7 @@ trapdoor_edesc:
         DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
-        DEFB 0xFE            ; hidden.
+        DEFB ITEM_INVISIBLE  ; hidden.
 
         DEFW item_16_name     ; dog-basket
         DEFB 0,0              ; NO DESCRIPTION - hidden item
