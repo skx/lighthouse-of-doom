@@ -893,6 +893,8 @@ gibn_item_available:
 gibn_found_it:
         pop bc
         pop hl
+        push hl
+        pop ix      ; IX points to the item, as well as HL
         xor a
         ret
 
@@ -919,15 +921,13 @@ maybe_grue_death:
         cp 0
         ret nz
 
-        ; Get the item-state, we use that to count how
-        ; many times we've been down here, and increase
-        ; the count too.
-        push hl
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
-        inc (hl)
-        pop hl
+        ; Once we've found the item IX will point to the
+        ; entry (as well as HL).
+        ;
+        ; Get the item state using that index register,
+        ; after increasing it.
+        inc  (IX +  ITEM_TABLE_STATE_OFFSET)
+        ld a,(IX + ITEM_TABLE_STATE_OFFSET)
 
         cp MAX_GRUE_EXPOSURE
         jr nc, death_by_grue_grue
@@ -1088,10 +1088,12 @@ down_on_ground_floor:
         ; Find the item, and get it's state.
         ld hl, item_11_name
         call get_item_by_name
-        ; find the offset for the state, and then get it.
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
+
+        ; Once we've found the item IX will point to the
+        ; entry (as well as HL).
+        ;
+        ; Get the item state using the index register.
+        ld a, (IX+ITEM_TABLE_STATE_OFFSET)
 
         cp TRAPDOOR_STATE_OPEN
         jr nz, no_down ; not open?  Then we can't go down
@@ -1126,21 +1128,18 @@ user_has_lit_torch:
         ld hl, item_3_name
         call get_item_by_name
 
-        ; Get the location in A, leaving HL pointing to the start of the object
-        push hl
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop hl
+        ; Once we've found the item IX will point to the
+        ; entry (as well as HL).
+        ;
+        ; Get the location using the index register.
+        ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; Are we carrying the item?
-        cp 255
+        cp ITEM_CARRIED
         jr nz, user_not_got_torch
 
-        ; OK HL still points to the start of the object get the state
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
+        ; OK now see if the torch is lit
+        ld a, (IX+ITEM_TABLE_STATE_OFFSET)
 
         ; Is it lit?
         cp TORCH_STATE_LIT
@@ -1467,15 +1466,12 @@ get_found_it:
         ; HL points to the start of the item-entry of the object
         ; the user tried to take.
 
-        ; HL points to the start of the entry
-        ; get the pointer to the custom take-function, in DE, leaving HL alone
-        push hl
-        ld de, ITEM_TABLE_TAKE_OFFSET
-        add hl,de
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
-        pop hl
+        ; IX points to the start of the entry for the object.
+        ;
+        ; Find the name of the custom take-handler, if any, using
+        ; the index-register.
+        ld e, (IX+ITEM_TABLE_TAKE_OFFSET)
+        ld d, (IX+ITEM_TABLE_TAKE_OFFSET+1)
 
         ; Is there a custom function?
         ld a, d
@@ -1490,15 +1486,9 @@ get_found_it:
 
 take_as_normal:
 
-        ; Get the collectable property of the object, leaving HL
-        ; pointing to the start of the object
-        push hl
-        push de
-        ld de, ITEM_TABLE_COLLECTABLE_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop de
-        pop hl
+        ; Get the collectable property of the object, using
+        ; the index register.
+        ld a, (IX+ITEM_TABLE_COLLECTABLE_OFFSET)
 
         ; is this item collectable?
         cp 1
@@ -1510,15 +1500,9 @@ take_as_normal:
 
 get_found_it_take:
 
-        ; HL still points to the start of the item entry
-        ; change the location to be in the player's possession
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), ITEM_CARRIED
-        pop de
-        pop hl
+        ; Change the location of the object to be within the
+        ; players possession.
+        ld (IX+ITEM_TABLE_LOCATION_OFFSET),ITEM_CARRIED
 
         ; Now we've taken the item show the users (updated)
         ; inventory.
