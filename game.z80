@@ -775,6 +775,8 @@ item_not_present_loop:
 ; On exit A will be 00 if all is OK, and both IX & HL will point to the item.
 ; On exit A will be ff if there was a failure.
 ;
+; TODO: Use index-register
+;
 get_item_by_name:
 
         push hl
@@ -908,7 +910,7 @@ maybe_grue_death:
         ;
         ; Get the item state using that index register,
         ; after increasing it.
-        inc  (IX +  ITEM_TABLE_STATE_OFFSET)
+        inc  (IX + ITEM_TABLE_STATE_OFFSET)
         ld a,(IX + ITEM_TABLE_STATE_OFFSET)
 
         cp MAX_GRUE_EXPOSURE
@@ -979,7 +981,7 @@ player_not_carrying_loop:
 input_second_term:
         ld hl, INPUT_BUFFER+2
 
-        ; start be incrementing the pointer until we find a space
+        ; start by incrementing the pointer until we find a space
 input_second_term_loop1:
         ld a,(hl)
         cp 0
@@ -1043,7 +1045,7 @@ down_function:
         cp 2
         jr z, down_on_ground_floor
 
-        ; fall-through other options will show "NO DOWN"
+        ; fall-through - other options will show "NO DOWN"
 no_down:
         ld de, no_down_msg
         call bios_output_string
@@ -1132,6 +1134,8 @@ user_got_torch_but_not_lit:
 ; If the item is carried by the player it is dropped
 ;
 ; If there is a non-zero drop-function it is invoked.
+;
+; TODO: Use index-register
 ;
 drop_function:
         call input_second_term
@@ -1409,6 +1413,8 @@ skip_string2:
 ;
 ;  Otherwise the location of the item will be updated to mark it as
 ; within the player's inventory.
+;
+;  TODO: Use index-register
 ;
 get_function:
         call input_second_term
@@ -2167,9 +2173,11 @@ wait_function:
 
 ;  When you drop the mirror it cracks.
 ;
-;  Remove the "mirror" item from the current location.
-;  Add the "mirror-broken" item to the current location.
+;  Move the "mirror" item to the current location, as per-usual,
+; but also update the item-name and expanded description.
 ;
+;  BUG/TODO - Dropping the mirror a second time shouldn't break it more
+;             Use the state-byte to record the state.
 drop_mirror_fn:
         ; find the mirror
         ld hl, item_1_name
@@ -2178,22 +2186,24 @@ drop_mirror_fn:
         ; Once we've found the item IX will point to the
         ; entry (as well as HL).
         ;
-        ; Change the location to be something random.
-        ld (IX + ITEM_TABLE_LOCATION_OFFSET), 0xFF
-
-        ; find the broken-mirror
-        ld hl,item_2_name
-        call get_item_by_name
-
-        ; Get the current location in A
+        ; Change the location to the current one
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-
-        ; Once we've found the item IX will point to the
-        ; entry (as well as HL).
-        ;
-        ; Change the location to be the current one.
         ld (IX + ITEM_TABLE_LOCATION_OFFSET), a
+
+        ; change the description
+        ld de, item_1_desc_broken
+        ld hl, item_first_desc
+        ld (hl), e
+        inc hl
+        ld (hl), d
+
+        ; change the extended description
+        ld de, item_1_long_broken
+        ld hl, item_first_edesc
+        ld (hl), e
+        inc hl
+        ld (hl), d
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
@@ -2955,10 +2965,9 @@ item_1_long:  db "The mirror doesn't seem to be anything special.", 0x0a, 0x0d
               db "But your reflection?  It looks fabulous.", 0x0a, 0x0d
               db "$"
 
-item_2_name:  db "MIRROR-BROKEN"
-item_2_desc:  db "A small mirror, which is cracked and broken.$"
-item_2_long:  db "The mirror was once small and delicate.", 0x0a, 0x0d
-              db "But now it shows a distored reflection of yourself,", 0x0a, 0x0d
+item_1_desc_broken:  db "A small broken mirror.$"
+item_1_long_broken:  db "The mirror was once small and delicate.", 0x0a, 0x0d
+              db "But now it shows a warped reflection of yourself,", 0x0a, 0x0d
               db "which is oddly unsettling.", 0x0a, 0x0d
               db "$"
 
@@ -3266,9 +3275,14 @@ ITEM_TABLE_COLLECTABLE_OFFSET:     EQU item_collectable - items
 ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
 
+        ; description of the mirror changes when it is dropped
+        ; so we have labels here to update the strings that
+        ; are pointed to.
 item_first:
         DEFW item_1_name  ; mirror
+item_first_desc:
         DEFW item_1_desc
+item_first_edesc:
         DEFW item_1_long
         DEFB 0,0            ; No take function
         DEFW drop_mirror_fn ; custom drop function
@@ -3278,17 +3292,10 @@ item_first:
         DEFB 1              ; this item can be picked up
         DEFB 0x01           ; middle-floor
 
-        DEFW item_2_name  ; mirror-broken
-        DEFW item_2_desc
-        DEFW item_2_long
-        DEFB 0,0            ; No take function
-        DEFB 0,0            ; No drop function
-        DEFB 0,0            ; No examine function
-        DEFB 0,0            ; No use function
-        DEFB 0              ; item state
-        DEFB 1              ; this item can be picked up
-        DEFB ITEM_INVISIBLE ; not visible anywhere
 
+        ; description of the torch changes when it is lit/unlit
+        ; so we have labels here to update the strings that
+        ; are pointed to.
         DEFW item_3_name  ; torch
 torch_item_desc:
         DEFW item_3_desc_off
@@ -3368,6 +3375,9 @@ torch_item_long:
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
 
+        ; description of the trapdoor changes when it is opened/
+        ; closed.  So we have labels here to update the strings
+        ; that are pointed to.
         DEFW item_11_name ; trapdoor
 trapdoor_desc:
         DEFW item_11_closed
