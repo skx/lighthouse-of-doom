@@ -1258,17 +1258,10 @@ examine_found_it:
 
 show_ext_desc:
         ; get the location of the extended-description pointer
-        push de
-        ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
-        add hl, de
-        pop de
+        ld e, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
+        ld d, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
 
-        ; Get the pointer to the string
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-
-        ; show it
+        ; show it and return
         call bios_output_string
         ret
 
