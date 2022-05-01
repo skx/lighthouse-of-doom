@@ -70,6 +70,12 @@ TORCH_STATE_LIT:        EQU 1
 TRAPDOOR_STATE_CLOSED:  EQU 0
 TRAPDOOR_STATE_OPEN:    EQU 1
 
+; 3. The mirror may be normal, or broken
+MIRROR_OK:     EQU 0
+MIRROR_BROKEN: EQU 1
+
+
+
 
 ; We have a bunch of tables defined later, one for the locations,
 ; one for the available commands, and one for the items.
@@ -2155,8 +2161,8 @@ wait_function:
 ;  Move the "mirror" item to the current location, as per-usual,
 ; but also update the item-name and expanded description.
 ;
-;  BUG/TODO - Dropping the mirror a second time shouldn't break it more
-;             Use the state-byte to record the state.
+;  We record that we've broken it in the item-state, so only dropping
+; it the first time triggers this behaviour.
 drop_mirror_fn:
         ; find the mirror
         ld hl, item_1_name
@@ -2168,7 +2174,23 @@ drop_mirror_fn:
         ; Change the location to the current one
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        ld (IX + ITEM_TABLE_LOCATION_OFFSET), a
+        ld  (IX + ITEM_TABLE_LOCATION_OFFSET), a
+
+        ; Was the mirror already dropped?
+        ld a,(IX + ITEM_TABLE_STATE_OFFSET)
+        cp MIRROR_BROKEN
+        jr nz, drop_mirror_break_it
+
+        ; OK the mirror was already broken, so we don't
+        ; need to do anything special.  Just say "You drop it"
+        ; and return.
+        ld de,you_drop_it
+        call bios_output_string
+        ret
+
+drop_mirror_break_it:
+        ; Update the state to record that it was broken.
+        ld (IX + ITEM_TABLE_STATE_OFFSET), MIRROR_BROKEN
 
         ; change the description
         ld de, item_1_desc_broken
@@ -2756,7 +2778,7 @@ USE_WHAT_MSG:
 cant_take_that_msg:
         db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
 you_drop_it:
-        db 0x0a, 0x0d, "You drop it", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "You drop it.", 0x0a, 0x0d, "$"
 inventory_empty_message:
         db 0x0a, 0x0d, "You are not carrying anything", 0x0a, 0x0d, "$"
 you_carrying_message:
@@ -3267,7 +3289,7 @@ item_first_edesc:
         DEFW drop_mirror_fn ; custom drop function
         DEFB 0,0            ; no custom examine function
         DEFB 0,0            ; No use function
-        DEFB 0              ; item state
+        DEFB MIRROR_OK      ; item state
         DEFB 1              ; this item can be picked up
         DEFB 0x01           ; middle-floor
 
