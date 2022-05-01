@@ -725,57 +725,39 @@ we_found_the:
 ;
 items_are_present:
 
-        ; Point to the item-table, and get the count of objects
-        ld hl, items
+        ; Point to the item-table, and prepare to loop over the items
+        ld IX, items
+        ld DE, ITEM_ENTRY_LENGTH
         ld b, ITEM_COUNT
 
 look_item_loop_test:
 
+        ; Get the location of the object in C
+        ld c, (IX+ITEM_TABLE_LOCATION_OFFSET)
+
         ; Set A to the current location.
-        push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        pop hl
-
-        ; Get the description of the object in DE, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        ld de, ITEM_TABLE_DESCRIPTION_OFFSET
-        add hl,de
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
-        pop hl
-
-        ; Get the location of the object in C, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld c, (hl)
-        pop de
-        pop hl
 
         ; Is the item in the room?
         cp c
         jr nz, item_not_present_loop
 
+        ; Get the description of the object in HL.
+        ld l, (IX+ITEM_TABLE_DESCRIPTION_OFFSET)
+        ld h, (IX+ITEM_TABLE_DESCRIPTION_OFFSET+1)
+
         ; OK we have an item present.  Is the description empty?
         ; if so that's a hidden object and it doesn't count.
-        ld a, d
-        or e
+        ld a, h
+        or l
         jr z, item_not_present_loop
 
         xor a
         ret
 item_not_present_loop:
-        ; Since we have HL pointing to an entry we can move to the next
-        ; just by adding the length of the table-item.
-        push de
-        ld de, ITEM_ENTRY_LENGTH
-        add hl,de
-        pop de
+        ; Move to the next entry
+        add IX,DE
         djnz look_item_loop_test
         ld a, 0xff
         ret
@@ -958,24 +940,18 @@ death_by_grue_grue:
 ; Return "A == FF" if not.
 ;
 player_has_objects:
-        ; Point to the item-table, and get the count of objects
-        ld hl, items
+        ; Point to the item-table, and prepare to loop over the items
+        ld IX, items
+        ld DE, ITEM_ENTRY_LENGTH
         ld b, ITEM_COUNT
 
 player_has_objects_loop:
 
-        ; Get the location of the object in A, but leaving
-        ; HL pointing to the start of the item's entry.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld a, (hl)
-        pop de
-        pop hl
+        ; Get the location of the object in A.
+        ld a,(IX+ITEM_TABLE_LOCATION_OFFSET)
 
-        ; If the location is 0xff then the player is carrying
-        ; something.
+        ; If the location is the player's posession we're carrying something,
+        ; it doesn't matter what.
         cp ITEM_CARRIED
         jr nz, player_not_carrying_loop
 
@@ -984,12 +960,8 @@ player_has_objects_loop:
         ret
 player_not_carrying_loop:
 
-        ; Since we have HL pointing to an entry we can move to the next
-        ; just by adding the length of the table-item.
-        push de
-        ld de, ITEM_ENTRY_LENGTH
-        add hl,de
-        pop de
+        ; Point to the next entry.
+        add IX, DE
 
         ; Loop again
         djnz player_has_objects_loop
@@ -1271,16 +1243,13 @@ examine_object:
         ret
 
 examine_found_it:
-        ; HL points to the start of the entry
-        ; get the pointer to the custom examine-function, in DE,
-        ; leave HL alone
-        push hl
-        ld de, ITEM_TABLE_EXAMINE_OFFSET
-        add hl,de
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
-        pop hl
+
+        ; IX points to the start of the entry for the object.
+        ;
+        ; Find the name of the custom examine-handler, if any, using
+        ; the index-register.
+        ld e,(IX+ITEM_TABLE_EXAMINE_OFFSET)
+        ld d,(IX+ITEM_TABLE_EXAMINE_OFFSET+1)
 
         ; If the custom examine function is non-empty call
         ; it and return, otherwise show the extended message
@@ -1512,7 +1481,11 @@ get_found_it_take:
 
 
 
-
+;
+; Make trapdoor visible is called when the rug is taken/examined.
+;
+; It moves the trapdoor into the appropriate location within the
+; map.
 make_trapdoor_visible:
         ld hl, item_11_name
         call get_item_by_name
@@ -1524,9 +1497,11 @@ make_trapdoor_visible:
         ret
 
 place_trapdoor:
-        ; HL points to the start of the trapdoor's item-entry
-        ; change the location of that item to be the current location
-
+        ; We set the location of the trapdoor to being the
+        ; current location.
+        ;
+        ; NOTE: We could just hardcode this to location "3".
+        ;
         ; Get the current location.
         push hl
         ld hl, CURRENT_LOCATION
@@ -1534,14 +1509,7 @@ place_trapdoor:
         pop hl
 
         ; Save the location in the item.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), a
-        pop de
-        pop hl
-
+        ld (IX+ITEM_TABLE_LOCATION_OFFSET),a
         ret
 
 
@@ -1596,6 +1564,8 @@ help_skip_this:
 
 ;
 ; Command-handler INVENTORY
+;
+; TODO: Use index-register
 ;
 inventory_function:
         call player_has_objects         ; is the player carrying:
@@ -1670,6 +1640,8 @@ inv_item_not_carried:
 ;   LOOK AT XXX
 ;
 ; If we see "LOOK AT XXX" then we replace the command with "EXAMINE YYYY"
+;
+; TODO: Use index-register
 ;
 look_function:
 
@@ -2041,10 +2013,9 @@ sleep_function:
 
        ld de, SLEEP_START_MSG
        call bios_output_string
-
        call show_dots
 
-       ; Double the turn-count.
+       ; Double the turn-count.  (Cruel!)
        ld hl,TURN_COUNT
        ld a, (hl)
        add a, a
@@ -2090,26 +2061,24 @@ use_object:
         ; store object in HL
         call input_second_term
 
+        ; find the object
         call get_item_by_name
         cp 0
         jp z, use_found_object
 
+        ; the object was not found
         ld de, item_not_present_msg
         call bios_output_string
         ret
 
 use_found_object:
-        ; HL points to the start of the entry
-        ; get the location of the use-pointer
-        push de
-        ld de, ITEM_TABLE_USE_OFFSET
-        add hl, de
-        pop de
 
-        ; Get the drop-handler
-        ld e, (hl)
-        inc hl
-        ld d, (hl)
+        ; IX points to the start of the entry for the object.
+        ;
+        ; Find the name of the custom use-handler, if any, using
+        ; the index-register.
+        ld e, (IX+ITEM_TABLE_USE_OFFSET)
+        ld d, (IX+ITEM_TABLE_USE_OFFSET+1)
 
         ; is the use-handler empty?
         ld a, d
@@ -2163,7 +2132,7 @@ up_on_middle_floor:
         pop hl
 
         ; Are we carrying the item?
-        cp 255
+        cp ITEM_CARRIED
         jr nz, up_on_ground_floor
 
         ; We're on the middle-floor, going up, carrying the meteor.
@@ -2192,7 +2161,6 @@ up_on_basement_floor:
         dec (hl)
         call look_function
         ret
-
 
 
 show_newline:
@@ -2236,37 +2204,25 @@ drop_mirror_fn:
         ld hl, item_1_name
         call get_item_by_name
 
-        ; The item-table entry will be stored in HL.
+        ; Once we've found the item IX will point to the
+        ; entry (as well as HL).
         ;
         ; Change the location to be something random.
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), 0x55
-        pop de
-        pop hl
+        ld (IX + ITEM_TABLE_LOCATION_OFFSET), 0xFF
 
         ; find the broken-mirror
         ld hl,item_2_name
         call get_item_by_name
 
         ; Get the current location in A
-        push hl
         ld hl, CURRENT_LOCATION
         ld a,(hl)
-        pop hl
 
-        ; The item-table entry will be stored in HL.
+        ; Once we've found the item IX will point to the
+        ; entry (as well as HL).
         ;
-        ; Change the location of the broken-mirror to be the current one
-        push hl
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        ld (hl), a
-        pop de
-        pop hl
+        ; Change the location to be the current one.
+        ld (IX + ITEM_TABLE_LOCATION_OFFSET), a
 
         ; Show the drop message
         ld de, MIRROR_DROP_FUN
@@ -2287,6 +2243,7 @@ examine_room_fn:
 ;
 ;  If the rug is in your posession just show the description
 ;
+; TODO: Use the index register
 examine_rug_fn:
 
         ; Get the rug object
@@ -2335,6 +2292,7 @@ rug_on_ground:
 ;
 ;  Otherwise you just see the desk
 ;
+; TODO: Use index-register
 examine_desk_fn:
 
         ; Get the meteor item
@@ -2381,6 +2339,7 @@ meteor_hidden:
 ;
 ;  This is set by examine desk
 ;
+; TODO: Use index-register
 take_meteor_fn:
         ; Get the meteor item
         ld hl, item_13_name
@@ -2422,6 +2381,7 @@ take_meteor:
 ;
 ;  - AND you're in the basement
 ;
+; TODO: Use index-register
 take_rug_fn:
 
         ; Get the rug object
@@ -2494,20 +2454,14 @@ get_rug_show_inv:
 use_book_fn:
 
         call show_newline
+
         ; find the book
         ld hl, item_8_name
         call get_item_by_name
 
-        ; get the location of the extended-description pointer
-        push de
-        ld de, ITEM_TABLE_EXT_DESCRIPTION_OFFSET
-        add hl, de
-        pop de
-
-        ; Get the pointer to the string
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
+        ; Get the extended description
+        ld e,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
+        ld d,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
 
         ; show it
         call bios_output_string
@@ -2531,12 +2485,9 @@ use_torch_fn:
         ret
 use_torch_found_t:
 
-        ; The item-table entry will be stored in HL.
-        ;
+        ; The item-table entry will be stored in HL and IX
         ; Get the state in A
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
-        ld a, (hl)
+        ld a, (IX+ITEM_TABLE_STATE_OFFSET)
 
         cp TORCH_STATE_UNLIT
         jr z, torch_was_off
@@ -2549,7 +2500,7 @@ use_torch_found_t:
 
 torch_was_off:
         ; update state
-        ld (hl), TORCH_STATE_LIT
+        ld (IX+ITEM_TABLE_STATE_OFFSET), TORCH_STATE_LIT
 
         ; update the description
         ld hl, torch_item_desc
@@ -2589,7 +2540,7 @@ out_of_here:
 
 torch_was_on:
         ; update state
-        ld (hl), TORCH_STATE_UNLIT
+        ld (IX+ITEM_TABLE_STATE_OFFSET), TORCH_STATE_UNLIT
 
         ; update the description
         ld hl, torch_item_desc
@@ -2621,11 +2572,9 @@ use_trapdoor_fn:
         call get_item_by_name
 
         ; get the state offset
-        ld de, ITEM_TABLE_STATE_OFFSET
-        add hl,de
+        ld a,(IX+ITEM_TABLE_STATE_OFFSET)
 
         ; update the state to be open
-        ld a, (hl)
         cp TRAPDOOR_STATE_CLOSED
         jr z, trapdoor_was_closed
         cp TRAPDOOR_STATE_OPEN
@@ -2638,7 +2587,7 @@ use_trapdoor_fn:
 
 trapdoor_was_closed:
         ; change the state
-        ld (hl), TRAPDOOR_STATE_OPEN
+        ld (IX+ITEM_TABLE_STATE_OFFSET), TRAPDOOR_STATE_OPEN
 
         ; update the description
         ld hl, trapdoor_desc
@@ -2659,7 +2608,7 @@ trapdoor_was_closed:
 
 trapdoor_was_open:
         ; change the state
-        ld (hl), TRAPDOOR_STATE_CLOSED
+        ld (IX+ITEM_TABLE_STATE_OFFSET), TRAPDOOR_STATE_CLOSED
 
         ; update the description
         ld hl, trapdoor_desc
@@ -3530,7 +3479,7 @@ trapdoor_edesc:
         DEFB 0,0             ; No extended description
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
-        DEFB 0,0             ; No use function
+        DEFB 0,0             ; No custom examine function
         DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
