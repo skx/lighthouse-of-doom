@@ -74,21 +74,17 @@ TRAPDOOR_STATE_OPEN:    EQU 1
 MIRROR_OK:     EQU 0
 MIRROR_BROKEN: EQU 1
 
-
-
-
-; We have a bunch of tables defined later, one for the locations,
-; one for the available commands, and one for the items.
 ;
-; Each item has a byte which contains the "location" (i.e. index
+; Each item also contains a byte which holds the "location" (i.e. index
 ; into the location-map).  Two locations are special:
 ;
-; A location of 0xff means the player is carrying the item.
-; A location of 0xfe means the item is available, but invisible.
+; - A location of 0xff means the player is carrying the item.
 ;
-; Define helpers for these values.
+; - A location of 0xfe means the item is available, but invisible.
 ;
-ITEM_CARRIED: EQU 0xff
+; These are defined here for clarity.
+;
+ITEM_CARRIED:   EQU 0xff
 ITEM_INVISIBLE: EQU 0xfe
 
 
@@ -96,15 +92,14 @@ ITEM_INVISIBLE: EQU 0xfe
 ;********************************************************************
 ; Macros
 ;********************************************************************
-; {
+; {{
 
 ;
 ; Simple macro to inject "L" into our input buffer, and call the LOOK handler.
 ;
 MACRO FAKE_LOOK
         ld hl, INPUT_BUFFER+2
-        ld a, 'L'
-        ld (hl), a
+        ld (hl), 'L'
         call look_function
       ENDM
 
@@ -118,7 +113,6 @@ MACRO PUSH_ALL
         push de
         push hl
       ENDM
-;
 
 
 ;
@@ -130,8 +124,13 @@ MACRO POP_ALL
         pop bc
         pop af
       ENDM
-; }
+; }}
 
+
+;********************************************************************
+; Entry-point and initial setup
+;********************************************************************
+; {{
 
         ;
         ; Entry-point of CP/M binaries is 0x100, as the zero-page, or PSP,
@@ -192,6 +191,14 @@ ENDIF
         ld de, 0xD000
         ld bc, end_of_source - per_game_state_start
         ldir
+
+;; }}
+
+
+;********************************************************************
+; Main game-loop
+;********************************************************************
+; {{
 
 game_start:
 
@@ -256,7 +263,7 @@ game_loop_continue:
         ld de, PLAYER_DEAD_MESSAGE
         call bios_output_string
         call turns_function
-        jr play_again
+        jp play_again
 
 not_dead:
         ; Did the player win?
@@ -269,7 +276,7 @@ not_dead:
         ld de, PLAYER_WON_MESSAGE
         call bios_output_string
         call turns_function
-        jr play_again
+        jp play_again
 
 not_won:
 
@@ -354,131 +361,8 @@ no_handler:
         ; Return to the start of our game-loop.
         jp game_loop
 
+; }}
 
-
-;
-; Ask the user if they wish to play again
-;
-play_again:
-        ld de, play_again_msg
-        call bios_output_string
-
-        call bios_await_keypress
-        cp 'y'
-        jr z, play_again_yes
-        cp 'Y'
-        jr z, play_again_yes
-        cp 'n'
-        jr z, play_again_no
-        cp 'N'
-        jr z, play_again_no
-        call bios_clear_screen
-        jr play_again
-
-
-; User chose "Y" to "play again?"
-play_again_yes:
-        jp game_start
-
-; User chose "N" to "play again?"
-play_again_no:
-        ld de, play_again_no
-        call bios_output_string
-IF SPECTRUM
-        ret
-ELSE
-        ld c, 0x0
-        call 0x0005
-        ret
-ENDIF
-
-
-; This will be a major part of our code so it is perhaps a little more
-; verbose than it wants to be.
-;
-; Find the entry in the command-table.  If we find it return the address
-; of the routine to call in `HL`.
-;
-; On entry `HL` should contain the pointer to the input buffer to look
-; for.
-;
-; On exit A contains 0 on success, with HL pointing to the handler to invoke,
-; or A contains 255 on failure.
-find_command:
-        ld de,command_table
-
-        ;
-        ; Entries are arranged like so:
-        ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
-        ;
-        ; Where $LENGTH is the length of the ASCII command-name.
-        ;
-        ; So:
-        ;
-        ;   4, "QUIT", 0, quit_fn_ptr
-        ;   3, "CLS",  1, cls_fn_ptr
-        ;   0,
-        ;
-        ; "HIDDEN" is used solely to decide whether the command should be
-        ; included in the output of "HELP".
-        ;
-find_command_again:
-        push de
-        ld a, (de)  ; length of string
-        cp 0x00     ; zero?  We've hit the end of the table and not found
-        jr nz, cont ; a match - return failure
-        pop de
-        ld a,255
-        ret
-cont:
-        ld b, a    ; B will contain the length
-        inc de     ; DE point to the string itself
-
-        push hl
-        call CompareStringsWithLength
-        jp z,find_command_found
-        pop hl
-
-        ; ok we didn't find a match with this command-table entry.
-
-        ; restore DE which points to this entry's start
-        pop de
-
-        ld a, (de)           ; get the length of the command-name
-        inc de               ; point to the command-name
-        ld b,a               ; bump the pointer past the ASCII string, in a loop
-find_command_skip:
-        inc de
-        djnz find_command_skip
-        inc de                 ; bump past the hidden-flag
-        inc de                 ; bump past the addr1-byte
-        inc de                 ; bump past the addr2-byte
-        jp  find_command_again ; loop back to try the next table entry.
-
-find_command_found:
-        ; drop hl
-        pop hl
-
-        ; restore the pointer to the start of this command-table entry.
-        pop de
-
-        ; Once again we need to bump past the length, and the ASCII string
-        ; itself.  Now we know we've got a match we want to get the address
-        ; of the handler to invoke.
-        ld a, (de)              ; get the length
-        inc de                  ; move to the start of the string
-        ld b,a
-find_command_skip2:             ; skip $LENGTH-bytes
-        inc de
-        djnz find_command_skip2
-        inc de                  ; skip the hidden-flag
-        ld a, (de)              ; set l
-        ld l,a
-        inc de
-        ld a, (de)              ; set h
-        ld h,a
-        xor a                  ; indicate success
-        ret                    ; return with the function-pointer in HL
 
 
 
@@ -486,7 +370,7 @@ find_command_skip2:             ; skip $LENGTH-bytes
 ;********************************************************************
 ; Utility functions
 ;********************************************************************
-; {
+; {{
 
 ; compare strings stored in HL + DE for equality.  Length is stored in B
 ; Returns NZ if they're not equal.
@@ -713,13 +597,139 @@ we_found_the:
         ld (hl), a   ; " " -> " "
         inc hl
         ret
-; }
+; }}
 
 
 ;********************************************************************
 ; Utility Functions For Game
 ;********************************************************************
-; {
+; {{
+
+
+;
+; Ask the user if they wish to play again
+;
+play_again:
+        ld de, play_again_msg
+        call bios_output_string
+
+        call bios_await_keypress
+        cp 'y'
+        jr z, play_again_yes
+        cp 'Y'
+        jr z, play_again_yes
+        cp 'n'
+        jr z, play_again_no
+        cp 'N'
+        jr z, play_again_no
+        call bios_clear_screen
+        jr play_again
+
+
+; User chose "Y" to "play again?"
+play_again_yes:
+        jp game_start
+
+; User chose "N" to "play again?"
+play_again_no:
+        ld de, play_again_no
+        call bios_output_string
+IF SPECTRUM
+        ret
+ELSE
+        ld c, 0x0
+        call 0x0005
+        ret
+ENDIF
+
+
+; This will be a major part of our code so it is perhaps a little more
+; verbose than it wants to be.
+;
+; Find the entry in the command-table.  If we find it return the address
+; of the routine to call in `HL`.
+;
+; On entry `HL` should contain the pointer to the input buffer to look
+; for.
+;
+; On exit A contains 0 on success, with HL pointing to the handler to invoke,
+; or A contains 255 on failure.
+find_command:
+        ld de,command_table
+
+        ;
+        ; Entries are arranged like so:
+        ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
+        ;
+        ; Where $LENGTH is the length of the ASCII command-name.
+        ;
+        ; So:
+        ;
+        ;   4, "QUIT", 0, quit_fn_ptr
+        ;   3, "CLS",  1, cls_fn_ptr
+        ;   0,
+        ;
+        ; "HIDDEN" is used solely to decide whether the command should be
+        ; included in the output of "HELP".
+        ;
+find_command_again:
+        push de
+        ld a, (de)  ; length of string
+        cp 0x00     ; zero?  We've hit the end of the table and not found
+        jr nz, cont ; a match - return failure
+        pop de
+        ld a,255
+        ret
+cont:
+        ld b, a    ; B will contain the length
+        inc de     ; DE point to the string itself
+
+        push hl
+        call CompareStringsWithLength
+        jp z,find_command_found
+        pop hl
+
+        ; ok we didn't find a match with this command-table entry.
+
+        ; restore DE which points to this entry's start
+        pop de
+
+        ld a, (de)           ; get the length of the command-name
+        inc de               ; point to the command-name
+        ld b,a               ; bump the pointer past the ASCII string, in a loop
+find_command_skip:
+        inc de
+        djnz find_command_skip
+        inc de                 ; bump past the hidden-flag
+        inc de                 ; bump past the addr1-byte
+        inc de                 ; bump past the addr2-byte
+        jp  find_command_again ; loop back to try the next table entry.
+
+find_command_found:
+        ; drop hl
+        pop hl
+
+        ; restore the pointer to the start of this command-table entry.
+        pop de
+
+        ; Once again we need to bump past the length, and the ASCII string
+        ; itself.  Now we know we've got a match we want to get the address
+        ; of the handler to invoke.
+        ld a, (de)              ; get the length
+        inc de                  ; move to the start of the string
+        ld b,a
+find_command_skip2:             ; skip $LENGTH-bytes
+        inc de
+        djnz find_command_skip2
+        inc de                  ; skip the hidden-flag
+        ld a, (de)              ; set l
+        ld l,a
+        inc de
+        ld a, (de)              ; set h
+        ld h,a
+        xor a                  ; indicate success
+        ret                    ; return with the function-pointer in HL
+
 
 ;
 ; Helper function.  Are ANY items present in this room?
@@ -778,22 +788,20 @@ item_not_present_loop:
 ; a byte representing per-item state.
 ;
 ; On entry the name of the item to be found will be stored in HL.
-; On exit A will be 00 if all is OK, and both IX & HL will point to the item.
+;
+; On exit A will be 00 if all is OK, and IX will point to the item.
 ; On exit A will be ff if there was a failure.
 ;
-; TODO: Use index-register
-;
 get_item_by_name:
-
+        ; erase our temporary buffer, keeping the HL register
+        ; with the name of the item to find safe.
         push hl
-
-        ; erase our temporary buffer
         ld hl, TMP_BUFFER
         ld b, TMP_BUFFER_LEN
         call erase_buffer
+        pop hl
 
         ; copy the name of the item into the temporary-buffer
-        pop hl
         ld de, TMP_BUFFER+1
         ld b,0
 gibn_copy_loop:
@@ -812,54 +820,44 @@ gibn_copy_complete:
         ld (hl),b
 
         ; Point to our table of items
-        ld hl, items
+        ld ix, items
         ld b, ITEM_COUNT
 
 gibn_item_loop:
-        ; HL points to the start of the entry in the table
-        push hl
 
-        ; Get the name of the object in DE - leaving HL back at the
-        ; start of the item.
-        ld e,(hl)
-        inc hl
-        ld d,(hl)
-        dec hl
+        ; Get the name of the object in DE - that's at the start of the item.
+        ld e,(IX)
+        ld d,(IX + 1)
 
-        ; Now get the location of the object, which is stored
-        ; within the item-table entry.
-        push de
-        ld de, ITEM_TABLE_LOCATION_OFFSET
-        add hl,de
-        pop de
+        ; Now get the location of the current object.
+        ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
-        ; Is this object carried, in the current location, or
-        ; otherwise available?
-        ld a,(hl)
-        cp ITEM_CARRIED ; 0xff means the item is being carried
+        ; Is this object carried?
+        cp ITEM_CARRIED
         jr z, gibn_item_carried
-        cp ITEM_INVISIBLE ; The item can be found/used/examined
+
+        ; Is this object available (but hidden)?
+        cp ITEM_INVISIBLE
         jr z, gibn_item_available
+
+        ; Is this object in the current location?
         push hl
         ld hl, CURRENT_LOCATION
         ld c,(hl)
         pop hl
+
         cp c
         jr z, gibn_item_present
 
 gibn_continue:
         ; OK we didn't find the object, so we need to try looking at
         ; the next table entry
-        pop hl
-        push de
-        ld de, ITEM_ENTRY_LENGTH
-        add hl,de
-        pop de
-
+        ld DE, ITEM_ENTRY_LENGTH
+        add ix, DE
         djnz gibn_item_loop
 
-        ; At this point we've looked at all objects and not found a match
-        ; return a failure-value
+        ; At this point we've looked at all objects in the table, and
+        ; we didn't find a match.
         ld a, 0xff
         ret
 
@@ -868,7 +866,15 @@ gibn_item_carried:
 gibn_item_available:
         push bc ; preserve b for our loop
 
-
+        ; OK we've found an item that is "present" or "available".
+        ;
+        ; Does this object have the name of the item we're actually
+        ; supposed to be looking for?  If so then we've found it
+        ; and we can return our IX register (which points to the
+        ; start of the object in the item-table).
+        ;
+        ; If the name doesn't match we loop around to exmaine the
+        ; next item in the table.
         ld hl, TMP_BUFFER ; Get the length from our buffer
         ld b, (hl)
         inc hl            ; Now HL points to the input
@@ -881,10 +887,9 @@ gibn_item_available:
         jr gibn_continue
 
 gibn_found_it:
+        ; We found the item.  Drop the BC register, which we saved
+        ; to preserve our loop-index.
         pop bc
-        pop hl
-        push hl
-        pop ix      ; IX points to the item, as well as HL
         xor a
         ret
 
@@ -911,8 +916,7 @@ maybe_grue_death:
         cp 0
         ret nz
 
-        ; Once we've found the item IX will point to the
-        ; entry (as well as HL).
+        ; Once we've found the item IX will point to the entry
         ;
         ; Get the item state using that index register,
         ; after increasing it.
@@ -1015,7 +1019,7 @@ input_second_term_found_word:
 input_second_term_end:
         ld a, 0xff
         ret
-; }
+; }}
 
 
 
@@ -1024,7 +1028,7 @@ input_second_term_end:
 ;********************************************************************
 ; Command Handlers
 ;********************************************************************
-; {
+; {{
 
 
 ;
@@ -1069,8 +1073,7 @@ down_on_ground_floor:
         ld hl, item_11_name
         call get_item_by_name
 
-        ; Once we've found the item IX will point to the
-        ; entry (as well as HL).
+        ; Once we've found the item IX will point to the entry
         ;
         ; Get the item state using the index register.
         ld a, (IX+ITEM_TABLE_STATE_OFFSET)
@@ -1108,8 +1111,7 @@ user_has_lit_torch:
         ld hl, item_3_name
         call get_item_by_name
 
-        ; Once we've found the item IX will point to the
-        ; entry (as well as HL).
+        ; Once we've found the item IX will point to the entry
         ;
         ; Get the location using the index register.
         ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
@@ -1419,9 +1421,6 @@ get_object:
         ret
 
 get_found_it:
-        ; HL points to the start of the item-entry of the object
-        ; the user tried to take.
-
         ; IX points to the start of the entry for the object.
         ;
         ; Find the name of the custom take-handler, if any, using
@@ -1489,7 +1488,7 @@ place_trapdoor:
         ;
         ; Get the current location.
         ld hl, CURRENT_LOCATION
-        ld a,(hl)
+        ld a, (hl)
 
         ; Save the location in the item.
         ld (IX+ITEM_TABLE_LOCATION_OFFSET),a
@@ -1574,7 +1573,7 @@ inventory_test_item:
         ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; Is this carried?
-        cp ITEM_CARRIED ; 0xff means the item is being carried
+        cp ITEM_CARRIED
         jr nz, inv_item_not_carried
 
         ; OK the item is carried, show it out.
@@ -1656,9 +1655,8 @@ look_function:
 look_at_environment:
         ld de,LOOK_FUNCTION_PREFIX
         call bios_output_string
-        ld hl, CURRENT_LOCATION  ; get current location
-        ld a, (hl)
-        ld b, a                  ; multiply by the length of each entry
+        ld hl, CURRENT_LOCATION
+        ld b,(hl)
         ld c, LOCATION_ENTRY_LENGTH
         call multiply
         ld de, location_table ; add to base of location table
@@ -2134,14 +2132,14 @@ wait_function:
         call bios_output_string
         ret
 
-; }
+; }}
 
 
 
 ;********************************************************************
 ; CUSTOM OBJECT HOOKS
 ;********************************************************************
-; {
+; {{
 
 ;  When you drop the mirror it cracks.
 ;
@@ -2155,8 +2153,7 @@ drop_mirror_fn:
         ld hl, item_1_name
         call get_item_by_name
 
-        ; Once we've found the item IX will point to the
-        ; entry (as well as HL).
+        ; Once we've found the item IX will point to the entry
         ;
         ; Change the location to the current one
         ld hl, CURRENT_LOCATION
@@ -2349,9 +2346,7 @@ take_rug_fn:
         ld hl, item_11_name
         call get_item_by_name
 
-        ; get the location
-        ; Get the location of the object in A, but leaving
-        ; HL pointing to the start of the item's entry.
+        ; Get the location of the object in A
         ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
 
         ; trapdoor in the basement?  No special action required
@@ -2590,7 +2585,7 @@ print_and_return:
         call bios_output_string
         ret
 
-;}
+; }}
 
 include "bios.z80"
 
@@ -2600,7 +2595,7 @@ include "bios.z80"
 ;********************************************************************
 ; Data / State Storage
 ;********************************************************************
-; {
+; {{
 per_game_state_start:
 TURN_COUNT:
         db 0         ; count of turns
@@ -2616,13 +2611,13 @@ MAGIC_COUNT:
         db 0         ; state for magic-function
 SHIP_WARNING:
         db 0         ; State for showing a "ship closer" message.
-;}
+; }}
 
 
 ;********************************************************************
 ; String Area
 ;********************************************************************
-; {
+; {{
 call_911_msg:
 call_999_msg:
 call_police_msg:
@@ -2691,8 +2686,6 @@ failed_find_trapdoor_msg:
 rug_detail_msg:
         db 0x0a, 0x0d, "You examine the rug, which shows nothing special.", 0x0a, 0x0d
         db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0a, 0x0d, "$"
-failed_find_trapdoor_open_msg:
-        db 0x0a, 0x0d, "BUG:Failed to find open trapdoor", 0x0a, 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
 TRAPDOOR_CLOSED_MSG:
@@ -2725,7 +2718,6 @@ meteor_saves_the_day:
         db 0x0a, 0x0d
         db "Congratulations!", 0x0a, 0x0d
         db "$"
-
 QUIT_MSG:
         db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
 BIOS_MSG:
@@ -3045,14 +3037,14 @@ item_21_long: db "The junk seems too fragile to move around and examine.", 0x0a,
 item_22_name: db "MACHINERY"
 item_22_long: db "The machinery doesn't seem very special.", 0x0a, 0x0d, "$"
 
-;}
+; }}
 
 
 
 ;********************************************************************
 ; Table Area
 ;********************************************************************
-; {
+; {{
 
 ;
 ; Our command-table contains the commands we accept, a pointer to their
@@ -3209,8 +3201,8 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;   8. A byte used for item-state.
 ;   9. A byte to specify whether this can be taken.
 ;  10. A byte to contain the location of the object.
-;       0xff == player is carrying it.
-;       0xfe == can be found.
+;       0xff == the player is carrying it.
+;       0xfe == can be found but won't be displayed when a location is entered.
 ;
 ; We might add further pointers in the future, to allow custom behaviour
 ; on a per-object basis.  Hopefully the use of calculated offsets relating
@@ -3248,9 +3240,9 @@ item_location:
 ;
 ; e.g. Find a torch and get the location:
 ;
-;         find the item, so the base is in HL
-;         add ITEM_TABLE_LOCATION_OFFSET to HL
-;         read the byte
+;         find the item, so the base is in IX
+;
+;         ld a, (IX+ ITEM_TABLE_LOCATION_OFFSET)
 ;
 ITEM_TABLE_NAME_OFFSET:            EQU item_name - items
 ITEM_TABLE_DESCRIPTION_OFFSET:     EQU item_description_ptr - items
@@ -3494,7 +3486,7 @@ item_last:
 ; length of an entry in the item table.
 ITEM_ENTRY_LENGTH: EQU item_first - items
 ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
-;}
+; }}
 
 
 
@@ -3502,7 +3494,7 @@ ITEM_COUNT: EQU ( item_last - items ) / ITEM_ENTRY_LENGTH
 ;********************************************************************
 ; Buffer Area
 ;********************************************************************
-; {
+; {{
 
 ;
 ; This is the buffer which is used for reading a line of text from the
@@ -3538,7 +3530,7 @@ INPUT_BUFFER:
 TMP_BUFFER: EQU INPUT_BUFFER + 255
 TMP_BUFFER_LEN: EQU 50
 
-;}
+; }}
 
 
 ;
