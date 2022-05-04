@@ -211,16 +211,9 @@ bios_read_input:
 IF SPECTRUM
         PUSH_ALL
 
-        ; Move the cursor to the bottom of the screen, and
-        ; display a prompt
+        ; Move the cursor to the bottom of the screen, and display the prompt
         PUSH_ALL
-        ld a,22          ; AT code.
-        rst 16
-        ld a,21          ; vertical coord.
-        rst 16           ; set the vertical coord
-        xor a            ; horizontal position.
-        rst 16           ; set the horizontal coord.
-
+        call move_to_bottom
         ld e, ">"
         call bios_output_character
         POP_ALL
@@ -299,32 +292,24 @@ backspace:
 
         ; remove character
         dec hl
-        ld (hl), 'X'
+        ld (hl), 0x00
+
+        PUSH_ALL
 
         ; move cursor to start
-        PUSH_ALL
-        ld a,22          ; AT code.
-        rst 16
-        ld a,21          ; vertical coord.
-        rst 16           ; set the vertical coord
-        xor a            ; horizontal position.
-        rst 16           ; set the horizontal coord.
+        call move_to_bottom
 
         ; output spaces - to overwrite what was previously input
-        ; Line length is 32 characters
-        ld b, 32
+        ;
+        ; NOTE: We assume our input was a single line.
+        ld b, MAX_INPUT_LENGTH+1
         ld e, " "
 spaces:
         call bios_output_character
         djnz spaces
 
-        ; move cursor to start
-        ld a,22          ; AT code.
-        rst 16
-        ld a,21          ; vertical coord.
-        rst 16           ; set the vertical coord
-        xor a            ; horizontal position.
-        rst 16           ; set the horizontal coord.
+        ; move to the bottom, and show the prompt again
+        call move_to_bottom
 
         ; show the prompt
         ld e, ">"
@@ -374,6 +359,15 @@ read_input_over:
         call bios_clear_screen
 
         POP_ALL
+        ret
+
+move_to_bottom:
+        ld a,22          ; AT code.
+        rst 16           ; Set the cursor-coord
+        ld a,21          ; vertical coord.
+        rst 16           ; set the vertical coord
+        xor a            ; horizontal position.
+        rst 16           ; set the horizontal coord.
         ret
 ELSE
         push de
