@@ -1,0 +1,327 @@
+; ---------------
+; 4x8 font driver, (c) 2007 Andrew Owen
+; ---------------
+
+;	org	50000		;  In the original this was fixed.
+
+; --------------------------------
+; CREATE CHANNEL AND ATTACH STREAM
+; --------------------------------
+;
+; Based on code by Ian Beardsmore from Your Spectrum issue 7, September 1984.
+
+c_chan:	ld	hl,($5c53)	; a channel must be created below basic
+				; so look at the system variable PROG
+	dec	hl		; move hl down one address
+
+	ld	bc,$0005	; the new channel takes 5 bytes
+	call	$1655		; call the MAKE_ROOM routine
+	inc	hl		; move HL up one address
+
+	ld	bc,chan_4	; could write the bytes directly but
+				; then code would be non-relocatable
+
+	ld	(hl),c		; low byte of the output routine
+	inc	hl		; move HL up one address
+	push	hl		; save this address for later
+
+	ld	(hl),b		; high byte of the output routine
+	inc	hl		; move HL up one address
+
+	ld	bc,$15c4	; address of input routine
+
+	ld	(hl),c		; low byte of the input routine
+	inc	hl		; move HL up one address
+
+	ld	(hl),b		; high byte of the input routine
+	inc	hl		; move HL up one address
+
+	ld	(hl),'P'	; channel type; 'K', 'S', 'R' or 'P'
+
+; attach stream
+
+	pop	hl		; the first address plus one of the
+				; extra space stored earlier
+	ld	de,($5c4f)	; store the contents of CHANS in DE
+	and	a		; clear the carry flag before
+				; calculation
+	sbc	hl,de		; the difference between the start of
+				; the channels area and the start of the
+				; extra space becomes the offset, stored
+				; in HL
+	ex	de,hl		; store the offset in DE
+
+	ld	hl,$5c10	; store the contents of STRMS in HL
+	ld	a,$04		; stream number 4
+	add	a,$03		; take account of streams -3 to -1
+	add	a,a		; each of the seven default streams has
+				; two bytes of offset data
+				; the total number of bytes occupied,
+				; held in a, forms the offset for the
+				; new stream
+	ld	b,$00		; set b to hold $00
+	ld	c,a		; set the low byte of the offset
+	add	hl,bc		; the offset is added to the base
+				; address to give the correct location
+				; in the streams table to store the
+				; offset
+	ld	(hl),e		; the low byte of the offset
+	inc	hl		; move HL up one address
+	ld	(hl),d		; the high byte of the offset
+	ret			; all done
+
+; -----------------
+; CHANNEL #4 OUTPUT
+; -----------------
+;
+; Based on code by Tony Samuels from Your Spectrum issue 13, April 1985.
+; A channel wrapper for the 64-column display driver.
+
+chan_4:	ld	b,a		; save character
+	ld	a,(atflg)	; value of AT flag
+	and	a		; test against zero
+	jr	nz,getrow	; jump if not
+	ld	a,b		; restore character
+
+atchk:	cp	$16		; test for AT
+	jr	nz,crchk	; if not test for CR
+	ld	a,$ff		; set the AT flag
+	ld	(atflg),a	; next character will be row
+	ret			; return
+
+getrow:	cp	$fe		; test AT flag
+	jr	z,getcol	; jump if setting col
+	ld	a,b		; restore character
+	cp	$18		; greater than 23?
+	jr	nc,err_b	; error if so
+
+	ld	(row),a		; store it in row
+	ld	hl,atflg	; AT flag
+	dec	(hl)		; indicates next character is col
+	ret			; return
+
+getcol:	ld	a,b		; restore character
+	cp	$40		; greater than 63?
+	jr	nc,err_b	; error if so
+	ld	(col),a		; store it in col
+	xor	a		; set a to zero
+	ld	(atflg),a	; store in AT flag
+	ret			; return
+
+err_b:	xor	a		; set a to zero
+	ld	(atflg),a	; clear AT flag
+	rst	08h		;
+	defb	$0a		;
+
+crchk:	cp	$0d		; check for return
+	jr	z,do_cr		; to carriage return if so
+	call	pr_64		; print it
+
+	ld	hl,col		; increment
+	inc	(hl)		; the column
+	ld	a,(hl)		;
+
+	cp	$40		; column 64?
+	ret	nz		;
+
+do_cr:	xor	a		; set A to zero
+	ld	(col),a		; reset column
+	ld	a,(row)		; get the row
+	inc	a		; increment it
+	cp	$18		; row 24?
+	jr	z,wrap		;
+
+zend:	ld	(row),a		; write it back
+	ret
+
+wrap:	xor	a		;
+	jr	zend		;
+
+; ------------------------
+; 64 COLUMN DISPLAY DRIVER
+; ------------------------
+
+pr_64:	rra			; divide by two with remainder in carry flag
+
+	ld	h,$00		; clear H
+	ld	l,a		; CHAR to low byte of HL
+
+	ex	af,af'		; save the carry flag
+
+	add	hl,hl		; multiply
+	add	hl,hl		; by
+	add	hl,hl		; eight
+	ld	de,font-$80	; offset to FONT
+	add	hl,de		; HL holds address of first byte of
+				; character map in FONT
+	push	hl		; save font address
+
+; convert the row to the base screen address
+
+	ld	a,(row)		; get the row
+	ld	b,a		; save it
+	and	$18		; mask off bit 3-4
+	ld	d,a		; store high byte of offset in D
+	ld	a,b		; retrieve it
+	and	$07		; mask off bit 0-2
+	rlca			; shift
+	rlca			; five
+	rlca			; bits
+	rlca			; to the
+	rlca			; left
+	ld	e,a		; store low byte of offset in E
+
+; add the column
+
+	ld	a,(col)		; get the column
+	rra			; divide by two with remainder in carry flag
+	push	af		; store the carry flag
+
+	ld	h,$40		; base location
+	ld	l,a		; plus column offset
+
+	add	hl,de		; add the offset
+
+	ex	de,hl		; put the result back in DE
+
+; HL now points to the location of the first byte of char data in FONT_1
+; DE points to the first screen byte in SCREEN_1
+; C holds the offset to the routine
+
+	pop	af		; restore column carry flag
+	pop	hl		; restore the font address
+
+	jr	nc,odd_col	; jump if odd column
+
+even_col:
+	ex	af,af'		; restore char position carry flag
+	jr	c,l_on_l	; left char on left col
+	jr	r_on_l		; right char on left col
+
+odd_col:
+	ex	af,af'		; restore char position carry flag
+	jr	nc,r_on_r	; right char on right col
+	jr	l_on_r		; left char on right col
+
+; -------------------------------
+; WRITE A CHARACTER TO THE SCREEN
+; -------------------------------
+;
+; There are four separate routines
+
+; HL points to the first byte of a character in FONT
+; DE points to the first byte of the screen address
+
+; left nibble on left hand side
+
+l_on_l:	ld	c,$08		; 8 bytes to write
+ll_lp:	ld	a,(de)		; read byte at destination
+	and	$f0		; mask area used by new character
+	ld	b,a		; store in b
+	ld	a,(hl)		; get byte of font
+	and	$0f		; mask off unused half
+	or	b		; combine with background
+	ld	(de),a		; write it back
+	inc	d		; point to next screen location
+	inc	hl		; point to next font data
+	dec	c		; adjust counter
+	jr	nz,ll_lp	; loop 8 times
+	ret			; done
+
+; right nibble on right hand side
+
+r_on_r:	ld	c,$08		; 8 bytes to write
+rr_lp:	ld	a,(de)		; read byte at destination
+	and	$0f		; mask area used by new character
+	ld	b,a		; store in b
+	ld	a,(hl)		; get byte of font
+	and	$f0		; mask off unused half
+	or	b		; combine with background
+	ld	(de),a		; write it back
+	inc	d		; point to next screen location
+	inc	hl		; point to next font data
+	dec	c		; adjust counter
+	jr	nz,rr_lp	; loop 8 times
+	ret			; done
+
+; left nibble on right hand side
+
+l_on_r:	ld	c,$08		; 8 bytes to write
+lr_lp:	ld	a,(de)		; read byte at destination
+	and	$0f		; mask area used by new character
+	ld	b,a		; store in b
+	ld	a,(hl)		; get byte of font
+	rrca			; shift right
+	rrca			; four bits
+	rrca			; leaving 7-4
+	rrca			; empty
+	and	$f0		;
+	or	b		; combine with background
+	ld	(de),a		; write it back
+	inc	d		; point to next screen location
+	inc	hl		; point to next font data
+	dec	c		; adjust counter
+	jr	nz,lr_lp	; loop 8 times
+	ret			; done
+
+; right nibble on left hand side
+
+r_on_l:	ld	c,$08		; 8 bytes to write
+rl_lp:	ld	a,(de)		; read byte at destination
+	and	$f0		; mask area used by new character
+	ld	b,a		; store in b
+	ld	a,(hl)		; get byte of font
+	rlca			; shift left
+	rlca			; four bits
+	rlca			; leaving 3-0
+	rlca			; empty
+	and	$0f		;
+	or	b		; combine with background
+	ld	(de),a		; write it back
+	inc	d		; point to next screen location
+	inc	hl		; point to next font data
+	dec	c		; adjust counter
+	jr	nz,rl_lp	; loop 8 times
+	ret			; done
+
+; --------------
+; TEXT VARIABLES
+; --------------
+;
+; Used by the 64 column driver
+
+atflg:	defb	$00		; AT flag
+row:	defb	$00		; row
+col:	defb	$00		; col
+
+; -------------------
+; half width 4x8 font
+; -------------------
+;
+; 384 bytes
+
+font:
+	defb	$00,$02,$02,$02,$02,$00,$02,$00,$00,$52,$57,$02,$02,$07,$02,$00;
+	defb	$00,$25,$71,$62,$32,$74,$25,$00,$00,$22,$42,$30,$50,$50,$30,$00;
+	defb	$00,$14,$22,$41,$41,$41,$22,$14,$00,$20,$70,$22,$57,$02,$00,$00;
+	defb	$00,$00,$00,$00,$07,$00,$20,$20,$00,$01,$01,$02,$02,$04,$14,$00;
+	defb	$00,$22,$56,$52,$52,$52,$27,$00,$00,$27,$51,$12,$21,$45,$72,$00;
+	defb	$00,$57,$54,$56,$71,$15,$12,$00,$00,$17,$21,$61,$52,$52,$22,$00;
+	defb	$00,$22,$55,$25,$53,$52,$24,$00,$00,$00,$00,$22,$00,$00,$22,$02;
+	defb	$00,$00,$10,$27,$40,$27,$10,$00,$00,$02,$45,$21,$12,$20,$42,$00;
+	defb	$00,$23,$55,$75,$77,$45,$35,$00,$00,$63,$54,$64,$54,$54,$63,$00;
+	defb	$00,$67,$54,$56,$54,$54,$67,$00,$00,$73,$44,$64,$45,$45,$43,$00;
+	defb	$00,$57,$52,$72,$52,$52,$57,$00,$00,$35,$15,$16,$55,$55,$25,$00;
+	defb	$00,$45,$47,$45,$45,$45,$75,$00,$00,$62,$55,$55,$55,$55,$52,$00;
+	defb	$00,$62,$55,$55,$65,$45,$43,$00,$00,$63,$54,$52,$61,$55,$52,$00;
+	defb	$00,$75,$25,$25,$25,$25,$22,$00,$00,$55,$55,$55,$55,$27,$25,$00;
+	defb	$00,$55,$55,$25,$22,$52,$52,$00,$00,$73,$12,$22,$22,$42,$72,$03;
+	defb	$00,$46,$42,$22,$22,$12,$12,$06,$00,$20,$50,$00,$00,$00,$00,$0F;
+	defb	$00,$20,$10,$03,$05,$05,$03,$00,$00,$40,$40,$63,$54,$54,$63,$00;
+	defb	$00,$10,$10,$32,$55,$56,$33,$00,$00,$10,$20,$73,$25,$25,$43,$06;
+	defb	$00,$42,$40,$66,$52,$52,$57,$00,$00,$14,$04,$35,$16,$15,$55,$20;
+	defb	$00,$60,$20,$25,$27,$25,$75,$00,$00,$00,$00,$62,$55,$55,$52,$00;
+	defb	$00,$00,$00,$63,$55,$55,$63,$41,$00,$00,$00,$53,$66,$43,$46,$00;
+	defb	$00,$00,$20,$75,$25,$25,$12,$00,$00,$00,$00,$55,$55,$27,$25,$00;
+	defb	$00,$00,$00,$55,$25,$25,$53,$06,$00,$01,$02,$72,$34,$62,$72,$01;
+	defb	$00,$24,$22,$22,$21,$22,$22,$04,$00,$56,$A9,$06,$04,$06,$09,$06;

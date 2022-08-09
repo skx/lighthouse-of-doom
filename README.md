@@ -1,15 +1,11 @@
 # The Lighthouse of Doom
 
 This repository contain a simple text-based adventure game, implemented
-twice, once in portable C, and once in Z80 assembly language, available
-for both the CP/M operating system and the humble 48k ZX Spectrum.
+twice, once in portable C, and once in Z80 assembly language.
 
-My intention was to write a simple text-based adventure game to run under
-CP/M.  Starting large projects in Z80 assembly language from scratch
-is a bit of a daunting prospect, so I decided to code the game in C first,
-so that I could get the design right, and avoid getting stuck in too many
-low-level details initially.  Later I ported to the Spectrum, because
-it seemed like a fun challenge for myself!
+The Z80 version of the game will run under the CP/M operating system, and the humble 48k ZX Spectrum.
+
+My intention was to write a simple text-based adventure game to run under CP/M.  Starting large projects in Z80 assembly language from scratch is a bit of a daunting prospect, so I decided to code the game in C first, so that I could get the design right, and avoid getting stuck in too many low-level details initially.  Later I ported to the Spectrum, because it seemed like a fun challenge for myself!
 
 Quick links within this README file:
 
@@ -71,8 +67,7 @@ too much state to care about:
 
 ## Z80 Implementation
 
-The Z80 implementation is based upon the C-implementation, with a few
-small changes.
+The Z80 implementation is based upon the C-implementation, with a few small changes.
 
 The implementation uses a simple set of structures:
 

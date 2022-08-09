@@ -33,7 +33,11 @@ bios_init:
 
 IF SPECTRUM
    ld a,2
-   call 5633    ; CHAN_OPEN
+   call 5633  ; ROM_OPEN_CHANNEL
+   call c_chan
+   ld a,4
+   call 5633  ; ROM_OPEN_CHANNEL
+
 ENDIF
    ret
 ; }}
@@ -88,6 +92,23 @@ IF SPECTRUM
         ld a,2
         call 0x1601  ; ROM_OPEN_CHANNEL
         call 0x0DAF  ; ROM_CLS
+
+        ;
+        ; The code above will clear the screen, however we use a custom
+        ; printing routine which has its own notion of the X,Y / AT
+        ; coordinates to use.
+        ;
+        ; We explicitly reset those here, otherwise the screen will be clear,
+        ; but printing will start at whatever spot it finished the previous
+        ; time something was output.
+        ;
+        xor a
+        ld hl,atflg
+        ld (hl),a
+        ld hl, row
+        ld (hl),a
+        ld hl, col
+        ld (hl),a
         POP_ALL
         ret
 
@@ -182,8 +203,16 @@ continue_print:
         inc de
         jr length_check
 length_found:
+        PUSH_ALL
+        ld a,4
+        call 5633  ; ROM_OPEN_CHANNEL
+        POP_ALL
+
+        ; DE has the text to print
+        ; BC has the length
+        ; Call 0x203C to print
         pop de
-        call 0x203C
+        call 8252
 ELSE
         ld c, 0x09
         call 0x005

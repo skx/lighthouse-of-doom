@@ -365,6 +365,11 @@ no_handler:
 
 
 
+;********************************************************************
+; Include our custom printing routine
+;********************************************************************
+include "prn.z80"
+
 
 
 ;********************************************************************
@@ -2592,6 +2597,7 @@ include "bios.z80"
 
 
 
+
 ;********************************************************************
 ; Data / State Storage
 ;********************************************************************
@@ -2621,8 +2627,8 @@ SHIP_WARNING:
 call_911_msg:
 call_999_msg:
 call_police_msg:
-        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted in a lack of", 0x0a, 0x0d
-        db "a functioning police force.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted", 0x0a, 0x0d
+        db " in a lack of a functioning police force.", 0x0a, 0x0d
         db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
@@ -2634,7 +2640,11 @@ call_ryder_msg:
         db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
 call_skye_msg:
         db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
-        db "cannot hear what she's saying.  She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
+        db "cannot hear what she's saying.", 0x0a, 0x0d
+        db "She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
+call_steve_msg:
+        db 0x0a, 0x0d, "Steve doesn't publish his phone number.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "But emails to steve@steve.fi would be most welcome.", "$"
 call_rubble_msg:
         db 0x0a, 0x0d, "Rubble doesn't answer your call."
         db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
@@ -2802,19 +2812,18 @@ THE:
 ON:
         db " ON "
 usage_message:
-IF SPECTRUM
-        db "                                "
-        db "                                "
-        db "                                "
-        db "The lighthouse of Doom          "
-        db "                                "
-        db "            (c) 2022 Steve Kemp "
-        db "                                "
-        db "                                "
-        db " Press any key to start.        $"
-ELSE
         db 0x0a, 0x0d
-        db "        .n.         ", 27, "[1;4mThe lighthouse of doom", 27, "[1;0m",  0x0a, 0x0d
+        db "        .n.         "
+IF SPECTRUM
+ELSE
+        db 27, "[1;4m"
+ENDIF
+        db "The lighthouse of doom"
+IF SPECTRUM
+ELSE
+        db 27, "[1;0m"
+ENDIF
+        db 0x0a, 0x0d
         db "       /___\\ ", 0x0a, 0x0d
         db "       [|||]        ", 0x0a, 0x0d
         db "       [___]        ", 0x0a, 0x0d
@@ -2845,7 +2854,7 @@ include "version.z80"
         db "Any references to the Paw Patrol are entirely deliberate."
         db 0x0a, 0x0d, 0x0a, 0x0d
         db "Press any key to start.$"
-ENDIF
+
 
 play_again_msg:
         db 0x0a, 0x0d, "Play again? (y/n)$"
@@ -3148,6 +3157,8 @@ people_table:
              DEFW call_ryder_msg
         DEFB 4, 'SKYE'
              DEFW call_skye_msg
+        DEFB 5, 'STEVE'
+             DEFW call_steve_msg
         DEFB 6, 'RUBBLE'
              DEFW call_rubble_msg
         DEFB 2, 'ME'
@@ -3531,7 +3542,6 @@ TMP_BUFFER: EQU INPUT_BUFFER + 255
 TMP_BUFFER_LEN: EQU 50
 
 ; }}
-
 
 ;
 ; Our source code ends here.
