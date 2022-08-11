@@ -65,10 +65,11 @@ MAX_GRUE_EXPOSURE: EQU 3
 TORCH_STATE_UNLIT:      EQU 0
 TORCH_STATE_LIT:        EQU 1
 
-; 2. The trapdoor may be open or closed.
-;    [It may also be invisible, but that is handled via another mechanism]
-TRAPDOOR_STATE_CLOSED:  EQU 0
-TRAPDOOR_STATE_OPEN:    EQU 1
+; 2. The trapdoor may be invisible, open, or closed.
+;    [The objects have an invisible state, but we can't use that here.]
+TRAPDOOR_STATE_INVISIBLE:  EQU 0
+TRAPDOOR_STATE_CLOSED:     EQU 1
+TRAPDOOR_STATE_OPEN:       EQU 2
 
 ; 3. The mirror may be normal, or broken
 MIRROR_OK:     EQU 0
@@ -1473,8 +1474,12 @@ get_found_it_take:
 ;
 ; Make trapdoor visible is called when the rug is taken/examined.
 ;
-; It moves the trapdoor into the appropriate location within the
-; map.
+; The trapdoor has three states:
+;
+;  invisible, open, closed
+;
+; If the current state is invisible then we mark it as visible.
+
 make_trapdoor_visible:
         ld hl, item_11_name
         call get_item_by_name
@@ -1497,6 +1502,10 @@ place_trapdoor:
 
         ; Save the location in the item.
         ld (IX+ITEM_TABLE_LOCATION_OFFSET),a
+
+        ; Update the state
+        ld a, TRAPDOOR_STATE_CLOSED
+        ld (IX+ITEM_TABLE_STATE_OFFSET), a
         ret
 
 
@@ -2501,6 +2510,13 @@ use_trapdoor_fn:
         ld a,(IX+ITEM_TABLE_STATE_OFFSET)
 
         ; update the state to be open
+        cp TRAPDOOR_STATE_INVISIBLE
+        jr nz, not_invisible
+
+        ld de, item_not_present_msg
+        call bios_output_string
+        ret
+not_invisible:
         cp TRAPDOOR_STATE_CLOSED
         jr z, trapdoor_was_closed
         cp TRAPDOOR_STATE_OPEN
@@ -3373,13 +3389,13 @@ trapdoor_desc:
         DEFW item_11_closed
 trapdoor_edesc:
         DEFW item_11_desc_closed
-        DEFB 0,0                   ; No take function
-        DEFB 0,0                   ; No drop function
-        DEFB 0,0                   ; no custom examine function
-        DEFW use_trapdoor_fn       ; open function
-        DEFB TRAPDOOR_STATE_CLOSED ; item state
-        DEFB 0                     ; this item cannot be picked up
-        DEFB ITEM_INVISIBLE        ; hidden until the rug is moved
+        DEFB 0,0                      ; No take function
+        DEFB 0,0                      ; No drop function
+        DEFB 0,0                      ; no custom examine function
+        DEFW use_trapdoor_fn          ; open function
+        DEFB TRAPDOOR_STATE_INVISIBLE ; item state
+        DEFB 0                        ; this item cannot be picked up
+        DEFB ITEM_INVISIBLE           ; hidden until the rug is moved
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
