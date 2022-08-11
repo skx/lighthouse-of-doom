@@ -2485,7 +2485,6 @@ torch_was_on:
         ; show the message
         ld de, TORCH_OFF_MSG
         call bios_output_string
-        pop hl
         ret
 
 
