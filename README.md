@@ -122,9 +122,9 @@ If you wish to build only individual things then :
 If you look on our [release page](https://github.com/skx/lighthouse-of-doom/releases/) you can find the latest stable build.
 
 * For CP/M download `lihouse.com` to your system, and then run `LIHOUSE` to launch it.
-  * `lihouseX.com` is the encrypted version.
+  * `lihousex.com` is the encrypted version.
 * For the ZX Spectrum download `lihouse.tap` to your system, and then launch in your favourite emulator.
-  * `lihouseX.tap` is the encrypted version.
+  * `lihousex.tap` is the encrypted version.
 
 
 
