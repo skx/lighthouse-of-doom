@@ -19,6 +19,7 @@ Quick links within this README file:
 * [Bugs?](#bugs)
 
 
+
 ## Play Online
 
 Thanks to the excellent [jsspeccy](https://github.com/gasman/jsspeccy3) ZX Spectrum emulator you can play this game with your browser here:</p>
@@ -88,9 +89,11 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 * Along the way I realized that having fixed inventory slots made the coding more of a challenge, so I made the location of each object a property of the object itself.
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
 * There are __two__ victory conditions.
-* The CP/M version of the game can be built with the text-strings, and game code, protected by simple XOR encryption:
+* The game can be built with the text-strings, and game code, protected by simple XOR encryption:
   * This stops users from looking through the binary for hints.
-  * Run `make release` to build the _protected_ CP/M version.
+  * Run `make release` to build both "normal" and "protected" versions of the release.
+  * The encrypted versions of the games have an X suffix in their filenames.
+
 
 
 ## Compiling & Running It
@@ -106,9 +109,11 @@ Running `make` will generate the default targets:
 If you wish to build only individual things then :
 
 * `make game-cpm` to build a normal CP/M version.
+* `make game-cpm-encrypted` to build an encrypted CP/M version.
 * `make game-spectrum` to build the ZX Spectrum version.
+* `make game-spectrum-encrypted` to build the encrypted ZX Spectrum version.
 * `make lighthouse` will build the C-game for Linux
-* `make release` will build the _protected_ CP/M version.
+* `make release` will build both versions of the CP/M and ZX Spectrum release.
 
 
 
@@ -117,7 +122,10 @@ If you wish to build only individual things then :
 If you look on our [release page](https://github.com/skx/lighthouse-of-doom/releases/) you can find the latest stable build.
 
 * For CP/M download `lihouse.com` to your system, and then run `LIHOUSE` to launch it.
+  * `lihouseX.com` is the encrypted version.
 * For the ZX Spectrum download `lihouse.tap` to your system, and then launch in your favourite emulator.
+  * `lihouseX.tap` is the encrypted version.
+
 
 
 ## Bugs?
