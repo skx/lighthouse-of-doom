@@ -143,9 +143,6 @@ MACRO POP_ALL
         ;
         ORG ENTRYPOINT
 
-        ; Call system-specific setup routine before we do anything else.
-        call bios_init
-
         ;
         ; Our game can be compiled with optional "encryption", which uses
         ; a simple scheme to hide the strings in our binary.
@@ -180,6 +177,10 @@ enc_loop:
         ENC: DB "SKX"
 enc_end:
 ENDIF
+
+        ; Call system-specific setup routine before we do anything else.
+        call bios_init
+
 
         ; Here we're going to copy our game-state to the end of RAM
         ;
