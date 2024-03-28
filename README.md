@@ -100,18 +100,12 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 
 Ensure you have the `pasmo` assembler installed, and then use the supplied Makefile to compile the game.
 
-Running `make` will generate the default targets:
-
-* `make lighthouse`  -> Build the game for linux.
-* `make lihouse.com` -> Build the game for CP/M, without the XOR encryption.
-* `make lihouse.tap` -> Build the game for the 48k ZX Spectrum.
-
-If you wish to build only individual things then :
+Running `make` will generate the default targets, if you wish to build only individual things then :
 
 * `make game-cpm` to build a normal CP/M version.
-* `make game-cpm-encrypted` to build an encrypted CP/M version.
+  * `make game-cpm-encrypted` to build an encrypted CP/M version.
 * `make game-spectrum` to build the ZX Spectrum version.
-* `make game-spectrum-encrypted` to build the encrypted ZX Spectrum version.
+  * `make game-spectrum-encrypted` to build the encrypted ZX Spectrum version.
 * `make lighthouse` will build the C-game for Linux
 * `make release` will build both versions of the CP/M and ZX Spectrum release.
 
