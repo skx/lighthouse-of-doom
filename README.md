@@ -68,7 +68,7 @@ too much state to care about:
 
 ## Z80 Implementation
 
-The Z80 implementation is based upon the C-implementation, with a few small changes.
+The Z80 implementation is based upon [the C-implementation](c/), with a few small changes.
 
 The implementation uses a simple set of structures:
 
