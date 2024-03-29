@@ -50,7 +50,7 @@ can make the game table-based we simplify the coding that needs to be
 done - we don't need to write per-object handlers anywhere, we can just
 add pointers to tables/structures.
 
-The C implementation defines most of the important things in the file [globals.h](globals.h) such as:
+The C implementation defines most of the important things in the file [globals.h](c/globals.h) such as:
 
 * The structure to define a location.
 * The structure to define an object.

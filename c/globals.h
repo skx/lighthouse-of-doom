@@ -95,7 +95,7 @@ typedef struct word
 
 
 // Game state
-enum gameState{ Playing, Won, Dead };
+enum gameState { Playing, Won, Dead };
 
 // The player's location
 extern int location;

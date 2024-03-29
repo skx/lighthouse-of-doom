@@ -7,8 +7,8 @@ all: lighthouse game-cpm game-spectrum
 
 
 # Build the C version
-lighthouse: handlers.c  inventory.c  items.c  main.c  world.c util.c
-	gcc  -o lighthouse -Os -Wall -Wextra -Werror handlers.c  inventory.c  items.c  main.c  world.c util.c
+lighthouse: c/handlers.c c/inventory.c c/items.c c/main.c c/world.c c/util.c c/globals.h
+	gcc  -o lighthouse -Os -Wall -Wextra -Werror c/handlers.c c/inventory.c c/items.c c/main.c c/world.c c/util.c
 
 
 # Clean our generated output
@@ -23,7 +23,7 @@ encrypt: encrypt.c
 
 # Format our C-code
 format:
-	astyle --style=allman -A1 --indent=spaces=4   --break-blocks --pad-oper --pad-header --unpad-paren --max-code-length=200 *.c *.h
+	astyle --style=allman -A1 --indent=spaces=4   --break-blocks --pad-oper --pad-header --unpad-paren --max-code-length=200 c/*.c c/*.h
 
 
 # version.z80 will contain the last part of the string $VERSION

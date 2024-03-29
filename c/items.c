@@ -256,7 +256,7 @@ void use_generator(char *txt)
 {
     UNUSED(txt);
 
-        printf("You study the diagram drawn on the side of the generator,\n"
+    printf("You study the diagram drawn on the side of the generator,\n"
            "and connect it to the side of the lighting console.\n");
     printf("With a mighty pull of the starting mechanism the machine\n"
            "comes to life, and power returns to the console\n\n");

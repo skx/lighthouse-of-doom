@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     // Show the opening location
     look_fn("LOOK");
 
-    while ( state == Playing )
+    while (state == Playing)
     {
 
         // show prompt
