@@ -2699,7 +2699,7 @@ no_up_msg:
 no_down_msg:
         db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
-        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so "
         db "you notice that it was covering a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
@@ -2904,49 +2904,49 @@ LOOK_AT:
 ; Location text
 ;
 location_0_short:
-        db "the top floor of the lighthouse.$"
+        db "the top floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_0_long:
 IF SPECTRUM
 ELSE
         db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
 ENDIF
-        db "Through the window you can see the lights of an approaching ship, and you know", 0x0a, 0x0d
-        db "that without the lighthouse's beacon it will surely crash upon the rocks your", 0x0a, 0x0d
+        db "Through the window you can see the lights of an approaching ship, and you know "
+        db "that without the lighthouse's beacon it will surely crash upon the rocks your "
         db "lighthouse is built upon. "
 
 IF SPECTRUM
         db 0x0a, 0x0d
 ELSE
-        db "If the ship crashes not only will the sailors drown,", 0x0a, 0x0d
+        db "If the ship crashes not only will the sailors drown, "
 ENDIF
         db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
         db "Too bad the lighthouse light doesn't seem to be working..", 0x0a, 0x0d
         db "$"
 
 location_1_short:
-        db "the middle floor of the lighthouse.$"
+        db "the middle floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_1_long:
-        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends.", 0x0a, 0x0d
-        db "An impressive painting hangs over the desk, and a dog sleeps in a basket", 0x0a, 0x0d
+        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends. "
+        db "An impressive painting hangs over the desk, and a dog sleeps in a basket "
         db "to the side of it.", 0x0a, 0x0d
         db "$"
 
 location_2_short:
-        db "the ground floor of the lighthouse.$"
+        db "the ground floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_2_long:
-        db "The ground floor seems very crowded, with most of the room", 0x0a, 0x0d
+        db "The ground floor seems very crowded, with most of the room "
         db "taken up by a coat-rack, boots, and similar things.", 0x0a, 0x0d
         db "$"
 
 location_3_short:
-        db "the lighthouse basement.$"
+        db "the lighthouse basement.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_3_long:
         db "This seems to be a graveyard for discarded machinery, and", 0x0a, 0x0d
         db "other random junk.", 0x0a, 0x0d
         db "$"
 
 location_4_short:
-        db "a dark place.$"
+        db "a dark place.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_4_long:
         db "You cannot see anything, but you can certainly smell something animal-like.", 0x0a, 0x0d, 0x0a, 0x0d
         db "In the distance you hear the scrabble of claws on concrete.", 0x0a, 0x0d, 0x0a, 0x0d

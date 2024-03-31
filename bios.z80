@@ -27,6 +27,20 @@ ELSE
 ENDIF
 
 ;
+; This is the column at which we wrap text.
+;
+; The spectrum has less width for output, but the
+; numbers are broad-guesses.
+;
+; The wrapping should be configurable and should be
+; better tested.
+IF SPECTRUM
+  WRAP_WIDTH: EQU 70
+ELSE
+  WRAP_WIDTH: EQU 60
+ENDIF
+
+;
 ; Initialization routine for the BIOS, if needed
 ; {{
 bios_init:
@@ -172,51 +186,94 @@ ENDIF
 ;
 ; Output a string, terminated by "$".
 ;
-; The address of the string is stored in DE.  The spectrum version
-; will replace unprintable character from the \r\n pair with a space.
+; The address of the string is stored in DE.
 ;
-; To cope with inline newlines we'll count the length of the string
-; and call the ROM printing routine.
-;
-; NOTE/TODO: This means we need to beware of the SCROLL (Y/N) prompt
+; To handle wrapping we process the string character by character,
+; this is inefficient, but works fine for this use-case.
 ;
 ; {{
 bios_output_string:
-        PUSH_ALL
+
 IF SPECTRUM
-        ; DE contains the string
-        ; We want to get BC containing the string length
-        push de
-        ld bc, 0
-length_check:
-        ld a,(de)
-
-        ; replace 0x0a with a space
-        cp 0x0a
-        jr nz, continue_print
-        ld a,32
-        ld (de),a
-continue_print:
-        cp '$'
-        jr z, length_found
-        inc bc
-        inc de
-        jr length_check
-length_found:
-        PUSH_ALL
-        ld a,4
-        call 5633  ; ROM_OPEN_CHANNEL
-        POP_ALL
-
-        ; DE has the text to print
-        ; BC has the length
-        ; Call 0x203C to print
-        pop de
-        call 8252
-ELSE
-        ld c, 0x09
-        call 0x005
+   PUSH_ALL
+   ld a,4
+   call 5633  ; ROM_OPEN_CHANNEL
+   POP_ALL
 ENDIF
+
+        PUSH_ALL
+
+        ; DE has the string
+        ; We'll work on HL, and use BC to keep track of the width
+        ; of the string we've printed thus-far
+        push de
+        pop hl
+
+        ; length will be stored here
+print_reset_line:
+        ld bc, 0
+
+print_char_loop:
+        ; get a character
+        ld a,(hl)
+        inc hl
+        inc bc
+
+        ; end of printing?
+        cp '$'
+        jr z, end_of_print
+
+        ; linefeed?  Reset our printing width
+        cp 0x0d
+        jr nz, not_linefeed
+
+        PUSH_ALL
+         ld e, 0x0d
+         call bios_output_character
+IF SPECTRUM
+ELSE
+         ld e, 0x0a
+         call bios_output_character
+ENDIF
+        POP_ALL
+        jr print_reset_line
+
+not_linefeed:
+        ; We'll ignore the newline
+        cp 0x0a
+        jr z, print_char_loop
+
+        ; is it a space?
+        cp ' '
+        jr nz, print_continues
+
+        ; if our length is bigger than the width we force
+        ; a newline, otherwise we keep going
+        push af
+        ld a, c
+        cp WRAP_WIDTH
+        jr nc, too_wide
+        pop af
+
+print_continues:
+        ld e,a
+        call bios_output_character
+        jr print_char_loop
+
+too_wide:
+        pop af
+
+        PUSH_ALL
+         ld e, 0x0d
+         call bios_output_character
+IF SPECTRUM
+ELSE
+         ld e, 0x0a
+         call bios_output_character
+ENDIF
+        POP_ALL
+        jr print_reset_line
+end_of_print:
         POP_ALL
         ret
 ; }}
