@@ -14,6 +14,7 @@ Quick links within this README file:
 * [C Implementation](#c-implementation)
 * [Z80 Implementation](#z80-implementation)
   * [Z80 Changes](#z80-changes)
+  * [Memory Map](#memory-map)
 * [Compiling & running it](#compiling--running-it)
 * [Downloading It](#downloading-it)
 * [Bugs?](#bugs)
@@ -96,6 +97,29 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
   * This stops users from looking through the binary for hints.
   * Run `make release` to build both "normal" and "protected" versions of the release.
   * The encrypted versions of the games have an X suffix in their filenames.
+
+
+### Memory Map
+
+Roughly speaking the game consists of two parts:
+
+* The driver/game which is about 3k of code.
+* The text of the game along with the state of the world (flags, items carried, etc), which is approximately 9k.
+
+All told the binaries for both CP/M and the ZX Spectrum are approximately 14k.
+
+The layout in memory is basically the same for both variants, however the starting address is different:
+
+* CP/M
+  * Game loaded between the range 256-14000
+    * [0x0100-0x3500]
+  * Copy of state made to 53248 / 0xD000
+* ZX Spectrum
+  * Game loaded between the range 32768-46000
+    * [0x5000-0xB400]
+  * Copy of state made to 53248 - 0xD000
+
+When the game starts a copy of the "state" is made to 0xD0000 before anything has been modified, and then when the game is started that state is copied back to where it is used.  This consists of all content between `per_game_state_start` and the end of the file.  This has the location, flags, and similar, as well as all the static-text which will not change between runs.  However copying this region was easier than just copying, or otherwise resetting, the state that changes during play.
 
 
 
