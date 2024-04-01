@@ -2710,8 +2710,8 @@ SHIP_WARNING:
 call_911_msg:
 call_999_msg:
 call_police_msg:
-        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted", 0x0a, 0x0d
-        db " in a lack of a functioning police force.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted "
+        db "in a lack of a functioning police force.", 0x0a, 0x0d
         db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
@@ -2722,14 +2722,14 @@ call_ryder_msg:
         db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
         db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
 call_skye_msg:
-        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you "
         db "cannot hear what she's saying.", 0x0a, 0x0d
         db "She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
 call_steve_msg:
         db 0x0a, 0x0d, "Steve doesn't publish his phone number.", 0x0a, 0x0d
         db 0x0a, 0x0d, "But emails to steve@steve.fi would be most welcome.", "$"
 call_rubble_msg:
-        db 0x0a, 0x0d, "Rubble doesn't answer your call."
+        db 0x0a, 0x0d, "Rubble doesn't answer your call.", 0x0a, 0x0d
         db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
@@ -2750,12 +2750,12 @@ magic_one_msg:
 magic_two_msg:
         db 0x0a, 0x0d, "Magic intensifies.",  0x0a, 0x0d, "$"
 magic_three_msg:
-        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush.",  0x0a, 0x0d
+        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush. "
         db "This can't be good for you, maybe stop now?", 0x0a, 0x0d, "$"
 magic_four_msg:
         db 0x0a, 0x0d , "You couldn't draw the line, could you?", 0x0a, 0x0d, 0x0a, 0x0d
-        db "The magic flooding your body is too powerful, and you're finding it impossible", 0x0a, 0x0d
-        db "to breathe.  With a wail of frustration you topple backwards, clutching", 0x0a, 0x0d
+        db "The magic flooding your body is too powerful, and you're finding it impossible "
+        db "to breathe.  With a wail of frustration you topple backwards, clutching "
         db "at your chest.", 0x0a, 0x0d, 0x0a, 0x0d
         db "You're dying, soon the end will come.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 
@@ -2793,9 +2793,9 @@ use_generator_won:
         db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.", 0x0a, 0x0d
         db "With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
         db 0x0a, 0x0d
-        db "Success!  The main-light turns on.", 0x0a, 0x0d,0x0a, 0x0d
-        db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
-        db "it looks like it will make it.", 0x0a, 0x0d
+        db "Success!  The main-light turns on! "
+        db "The boat sees the light, and begins to execute a sharp turn to port, "
+        db "it looks like it will make it."
         db 0x0a, 0x0d
         db "Congratulations!", 0x0a, 0x0d
         db "$"
@@ -2803,10 +2803,10 @@ use_generator_won:
 meteor_saves_the_day:
         db 0x0a, 0x0d, "The glowing meteor you're carrying suddenly flares into an even brighter glow.", 0x0a, 0x0d
         db 0x0a, 0x0d
-        db "The glow is almost blinding, and must surely be visible through the windows of", 0x0a, 0x0d
-        db "the lighthouse.  With a moment of inspiration you hold it above your head, and", 0x0a, 0x0d
-        db "it gets brighter still, the light arcing out over the sea in giant curved beam.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
+        db "The glow is almost blinding, and must surely be visible through the windows of "
+        db "the lighthouse.  With a moment of inspiration you hold it above your head, and "
+        db "it gets brighter still, the light arcing out over the sea in giant curved beam. "
+        db "The boat sees the light, and begins to execute a sharp turn to port, "
         db "it looks like it will make it.", 0x0a, 0x0d
         db 0x0a, 0x0d
         db "Congratulations!", 0x0a, 0x0d
