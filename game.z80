@@ -3066,18 +3066,18 @@ item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a
 
 item_7_name: db "RUG"
 item_7_desc: db "A small rug.$"
-item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable", 0x0a, 0x0d
+item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable "
              db "about it.", 0x0a, 0x0d, "$"
 
 item_8_name: db "BOOK"
 item_8_desc: db "A small black book.$"
 item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0a, 0x0d, 0x0a, 0x0d
-             db "\t   Police    - 999", 0x0a, 0x0d
-             db "\tAmbulance    - 999", 0x0a, 0x0d
-             db "\tFire Service - 999", 0x0a, 0x0d
-             db "\tPaw Patrol   - 999", 0x0a, 0x0d
+             db "    Police    - 999", 0x0a, 0x0d
+             db " Ambulance    - 999", 0x0a, 0x0d
+             db " Fire Service - 999", 0x0a, 0x0d
+             db " Paw Patrol   - 999", 0x0a, 0x0d
              db 0x0a, 0x0d
-             db "Too bad there are no instructions on powering the main light, although there is", 0x0a, 0x0d
+             db "Too bad there are no instructions on powering the main light, although there is "
              db "an advert for a portable diesel generator being used as a bookmark.$"
 
 item_9_name: db "DESK"
@@ -3101,8 +3101,7 @@ item_11_desc_open: db "An average looking trapdoor.", 0x0a, 0x0d, "$"
 
 item_13_name: db "METEOR"
 item_13_desc: db "A meteor fragment$"
-item_13_long: db "This piece of rock looks like it came from a larger meteor, it is glowing with", 0x0a, 0x0d
-              db "an eerie light.$"
+item_13_long: db "This piece of rock looks like it came from a larger meteor, it is glowing with an eerie light.$"
 
 ; For "EXAMINE ROOM"
 item_14_name: db "ROOM"
