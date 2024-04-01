@@ -88,6 +88,9 @@ defining `SPECTRUM`, and `ENTRYPOINT` as appropriate.
 
 * Along the way I realized that having fixed inventory slots made the coding more of a challenge, so I made the location of each object a property of the object itself.
 * The Z80 version has more easter-eggs (Try typing "`xyzzy`" a few times).
+* There is rudimentary support for text-wrapping.
+  * Enter `WRAP 80` to wrap output around column 80.
+  * Enter `WRAP` to view the current wrapping value.
 * There are __two__ victory conditions.
 * The game can be built with the text-strings, and game code, protected by simple XOR encryption:
   * This stops users from looking through the binary for hints.

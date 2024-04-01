@@ -435,10 +435,8 @@ LOOP:	ADD HL,DE
 	RET
 
 ;
-; Output number helpers - used solely for reporting the number of turns
-; you have taken.
-;
-; (Either at victory/death, or via the TURNS command.)
+; Output number helpers - used for reporting the number of turns
+; you have taken, as well as showing the wrap-value via "WRAP".
 ;
 DispHL:
 	ld	bc,-10000
@@ -471,6 +469,37 @@ show_a_register:
 	call DispHL
         POP_ALL
         ret
+
+;Input:
+;     DE points to the string
+;Outputs:
+;     HL is the result
+;     A is the 8-bit value of the number
+;     DE points to the byte after the number
+;Destroys:
+;     BC
+;       if the string is non-empty, BC is HL/10
+string_to_uint16:
+atoui_16:
+        ld hl,0
+string_to_uint16_loop:
+        ld a,(de)
+        sub 30h
+        cp 10
+        ret nc
+        inc de
+        ld b,h
+        ld c,l
+        add hl,hl
+        add hl,hl
+        add hl,bc
+        add hl,hl
+        add a,l
+        ld l,a
+        jr nc,string_to_uint16_loop
+        inc h
+        jp string_to_uint16_loop
+
 
 ;
 ; Helper function, fill a region of memory with zero characters
@@ -1615,6 +1644,38 @@ inv_item_not_carried:
 
 
 ;
+; Command-Handler WRAP
+;
+; We're called with an argument which is numeric
+;
+wrap_function:
+        call input_second_term
+        cp 0
+        jp z, wrap_handle_argument
+show_wrap:
+        ; show the message
+        ld de, WRAP_IS_MSG
+        call bios_output_string
+
+        ld hl, WRAP_LOCATION
+        ld a, (hl)
+        call show_a_register
+
+        call show_newline
+        ret
+
+wrap_handle_argument:
+        push hl
+        pop de
+        call string_to_uint16
+        push hl
+        pop de
+        ld hl, WRAP_LOCATION
+        ld (hl),e
+        jr show_wrap
+
+
+;
 ; Command-Handler LOOK
 ;
 ; Show the current location.  If the seen-flag has not been set then
@@ -2619,6 +2680,12 @@ include "bios.z80"
 ;********************************************************************
 ; {{
 per_game_state_start:
+WRAP_LOCATION:
+IF SPECTRUM
+  WRAP_WIDTH: DB 50
+ELSE
+  WRAP_WIDTH: DB 60
+ENDIF
 TURN_COUNT:
         db 0         ; count of turns
 CURRENT_LOCATION:
@@ -2778,6 +2845,8 @@ GET_WHAT_MSG:
         db 0x0a, 0x0d, "Take what? Please try again.", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
         db 0x0a, 0x0d, "Drop what? Please try again.", 0x0a, 0x0d, "$"
+WRAP_IS_MSG:
+        db 0x0a, 0x0d, "Wrapping is set to $"
 USE_WHAT_MSG:
         db 0x0a, 0x0d, "Use what? Please try again.", 0x0a, 0x0d, "$"
 cant_take_that_msg:
@@ -3098,6 +3167,8 @@ command_table:
           DEFW look_function
         DEFB 4, 'QUIT', 0
           DEFW quit_function
+        DEFB 4, 'WRAP', 0
+          DEFW wrap_function
         DEFB 4, 'BIOS', 1
           DEFW bios_function
         DEFB 5, 'TURNS', 0

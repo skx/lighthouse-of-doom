@@ -27,20 +27,6 @@ ELSE
 ENDIF
 
 ;
-; This is the column at which we wrap text.
-;
-; The spectrum has less width for output, but the
-; numbers are broad-guesses.
-;
-; The wrapping should be configurable and should be
-; better tested.
-IF SPECTRUM
-  WRAP_WIDTH: EQU 70
-ELSE
-  WRAP_WIDTH: EQU 60
-ENDIF
-
-;
 ; Initialization routine for the BIOS, if needed
 ; {{
 bios_init:
@@ -250,9 +236,12 @@ not_linefeed:
         ; if our length is bigger than the width we force
         ; a newline, otherwise we keep going
         push af
-        ld a, c
-        cp WRAP_WIDTH
-        jr nc, too_wide
+        push hl
+        ld hl, WRAP_LOCATION
+        ld a,(hl)
+        pop hl
+        cp c
+        jr c, too_wide
         pop af
 
 print_continues:
