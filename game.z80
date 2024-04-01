@@ -435,10 +435,8 @@ LOOP:	ADD HL,DE
 	RET
 
 ;
-; Output number helpers - used solely for reporting the number of turns
-; you have taken.
-;
-; (Either at victory/death, or via the TURNS command.)
+; Output number helpers - used for reporting the number of turns
+; you have taken, as well as showing the wrap-value via "WRAP".
 ;
 DispHL:
 	ld	bc,-10000
@@ -471,6 +469,37 @@ show_a_register:
 	call DispHL
         POP_ALL
         ret
+
+;Input:
+;     DE points to the string
+;Outputs:
+;     HL is the result
+;     A is the 8-bit value of the number
+;     DE points to the byte after the number
+;Destroys:
+;     BC
+;       if the string is non-empty, BC is HL/10
+string_to_uint16:
+atoui_16:
+        ld hl,0
+string_to_uint16_loop:
+        ld a,(de)
+        sub 30h
+        cp 10
+        ret nc
+        inc de
+        ld b,h
+        ld c,l
+        add hl,hl
+        add hl,hl
+        add hl,bc
+        add hl,hl
+        add a,l
+        ld l,a
+        jr nc,string_to_uint16_loop
+        inc h
+        jp string_to_uint16_loop
+
 
 ;
 ; Helper function, fill a region of memory with zero characters
@@ -1615,6 +1644,38 @@ inv_item_not_carried:
 
 
 ;
+; Command-Handler WRAP
+;
+; We're called with an argument which is numeric
+;
+wrap_function:
+        call input_second_term
+        cp 0
+        jp z, wrap_handle_argument
+show_wrap:
+        ; show the message
+        ld de, WRAP_IS_MSG
+        call bios_output_string
+
+        ld hl, WRAP_LOCATION
+        ld a, (hl)
+        call show_a_register
+
+        call show_newline
+        ret
+
+wrap_handle_argument:
+        push hl
+        pop de
+        call string_to_uint16
+        push hl
+        pop de
+        ld hl, WRAP_LOCATION
+        ld (hl),e
+        jr show_wrap
+
+
+;
 ; Command-Handler LOOK
 ;
 ; Show the current location.  If the seen-flag has not been set then
@@ -2619,6 +2680,12 @@ include "bios.z80"
 ;********************************************************************
 ; {{
 per_game_state_start:
+WRAP_LOCATION:
+IF SPECTRUM
+  WRAP_WIDTH: DB 50
+ELSE
+  WRAP_WIDTH: DB 60
+ENDIF
 TURN_COUNT:
         db 0         ; count of turns
 CURRENT_LOCATION:
@@ -2643,8 +2710,8 @@ SHIP_WARNING:
 call_911_msg:
 call_999_msg:
 call_police_msg:
-        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted", 0x0a, 0x0d
-        db " in a lack of a functioning police force.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted "
+        db "in a lack of a functioning police force.", 0x0a, 0x0d
         db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
 call_unknown_msg:
         db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
@@ -2655,14 +2722,14 @@ call_ryder_msg:
         db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
         db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
 call_skye_msg:
-        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you", 0x0a, 0x0d
+        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you "
         db "cannot hear what she's saying.", 0x0a, 0x0d
         db "She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
 call_steve_msg:
         db 0x0a, 0x0d, "Steve doesn't publish his phone number.", 0x0a, 0x0d
         db 0x0a, 0x0d, "But emails to steve@steve.fi would be most welcome.", "$"
 call_rubble_msg:
-        db 0x0a, 0x0d, "Rubble doesn't answer your call."
+        db 0x0a, 0x0d, "Rubble doesn't answer your call.", 0x0a, 0x0d
         db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
 call_me_msg:
         db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
@@ -2683,12 +2750,12 @@ magic_one_msg:
 magic_two_msg:
         db 0x0a, 0x0d, "Magic intensifies.",  0x0a, 0x0d, "$"
 magic_three_msg:
-        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush.",  0x0a, 0x0d
+        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush. "
         db "This can't be good for you, maybe stop now?", 0x0a, 0x0d, "$"
 magic_four_msg:
         db 0x0a, 0x0d , "You couldn't draw the line, could you?", 0x0a, 0x0d, 0x0a, 0x0d
-        db "The magic flooding your body is too powerful, and you're finding it impossible", 0x0a, 0x0d
-        db "to breathe.  With a wail of frustration you topple backwards, clutching", 0x0a, 0x0d
+        db "The magic flooding your body is too powerful, and you're finding it impossible "
+        db "to breathe.  With a wail of frustration you topple backwards, clutching "
         db "at your chest.", 0x0a, 0x0d, 0x0a, 0x0d
         db "You're dying, soon the end will come.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 
@@ -2699,7 +2766,7 @@ no_up_msg:
 no_down_msg:
         db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
 rug_taken_msg:
-        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so "
         db "you notice that it was covering a trapdoor.", 0x0a, 0x0d, "$"
 failed_find_torch_msg:
         db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
@@ -2726,9 +2793,9 @@ use_generator_won:
         db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.", 0x0a, 0x0d
         db "With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
         db 0x0a, 0x0d
-        db "Success!  The main-light turns on.", 0x0a, 0x0d,0x0a, 0x0d
-        db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
-        db "it looks like it will make it.", 0x0a, 0x0d
+        db "Success!  The main-light turns on! "
+        db "The boat sees the light, and begins to execute a sharp turn to port, "
+        db "it looks like it will make it."
         db 0x0a, 0x0d
         db "Congratulations!", 0x0a, 0x0d
         db "$"
@@ -2736,10 +2803,10 @@ use_generator_won:
 meteor_saves_the_day:
         db 0x0a, 0x0d, "The glowing meteor you're carrying suddenly flares into an even brighter glow.", 0x0a, 0x0d
         db 0x0a, 0x0d
-        db "The glow is almost blinding, and must surely be visible through the windows of", 0x0a, 0x0d
-        db "the lighthouse.  With a moment of inspiration you hold it above your head, and", 0x0a, 0x0d
-        db "it gets brighter still, the light arcing out over the sea in giant curved beam.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "The boat sees the light, and begins to execute a sharp turn to port,", 0x0a, 0x0d
+        db "The glow is almost blinding, and must surely be visible through the windows of "
+        db "the lighthouse.  With a moment of inspiration you hold it above your head, and "
+        db "it gets brighter still, the light arcing out over the sea in giant curved beam. "
+        db "The boat sees the light, and begins to execute a sharp turn to port, "
         db "it looks like it will make it.", 0x0a, 0x0d
         db 0x0a, 0x0d
         db "Congratulations!", 0x0a, 0x0d
@@ -2778,6 +2845,8 @@ GET_WHAT_MSG:
         db 0x0a, 0x0d, "Take what? Please try again.", 0x0a, 0x0d, "$"
 DROP_WHAT_MSG:
         db 0x0a, 0x0d, "Drop what? Please try again.", 0x0a, 0x0d, "$"
+WRAP_IS_MSG:
+        db 0x0a, 0x0d, "Wrapping is set to $"
 USE_WHAT_MSG:
         db 0x0a, 0x0d, "Use what? Please try again.", 0x0a, 0x0d, "$"
 cant_take_that_msg:
@@ -2904,49 +2973,49 @@ LOOK_AT:
 ; Location text
 ;
 location_0_short:
-        db "the top floor of the lighthouse.$"
+        db "the top floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_0_long:
 IF SPECTRUM
 ELSE
         db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
 ENDIF
-        db "Through the window you can see the lights of an approaching ship, and you know", 0x0a, 0x0d
-        db "that without the lighthouse's beacon it will surely crash upon the rocks your", 0x0a, 0x0d
+        db "Through the window you can see the lights of an approaching ship, and you know "
+        db "that without the lighthouse's beacon it will surely crash upon the rocks your "
         db "lighthouse is built upon. "
 
 IF SPECTRUM
         db 0x0a, 0x0d
 ELSE
-        db "If the ship crashes not only will the sailors drown,", 0x0a, 0x0d
+        db "If the ship crashes not only will the sailors drown, "
 ENDIF
         db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
         db "Too bad the lighthouse light doesn't seem to be working..", 0x0a, 0x0d
         db "$"
 
 location_1_short:
-        db "the middle floor of the lighthouse.$"
+        db "the middle floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_1_long:
-        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends.", 0x0a, 0x0d
-        db "An impressive painting hangs over the desk, and a dog sleeps in a basket", 0x0a, 0x0d
+        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends. "
+        db "An impressive painting hangs over the desk, and a dog sleeps in a basket "
         db "to the side of it.", 0x0a, 0x0d
         db "$"
 
 location_2_short:
-        db "the ground floor of the lighthouse.$"
+        db "the ground floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_2_long:
-        db "The ground floor seems very crowded, with most of the room", 0x0a, 0x0d
+        db "The ground floor seems very crowded, with most of the room "
         db "taken up by a coat-rack, boots, and similar things.", 0x0a, 0x0d
         db "$"
 
 location_3_short:
-        db "the lighthouse basement.$"
+        db "the lighthouse basement.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_3_long:
         db "This seems to be a graveyard for discarded machinery, and", 0x0a, 0x0d
         db "other random junk.", 0x0a, 0x0d
         db "$"
 
 location_4_short:
-        db "a dark place.$"
+        db "a dark place.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
 location_4_long:
         db "You cannot see anything, but you can certainly smell something animal-like.", 0x0a, 0x0d, 0x0a, 0x0d
         db "In the distance you hear the scrabble of claws on concrete.", 0x0a, 0x0d, 0x0a, 0x0d
@@ -3098,6 +3167,8 @@ command_table:
           DEFW look_function
         DEFB 4, 'QUIT', 0
           DEFW quit_function
+        DEFB 4, 'WRAP', 0
+          DEFW wrap_function
         DEFB 4, 'BIOS', 1
           DEFW bios_function
         DEFB 5, 'TURNS', 0
