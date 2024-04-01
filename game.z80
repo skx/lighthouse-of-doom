@@ -1892,6 +1892,19 @@ quit_function:
         jp play_again
 
 
+;; 6. Bios test of wrapped text
+bios_text_wrap_test:
+        call bios_clear_screen
+        ld hl, WRAP_LOCATION
+        ld a, (hl)
+        push af
+        ld (hl), 10
+        ld de, bios_wrap_test_message
+        call bios_output_string
+        pop af
+        ld (hl), a
+        jr pause_for_key
+
 
 ;
 ; Command-handler: BIOS
@@ -1916,6 +1929,8 @@ bios_function_menu:
         cp '5'
         jr z, bios_char_display
         cp '6'
+        jr z, bios_text_wrap_test
+        cp '7'
         jr z, bios_return_to_game_indirect
         cp 'q'
         jr z, bios_return_to_game_indirect
@@ -2001,6 +2016,7 @@ delay_loop:
 
 bios_char_display:
         ; 5. character code display
+        call bios_clear_screen
         ld de, press_key_continue
         call bios_output_string
 
@@ -2778,27 +2794,24 @@ trapdoor_bogus_state_msg:
 failed_find_trapdoor_msg:
         db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
 rug_detail_msg:
-        db 0x0a, 0x0d, "You examine the rug, which shows nothing special.", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You examine the rug, which shows nothing special. "
         db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0a, 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
 TRAPDOOR_CLOSED_MSG:
-        db 0x0a, 0x0d, "The trapdoor is now closed."
-        db 0x0a, 0x0d, "Hopefully trapping the grue forevermore", 0x0a, 0x0d, "$"
+        db 0x0a, 0x0d, "The trapdoor is now closed, hopefully trapping the grue forevermore", 0x0a, 0x0d, "$"
 failed_find_generator_msg:
         db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
 use_gen_location:
         db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
         db 0x0a, 0x0d, "$"
 use_generator_won:
-        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.", 0x0a, 0x0d
-        db "With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
-        db 0x0a, 0x0d
+        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.  With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
         db "Success!  The main-light turns on! "
         db "The boat sees the light, and begins to execute a sharp turn to port, "
         db "it looks like it will make it."
         db 0x0a, 0x0d
-        db "Congratulations!", 0x0a, 0x0d
+        db "Congratulations, you will survive and so will the lighthouse!", 0x0a, 0x0d
         db "$"
 
 meteor_saves_the_day:
@@ -2821,21 +2834,24 @@ BIOS_MSG:
         db 0x0a, 0x0d, " 3 Input test"
         db 0x0a, 0x0d, " 4 Delay test"
         db 0x0a, 0x0d, " 5 Input character display"
-        db 0x0a, 0x0d, " 6 Return to the game"
+        db 0x0a, 0x0d, " 6 Wrapped text output test"
+        db 0x0a, 0x0d, " 7 Return to the game"
         db 0x0a, 0x0d
         db "$"
+bios_wrap_test_message:
+        db "This is a long message which is entered as a string of text, it is expected that this will need to be wrapped a bunch of times since we've configured the width of the display to be ten characters.$"
 input_test_message:
         db "Please enter a string:$"
 delay_test_message:
         db "Test our delay function:", 0x0a, 0x0d,0x0a, 0x0d,"$"
 you_entered_message:
-        db "You entered: $"
+        db 0x0a, 0x0d, "You entered: $"
 no_input:
         db "You didn't enter anything.$"
 you_pressed:
         db 0x0a,0x0d,0x0a,0x0d, "You pressed:$"
 press_key_continue:
-        db 0x0a, 0x0d, 0x0a, 0x0d, "Press a key to continue$"
+        db 0x0a, 0x0d, 0x0a, 0x0d, "Press a key to continue $"
 HELP_MSG:
         db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
 EXAMINE_WHAT_MSG:
