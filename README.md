@@ -119,7 +119,7 @@ The layout in memory is basically the same for both variants, however the starti
     * [0x5000-0xB400]
   * Copy of state made to 53248 - 0xD000
 
-When the game starts a copy of the "state" is made to 0xD0000 before anything has been modified, and then when the game is started that state is copied back to where it is used.  This consists of all content between `per_game_state_start` and the end of the file.  This has the location, flags, and similar, as well as all the static-text which will not change between runs.  However copying this region was easier than just copying, or otherwise resetting, the state that changes during play.
+When the game starts a copy of the "state" is made to `0xD000` before anything has been modified, and then when the game is started that state is copied back to where it is used.  This consists of all content between `per_game_state_start` and the end of the file.  This has the location, flags, and similar, as well as all the static-text which will not change between runs.  However copying this region was easier than just copying, or otherwise resetting, the state that changes during play.
 
 No doubt things will change over time, however the (undocumented) `BIOS` command will show you rough sizes for the various parts of the game.
 
