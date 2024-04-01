@@ -668,9 +668,10 @@ play_again_yes:
 
 ; User chose "N" to "play again?"
 play_again_no:
-        ld de, play_again_no
+        ld de, play_again_no_msg
         call bios_output_string
 IF SPECTRUM
+        pop de
         ret
 ELSE
         ld c, 0x0
