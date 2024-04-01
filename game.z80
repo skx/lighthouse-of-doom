@@ -218,8 +218,15 @@ game_start:
         call bios_clear_screen
 
         ; Present the game intro-text.
+        ; Set the wrapping to be 60 characters to ensure there's no weirdness
+        ld hl, WRAP_LOCATION
+        ld a, (hl)
+        push af
+        ld (hl), 60
         ld de, usage_message
         call bios_output_string
+        pop af
+        ld (hl),a
 
         ; Pause for input here.
         call bios_await_keypress
@@ -2696,13 +2703,13 @@ include "bios.z80"
 ; Data / State Storage
 ;********************************************************************
 ; {{
-per_game_state_start:
 WRAP_LOCATION:
 IF SPECTRUM
   WRAP_WIDTH: DB 50
 ELSE
   WRAP_WIDTH: DB 60
 ENDIF
+per_game_state_start:
 TURN_COUNT:
         db 0         ; count of turns
 CURRENT_LOCATION:
@@ -2961,7 +2968,7 @@ include "version.z80"
 play_again_msg:
         db 0x0a, 0x0d, "Play again? (y/n)$"
 play_again_no_msg:
-        db 0x0a, 0x0d, "Resetting$"
+        db 0x0a, 0x0d, "Resetting", 0x0a, 0x0d, "$"
 PLAYER_DEAD_MESSAGE:
         db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
         db 0x0a, 0x0d, "The ship ploughs into the base of your lighthouse, causing it to collapse around"
