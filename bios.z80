@@ -212,8 +212,6 @@ print_char_loop:
         ; linefeed?  Reset our printing width
         cp 0x0d
         jr nz, not_linefeed
-
-        PUSH_ALL
          ld e, 0x0d
          call bios_output_character
 IF SPECTRUM
@@ -221,7 +219,6 @@ ELSE
          ld e, 0x0a
          call bios_output_character
 ENDIF
-        POP_ALL
         jr print_reset_line
 
 not_linefeed:
