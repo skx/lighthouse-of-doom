@@ -2937,7 +2937,7 @@ TORCH_OFF_MSG:
         db 0x0a, 0x0d, "You turn the torch off.", 0x0a, 0x0d, "$"
 you_were_eaten:
         db 0x0a, 0x0d, "You were eaten by a grue.", 0x0a, 0x0d,0x0a, 0x0d
-        db "At least you were spared the sight of the ship crashing into the rocks, and no", 0x0a, 0x0d
+        db "At least you were spared the sight of the ship crashing into the rocks, and no "
         db "doubt causing the lighthouse itself to collapse, dooming you all.", 0x0a, 0x0d
         db "$"
 grue_message:
