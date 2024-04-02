@@ -3304,6 +3304,8 @@ command_table:
         ;; abbreviations
         DEFB 1, 'L', 1
           DEFW look_function
+        DEFB 1, 'Q', 1
+          DEFW quit_function
         DEFB 3, 'INV', 1
           DEFW inventory_function
         ;; end of table
