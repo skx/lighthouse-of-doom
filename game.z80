@@ -335,10 +335,15 @@ ship_warning_over:
         ; Not ideal, but more useable
         call filter_input_buffer
 
+        ; Remove leading whitespace, by shifting input down
+        call filter_input_leading_whitespace
+
         ; Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
         ld hl, INPUT_BUFFER+2
+
+
         call find_command
         cp 255
         jp z, no_handler
@@ -642,6 +647,33 @@ we_found_the:
         ret
 ; }}
 
+
+;; INPUT_BUFFER+2 contains the user input
+;; The length is in INPUT_BUFFER+1
+;;
+filter_input_leading_whitespace:
+
+        ; is the first character a space
+        ld hl, INPUT_BUFFER+2
+        ld a,(hl)
+        cp ' '
+
+        ; nope?  We're done
+        ret nz
+
+        ; get the length
+        dec hl
+        ld c,(hl)
+        inc hl
+        inc hl
+
+        ; OK move it down
+        ld de, INPUT_BUFFER+2
+        ld b, 0
+        ldir
+
+        ; repeat until no more leading spaces are found
+        jr filter_input_leading_whitespace
 
 ;********************************************************************
 ; Utility Functions For Game
