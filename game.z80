@@ -1239,12 +1239,22 @@ drop_object:
 
         ; if we didn't find it in the current location or inventory
         ; then we're not carrying it.
+cannot_drop:
         ld de, not_carrying_item_msg
         call bios_output_string
         ret
 
 drop_found_it:
         ; IX points to the item's table-entry
+        ;
+        ; When we find an item by name that returns success if:
+        ;
+        ;  a.  We're carrying the item
+        ;  b.  The item is in the same room as us.
+        ;  c. Even if invisible
+        ld a, (IX+ITEM_TABLE_LOCATION_OFFSET)
+        cp ITEM_CARRIED
+        jr nz, cannot_drop
 
         ; Get the current location
         ld hl, CURRENT_LOCATION
