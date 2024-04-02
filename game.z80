@@ -1571,9 +1571,6 @@ help_func_loop:  ; copy the command-name to the buffer
         inc hl
         inc de
         djnz help_func_loop
-        ld a, 0x0a
-        ld (hl),a
-        inc hl
         ld a, 0x0d
         ld (hl),a
         inc hl
@@ -1752,11 +1749,7 @@ look_function_show:
         inc hl
         ld d, (hl)
         inc hl
-        push hl
         call bios_output_string
-        call show_newline
-        call show_newline
-        pop hl
 
         ld e, (hl)  ; get the long-message address in de
         inc hl
@@ -1776,12 +1769,9 @@ look_function_show:
         cp 1
         ret z
 look_show_extended:
-        push hl
         call bios_output_string
-        pop hl
 
-        ld a, 1
-        ld (hl), a    ; set the seen-flag
+        ld (hl), 1    ; set the seen-flag
 
 
         ; If no items are in this room we can return
@@ -2758,201 +2748,201 @@ SHIP_WARNING:
 call_911_msg:
 call_999_msg:
 call_police_msg:
-        db 0x0a, 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted "
-        db "in a lack of a functioning police force.", 0x0a, 0x0d
-        db 0x0a, 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0a, 0x0d, "$"
+        db 0x0d, "Unfortunately Mayor Goodway's budget mishandling have resulted "
+        db "in a lack of a functioning police force.", 0x0d
+        db 0x0d, "The best you can do is call a bunch of dogs, and their teenaged handler.", 0x0d, "$"
 call_unknown_msg:
-        db 0x0a, 0x0d, "I'm sorry I don't know who that is.", 0x0a, 0x0d, "$"
+        db 0x0d, "I'm sorry I don't know who that is.", 0x0d, "$"
 call_ghostbusters_msg:
-        db 0x0a, 0x0d, "Who you gonna call?  Really?", 0x0a, 0x0d, "$"
+        db 0x0d, "Who you gonna call?  Really?", 0x0d, "$"
 call_ryder_msg:
-        db 0x0a, 0x0d, "Ryder here!  No pup is too small, no job is too big!", 0x0a, 0x0d
-        db 0x0a, 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
-        db 0x0a, 0x0d, 0x0a, 0x0d, "Sorry!", 0x0a, 0x0d, "$"
+        db 0x0d, "Ryder here!  No pup is too small, no job is too big!", 0x0d
+        db 0x0d, "Please leave a message after the beep, and I'll get back to you soon!"
+        db 0x0d, 0x0d, "Sorry!", 0x0d, "$"
 call_skye_msg:
-        db 0x0a, 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you "
-        db "cannot hear what she's saying.", 0x0a, 0x0d
-        db "She must be a bit up in the air at the moment.", 0x0a, 0x0d, "$"
+        db 0x0d, "Skye responds quickly, but over the sound of air roaring down the phone you "
+        db "cannot hear what she's saying.", 0x0d
+        db "She must be a bit up in the air at the moment.", 0x0d, "$"
 call_steve_msg:
-        db 0x0a, 0x0d, "Steve doesn't publish his phone number.", 0x0a, 0x0d
-        db 0x0a, 0x0d, "But emails to steve@steve.fi would be most welcome.", "$"
+        db 0x0d, "Steve doesn't publish his phone number.", 0x0d
+        db 0x0d, "But emails to steve@steve.fi would be most welcome.", "$"
 call_rubble_msg:
-        db 0x0a, 0x0d, "Rubble doesn't answer your call.", 0x0a, 0x0d
-        db 0x0a, 0x0d, "He's probably enjoying a nap.", 0x0a, 0x0d, "$"
+        db 0x0d, "Rubble doesn't answer your call.", 0x0d
+        db 0x0d, "He's probably enjoying a nap.", 0x0d, "$"
 call_me_msg:
-        db 0x0a, 0x0d, "Debbie Harry says 'hello', before hanging up."
+        db 0x0d, "Debbie Harry says 'hello', before hanging up."
         ; FALL-THROUGH
 NEWLINE:
-        db 0x0a, 0x0d, "$"
+        db 0x0d, "$"
 TAB:
         db "     $"
 invalid_msg:
-        db 0x0a, 0x0d, "I did not understand your input.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "Enter 'HELP' to see some of our commands.", 0x0a, 0x0d, "$"
+        db 0x0d, "I did not understand your input.", 0x0d, 0x0d
+        db "Enter 'HELP' to see some of our commands.", 0x0d, "$"
 BAD_LANGUAGE_MSG:
-        db 0x0a, 0x0d, "What language!", 0x0a, 0x0d, "$"
+        db 0x0d, "What language!", 0x0d, "$"
 NO_PHONE_HERE:
-        db 0x0a, 0x0d, "You can't see a telephone to use here!", 0x0a, 0x0d, "$"
+        db 0x0d, "You can't see a telephone to use here!", 0x0d, "$"
 magic_one_msg:
-        db 0x0a, 0x0d, "Magic happens.",  0x0a, 0x0d, "$"
+        db 0x0d, "Magic happens.",  0x0d, "$"
 magic_two_msg:
-        db 0x0a, 0x0d, "Magic intensifies.",  0x0a, 0x0d, "$"
+        db 0x0d, "Magic intensifies.",  0x0d, "$"
 magic_three_msg:
-        db 0x0a, 0x0d, "The sensation of magic screaming through your veins gives you a heady rush. "
-        db "This can't be good for you, maybe stop now?", 0x0a, 0x0d, "$"
+        db 0x0d, "The sensation of magic screaming through your veins gives you a heady rush. "
+        db "This can't be good for you, maybe stop now?", 0x0d, "$"
 magic_four_msg:
-        db 0x0a, 0x0d , "You couldn't draw the line, could you?", 0x0a, 0x0d, 0x0a, 0x0d
+        db 0x0d , "You couldn't draw the line, could you?", 0x0d, 0x0d
         db "The magic flooding your body is too powerful, and you're finding it impossible "
         db "to breathe.  With a wail of frustration you topple backwards, clutching "
-        db "at your chest.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "You're dying, soon the end will come.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "at your chest.", 0x0d, 0x0d
+        db "You're dying, soon the end will come.", 0x0d, 0x0d, "$"
 
 CALL_WHO_MSG:
-        db 0x0a, 0x0d, "Call who?", 0x0a, 0x0d, "$"
+        db 0x0d, "Call who?", 0x0d, "$"
 no_up_msg:
-        db 0x0a, 0x0d, "You can't go up from here.", 0x0a, 0x0d, "$"
+        db 0x0d, "You can't go up from here.", 0x0d, "$"
 no_down_msg:
-        db 0x0a, 0x0d, "You can't go down from here.", 0x0a, 0x0d, "$"
+        db 0x0d, "You can't go down from here.", 0x0d, "$"
 rug_taken_msg:
-        db 0x0a, 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so "
-        db "you notice that it was covering a trapdoor.", 0x0a, 0x0d, "$"
+        db 0x0d, "You roll up the rug to make carrying it more straightforward, and as you do so "
+        db "you notice that it was covering a trapdoor.", 0x0d, "$"
 failed_find_torch_msg:
-        db 0x0a, 0x0d, "BUG:Failed to find torch.", 0x0a, 0x0d, "$"
+        db 0x0d, "BUG:Failed to find torch.", 0x0d, "$"
 torch_bogus_state_msg:
-        db 0x0a, 0x0d, "BUG:Bogus state for the torch", 0x0a, 0x0d, "$"
+        db 0x0d, "BUG:Bogus state for the torch", 0x0d, "$"
 trapdoor_bogus_state_msg:
-        db 0x0a, 0x0d, "BUG:Bogus state for the trapdoor", 0x0a, 0x0d, "$"
+        db 0x0d, "BUG:Bogus state for the trapdoor", 0x0d, "$"
 failed_find_trapdoor_msg:
-        db 0x0a, 0x0d, "BUG:Failed to find trapdoor", 0x0a, 0x0d, "$"
+        db 0x0d, "BUG:Failed to find trapdoor", 0x0d, "$"
 rug_detail_msg:
-        db 0x0a, 0x0d, "You examine the rug, which shows nothing special. "
-        db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0a, 0x0d, "$"
+        db 0x0d, "You examine the rug, which shows nothing special. "
+        db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
-        db 0x0a, 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0a, 0x0d, "$"
+        db 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0d, "$"
 TRAPDOOR_CLOSED_MSG:
-        db 0x0a, 0x0d, "The trapdoor is now closed, hopefully trapping the grue forevermore", 0x0a, 0x0d, "$"
+        db 0x0d, "The trapdoor is now closed, hopefully trapping the grue forevermore", 0x0d, "$"
 failed_find_generator_msg:
-        db 0x0a, 0x0d, "BUG:Failed to find the generator.", 0x0a, 0x0d, "$"
+        db 0x0d, "BUG:Failed to find the generator.", 0x0d, "$"
 use_gen_location:
-        db 0x0a, 0x0d, "You cannot see anywhere to connect the generator to."
-        db 0x0a, 0x0d, "$"
+        db 0x0d, "You cannot see anywhere to connect the generator to."
+        db 0x0d, "$"
 use_generator_won:
-        db 0x0a, 0x0d, "You connect the generator to the console, and turn it on.  With a steady thrum the generator begins to provide power.", 0x0a, 0x0d
+        db 0x0d, "You connect the generator to the console, and turn it on.  With a steady thrum the generator begins to provide power.", 0x0d
         db "Success!  The main-light turns on! "
         db "The boat sees the light, and begins to execute a sharp turn to port, "
         db "it looks like it will make it."
-        db 0x0a, 0x0d
-        db "Congratulations, you will survive and so will the lighthouse!", 0x0a, 0x0d
+        db 0x0d
+        db "Congratulations, you will survive and so will the lighthouse!", 0x0d
         db "$"
 
 meteor_saves_the_day:
-        db 0x0a, 0x0d, "The glowing meteor you're carrying suddenly flares into an even brighter glow.", 0x0a, 0x0d
-        db 0x0a, 0x0d
+        db 0x0d, "The glowing meteor you're carrying suddenly flares into an even brighter glow.", 0x0d
+        db 0x0d
         db "The glow is almost blinding, and must surely be visible through the windows of "
         db "the lighthouse.  With a moment of inspiration you hold it above your head, and "
         db "it gets brighter still, the light arcing out over the sea in giant curved beam. "
         db "The boat sees the light, and begins to execute a sharp turn to port, "
-        db "it looks like it will make it.", 0x0a, 0x0d
-        db 0x0a, 0x0d
-        db "Congratulations!", 0x0a, 0x0d
+        db "it looks like it will make it.", 0x0d
+        db 0x0d
+        db "Congratulations!", 0x0d
         db "$"
 QUIT_MSG:
-        db 0x0a, 0x0d, "You said 'QUIT' so we terminate!", 0x0a, 0x0d, "$"
+        db 0x0d, "You said 'QUIT' so we terminate!", 0x0d, "$"
 BIOS_MSG:
-        db 0x0a, 0x0d, "BIOS test-function", 0x0a, 0x0d
-        db 0x0a, 0x0d, " 1 Clear the screen"
-        db 0x0a, 0x0d, " 2 Write a character"
-        db 0x0a, 0x0d, " 3 Input test"
-        db 0x0a, 0x0d, " 4 Delay test"
-        db 0x0a, 0x0d, " 5 Input character display"
-        db 0x0a, 0x0d, " 6 Wrapped text output test"
-        db 0x0a, 0x0d, " 7 Dump game sizes"
-        db 0x0a, 0x0d, " 8 Return to the game"
-        db 0x0a, 0x0d
+        db 0x0d, "BIOS test-function", 0x0d
+        db 0x0d, " 1 Clear the screen"
+        db 0x0d, " 2 Write a character"
+        db 0x0d, " 3 Input test"
+        db 0x0d, " 4 Delay test"
+        db 0x0d, " 5 Input character display"
+        db 0x0d, " 6 Wrapped text output test"
+        db 0x0d, " 7 Dump game sizes"
+        db 0x0d, " 8 Return to the game"
+        db 0x0d
         db "$"
 bios_size_dump_code:
-        db 0x0a, 0x0d, "Code: $"
+        db 0x0d, "Code: $"
 bios_size_dump_text:
-        db 0x0a, 0x0d, "Text: $"
+        db 0x0d, "Text: $"
 bios_size_dump_total:
-        db 0x0a, 0x0d, "Total: $"
+        db 0x0d, "Total: $"
 bios_wrap_test_message:
         db "This is a long message which is entered as a string of text, it is expected that this will need to be wrapped a bunch of times since we've configured the width of the display to be ten characters.$"
 input_test_message:
         db "Please enter a string:$"
 delay_test_message:
-        db "Test our delay function:", 0x0a, 0x0d,0x0a, 0x0d,"$"
+        db "Test our delay function:", 0x0d,0x0d,"$"
 you_entered_message:
-        db 0x0a, 0x0d, "You entered: $"
+        db 0x0d, "You entered: $"
 no_input:
         db "You didn't enter anything.$"
 you_pressed:
-        db 0x0a,0x0d,0x0a,0x0d, "You pressed:$"
+        db 0x0d, 0x0d, "You pressed:$"
 press_key_continue:
-        db 0x0a, 0x0d, 0x0a, 0x0d, "Press a key to continue $"
+        db 0x0d, 0x0d, "Press a key to continue $"
 HELP_MSG:
-        db 0x0a, 0x0d, "The following commands are available:", 0x0a, 0x0d, "$"
+        db 0x0d, "The following commands are available:", 0x0d, "$"
 EXAMINE_WHAT_MSG:
-        db 0x0a, 0x0d, "Examine what? Please try again.", 0x0a, 0x0d, "$"
+        db 0x0d, "Examine what? Please try again.", 0x0d, "$"
 GO_WHERE_MSG:
-        db 0x0a, 0x0d, "Go where?  Please try again.", 0x0a, 0x0d, "$"
+        db 0x0d, "Go where?  Please try again.", 0x0d, "$"
 GET_WHAT_MSG:
-        db 0x0a, 0x0d, "Take what? Please try again.", 0x0a, 0x0d, "$"
+        db 0x0d, "Take what? Please try again.", 0x0d, "$"
 DROP_WHAT_MSG:
-        db 0x0a, 0x0d, "Drop what? Please try again.", 0x0a, 0x0d, "$"
+        db 0x0d, "Drop what? Please try again.", 0x0d, "$"
 WRAP_IS_MSG:
-        db 0x0a, 0x0d, "Wrapping is set to $"
+        db 0x0d, "Wrapping is set to $"
 USE_WHAT_MSG:
-        db 0x0a, 0x0d, "Use what? Please try again.", 0x0a, 0x0d, "$"
+        db 0x0d, "Use what? Please try again.", 0x0d, "$"
 cant_take_that_msg:
-        db 0x0a, 0x0d, "You can't take that.", 0x0a, 0x0d, "$"
+        db 0x0d, "You can't take that.", 0x0d, "$"
 you_drop_it:
-        db 0x0a, 0x0d, "You drop it.", 0x0a, 0x0d, "$"
+        db 0x0d, "You drop it.", 0x0d, "$"
 inventory_empty_message:
-        db 0x0a, 0x0d, "You are not carrying anything", 0x0a, 0x0d, "$"
+        db 0x0d, "You are not carrying anything", 0x0d, "$"
 you_carrying_message:
-        db 0x0a, 0x0d, "You are carrying:", 0x0a, 0x0d, "$"
+        db 0x0d, "You are carrying:", 0x0d, "$"
 you_see_message:
-        db 0x0a, 0x0d, "You see:", 0x0a, 0x0d, "$"
+        db 0x0d, "You see:", 0x0d, "$"
 use_generic:
-        db 0x0a, 0x0d, "Nothing seems to happen.", 0x0a, 0x0d, "$"
+        db 0x0d, "Nothing seems to happen.", 0x0d, "$"
 item_not_present_msg:
-        db  0x0a, 0x0d, "I can't see that here!", 0x0a, 0x0d, "$"
+        db  0x0d, "I can't see that here!", 0x0d, "$"
 not_carrying_item_msg:
-        db 0x0a, 0x0d, "You're not carrying that!", 0x0a, 0x0d, "$"
+        db 0x0d, "You're not carrying that!", 0x0d, "$"
 MIRROR_DROP_FUN:
-        db 0x0a, 0x0d, "You drop the mirror, which cracks and breaks.", 0x0a, 0x0d, "$"
+        db 0x0d, "You drop the mirror, which cracks and breaks.", 0x0d, "$"
 SLEEP_START_MSG:
-        db 0x0a, 0x0d, "You lay down and take a small nap.", 0x0a, 0x0d
+        db 0x0d, "You lay down and take a small nap.", 0x0d
         db "$"
 SLEEP_END_MSG:
-        db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat, "
-        db "and yourself, are to certain doom.", 0x0a, 0x0d
+        db 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat, "
+        db "and yourself, are to certain doom.", 0x0d
         db "$"
 WAIT_CMD_MSG:
-        db 0x0a, 0x0d, "You wait for a moment, lost in thought.", 0x0a, 0x0d, "$"
+        db 0x0d, "You wait for a moment, lost in thought.", 0x0d, "$"
 TORCH_ON_MSG:
-        db 0x0a, 0x0d, "You turn on the torch.", 0x0a, 0x0d, "$"
+        db 0x0d, "You turn on the torch.", 0x0d, "$"
 TORCH_OFF_MSG:
-        db 0x0a, 0x0d, "You turn the torch off.", 0x0a, 0x0d, "$"
+        db 0x0d, "You turn the torch off.", 0x0d, "$"
 you_were_eaten:
-        db 0x0a, 0x0d, "You were eaten by a grue.", 0x0a, 0x0d,0x0a, 0x0d
+        db 0x0d, "You were eaten by a grue.", 0x0d,0x0d
         db "At least you were spared the sight of the ship crashing into the rocks, and no "
-        db "doubt causing the lighthouse itself to collapse, dooming you all.", 0x0a, 0x0d
+        db "doubt causing the lighthouse itself to collapse, dooming you all.", 0x0d
         db "$"
 grue_message:
-        db 0x0a, 0x0d, "You hear the scrabble of claws getting closer, is the grue about to attack?", 0x0a, 0x0d, "$"
+        db 0x0d, "You hear the scrabble of claws getting closer, is the grue about to attack?", 0x0d, "$"
 ship_closer_msg:
-        db 0x0a, 0x0d, "The ship is getting closer!", 0x0a, 0x0d, 0x0a, 0x0d
-        db "Hurry up, or you'll all be dead!", 0x0a, 0x0d, "$"
+        db 0x0d, "The ship is getting closer!", 0x0d, 0x0d
+        db "Hurry up, or you'll all be dead!", 0x0d, "$"
 NOW_YOU_SEE:
-        db "Now you can see where you are:", 0x0a, 0x0d, "$"
+        db "Now you can see where you are:", 0x0d, "$"
 THE:
         db " THE "
 ON:
         db " ON "
 usage_message:
-        db 0x0a, 0x0d
+        db 0x0d
         db "        .n.         "
 IF SPECTRUM
 ELSE
@@ -2963,20 +2953,20 @@ IF SPECTRUM
 ELSE
         db 27, "[1;0m"
 ENDIF
-        db 0x0a, 0x0d
-        db "       /___\\ ", 0x0a, 0x0d
-        db "       [|||]        ", 0x0a, 0x0d
-        db "       [___]        ", 0x0a, 0x0d
-        db "       }-=-{        ", 0x0a, 0x0d
-        db "       |-\" |        ", 0x0a, 0x0d
-        db "       |.-\"|                p", 0x0a, 0x0d
-        db "~^=~^~-|_.-|~^-~^~ ~^~ -^~^~|\\ ~^-~^~-", 0x0a, 0x0d
-        db "^   .=.| _.|__  ^       ~  /| \\", 0x0a, 0x0d
-        db " ~ /:. \\\" _|_/\    ~       /_|__\\  ^", 0x0a, 0x0d
-        db ".-/::.  |   |\"\"|-._    ^   ~~~~", 0x0a, 0x0d
-        db "  `===-'-----'\"\"`  '-.              ~", 0x0a, 0x0d
-        db "                 __.-'      ^", 0x0a, 0x0d
-        db "", 0x0a, 0x0d
+        db 0x0d
+        db "       /___\\ ", 0x0d
+        db "       [|||]        ", 0x0d
+        db "       [___]        ", 0x0d
+        db "       }-=-{        ", 0x0d
+        db "       |-\" |        ", 0x0d
+        db "       |.-\"|                p", 0x0d
+        db "~^=~^~-|_.-|~^-~^~ ~^~ -^~^~|\\ ~^-~^~-", 0x0d
+        db "^   .=.| _.|__  ^       ~  /| \\", 0x0d
+        db " ~ /:. \\\" _|_/\    ~       /_|__\\  ^", 0x0d
+        db ".-/::.  |   |\"\"|-._    ^   ~~~~", 0x0d
+        db "  `===-'-----'\"\"`  '-.              ~", 0x0d
+        db "                 __.-'      ^", 0x0d
+        db "", 0x0d
         db "Written by Steve Kemp in 2021, version "
 
 ;
@@ -2986,41 +2976,41 @@ ENDIF
 ;
 include "version.z80"
 
-        db ".", 0x0a, 0x0d
-        db 0x0a, 0x0d
+        db ".", 0x0d
+        db 0x0d
         db "  https://github.com/skx/lighthouse-of-doom"
-        db 0x0a, 0x0d
-        db 0x0a, 0x0d
+        db 0x0d
+        db 0x0d
         db "Any references to the Paw Patrol are entirely deliberate."
-        db 0x0a, 0x0d, 0x0a, 0x0d
+        db 0x0d, 0x0d
         db "Press any key to start.$"
 
 
 play_again_msg:
-        db 0x0a, 0x0d, "Play again? (y/n)$"
+        db 0x0d, "Play again? (y/n)$"
 play_again_no_msg:
-        db 0x0a, 0x0d, "Resetting", 0x0a, 0x0d, "$"
+        db 0x0d, "Resetting", 0x0d, "$"
 PLAYER_DEAD_MESSAGE:
-        db 0x0a, 0x0d, "Unfortunately you took too long to fix the broken light."
-        db 0x0a, 0x0d, "The ship ploughs into the base of your lighthouse, causing it to collapse around"
-        db 0x0a, 0x0d, "you."
-        db 0x0a, 0x0d, "You're buried and helpless, and as the darkness consumes you the sounds of the"
-        db 0x0a, 0x0d, "sailors thrashing in the water reach you, from a distance."
-        db 0x0a, 0x0d, "Let us hope some of them can swim to shore.."
+        db 0x0d, "Unfortunately you took too long to fix the broken light."
+        db 0x0d, "The ship ploughs into the base of your lighthouse, causing it to collapse around"
+        db 0x0d, "you."
+        db 0x0d, "You're buried and helpless, and as the darkness consumes you the sounds of the"
+        db 0x0d, "sailors thrashing in the water reach you, from a distance."
+        db 0x0d, "Let us hope some of them can swim to shore.."
 
         db "Game over - you're dead."
-        db 0x0a, 0x0d,"$"
+        db 0x0d,"$"
 PLAYER_WON_MESSAGE:
-        db 0x0a, 0x0d
+        db 0x0d
         db "You won!"
-        db 0x0a, 0x0d,"$"
+        db 0x0d,"$"
 PLAYER_TURN_COUNT:
         db "You've played $"
 PLAYER_TURN_COUNT_END:
         db " turns."
-        db 0x0a, 0x0d,"$"
+        db 0x0d,"$"
 LOOK_FUNCTION_PREFIX:
-        db 0x0a, 0x0d, "You are in $"
+        db 0x0d, "You are in $"
 LOOK_AT:
         db "LOOK AT "
 
@@ -3028,53 +3018,53 @@ LOOK_AT:
 ; Location text
 ;
 location_0_short:
-        db "the top floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "the top floor of the lighthouse.", 0x0d, 0x0d, "$"
 location_0_long:
 IF SPECTRUM
 ELSE
-        db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0a, 0x0d, 0x0a, 0x0d
+        db "The lighthouse has a spiral staircase which runs from top to bottom.", 0x0d, 0x0d
 ENDIF
         db "Through the window you can see the lights of an approaching ship, and you know "
         db "that without the lighthouse's beacon it will surely crash upon the rocks your "
         db "lighthouse is built upon. "
 
 IF SPECTRUM
-        db 0x0a, 0x0d
+        db 0x0d
 ELSE
         db "If the ship crashes not only will the sailors drown, "
 ENDIF
-        db "the lighthouse itself is liable to be seriously damaged.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "Too bad the lighthouse light doesn't seem to be working..", 0x0a, 0x0d
+        db "the lighthouse itself is liable to be seriously damaged.", 0x0d, 0x0d
+        db "Too bad the lighthouse light doesn't seem to be working..", 0x0d
         db "$"
 
 location_1_short:
-        db "the middle floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "the middle floor of the lighthouse.", 0x0d, 0x0d, "$"
 location_1_long:
         db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends. "
         db "An impressive painting hangs over the desk, and a dog sleeps in a basket "
-        db "to the side of it.", 0x0a, 0x0d
+        db "to the side of it.", 0x0d
         db "$"
 
 location_2_short:
-        db "the ground floor of the lighthouse.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "the ground floor of the lighthouse.", 0x0d, 0x0d, "$"
 location_2_long:
         db "The ground floor seems very crowded, with most of the room "
-        db "taken up by a coat-rack, boots, and similar things.", 0x0a, 0x0d
+        db "taken up by a coat-rack, boots, and similar things.", 0x0d
         db "$"
 
 location_3_short:
-        db "the lighthouse basement.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "the lighthouse basement.", 0x0d, 0x0d, "$"
 location_3_long:
-        db "This seems to be a graveyard for discarded machinery, and", 0x0a, 0x0d
-        db "other random junk.", 0x0a, 0x0d
+        db "This seems to be a graveyard for discarded machinery, and", 0x0d
+        db "other random junk.", 0x0d
         db "$"
 
 location_4_short:
-        db "a dark place.", 0x0a, 0x0d, 0x0a, 0x0d, "$"
+        db "a dark place.", 0x0d, 0x0d, "$"
 location_4_long:
-        db "You cannot see anything, but you can certainly smell something animal-like.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "In the distance you hear the scrabble of claws on concrete.", 0x0a, 0x0d, 0x0a, 0x0d
-        db "Could you have discovered the haunt of the mythical grue?", 0x0a, 0x0d
+        db "You cannot see anything, but you can certainly smell something animal-like.", 0x0d, 0x0d
+        db "In the distance you hear the scrabble of claws on concrete.", 0x0d, 0x0d
+        db "Could you have discovered the haunt of the mythical grue?", 0x0d
         db "$"
 
 
@@ -3083,37 +3073,37 @@ location_4_long:
 ;
 item_0_name: db "GENERATOR"
 item_0_desc: db "A small, portable, generator.$"
-item_0_long: db "This is a small and easily carried diesel-power generator.", 0x0a, 0x0d
-             db "The generator seems to be full of fuel, and ready to go.", 0x0a, 0x0d
-             db "The important thing is probably working out where to use it.", 0x0a, 0x0d
+item_0_long: db "This is a small and easily carried diesel-power generator.", 0x0d
+             db "The generator seems to be full of fuel, and ready to go.", 0x0d
+             db "The important thing is probably working out where to use it.", 0x0d
              db "$"
 
 item_1_name:  db "MIRROR"
 item_1_desc:  db "A small mirror.$"
-item_1_long:  db "The mirror doesn't seem to be anything special.", 0x0a, 0x0d
-              db "But your reflection?  It looks fabulous.", 0x0a, 0x0d
+item_1_long:  db "The mirror doesn't seem to be anything special.", 0x0d
+              db "But your reflection?  It looks fabulous.", 0x0d
               db "$"
 
 item_1_desc_broken:  db "A small broken mirror.$"
-item_1_long_broken:  db "The mirror was once small and delicate.", 0x0a, 0x0d
-              db "But now it shows a warped reflection of yourself,", 0x0a, 0x0d
-              db "which is oddly unsettling.", 0x0a, 0x0d
+item_1_long_broken:  db "The mirror was once small and delicate.", 0x0d
+              db "But now it shows a warped reflection of yourself,", 0x0d
+              db "which is oddly unsettling.", 0x0d
               db "$"
 
 item_3_name:  db "TORCH"
 item_3_desc_off:  db "A small torch.$"
 item_3_desc_on:   db "A small torch, which is turned on.$"
 item_3_long_off:  db "The torch doesn't seem to be anything special,"
-                  db 0x0a, 0x0d
-                  db "but you do notice that it contains batteries and can be turned on easily.", 0x0a, 0x0d
+                  db 0x0d
+                  db "but you do notice that it contains batteries and can be turned on easily.", 0x0d
                   db "$"
 item_3_long_on:  db "The torch doesn't seem to be anything special."
-                 db 0x0a, 0x0d, "$"
+                 db 0x0d, "$"
 
 item_5_name:  db "DOG"
-item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him ", 0x0a, 0x0d
-              db "he mutters something about 'Apollo the Super-Pup' in his sleep,", 0x0a, 0x0d
-              db "before settling back into silence.", 0x0a, 0x0d
+item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him ", 0x0d
+              db "he mutters something about 'Apollo the Super-Pup' in his sleep,", 0x0d
+              db "before settling back into silence.", 0x0d
               db "$"
 
 item_6_name:  db "PAINTING"
@@ -3122,36 +3112,36 @@ item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a
 item_7_name: db "RUG"
 item_7_desc: db "A small rug.$"
 item_7_long: db "The rug is made of coarse wool, roughly woven, but there's nothing remarkable "
-             db "about it.", 0x0a, 0x0d, "$"
+             db "about it.", 0x0d, "$"
 
 item_8_name: db "BOOK"
 item_8_desc: db "A small black book.$"
-item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0a, 0x0d, 0x0a, 0x0d
-             db "    Police    - 999", 0x0a, 0x0d
-             db " Ambulance    - 999", 0x0a, 0x0d
-             db " Fire Service - 999", 0x0a, 0x0d
-             db " Paw Patrol   - 999", 0x0a, 0x0d
-             db 0x0a, 0x0d
+item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0d, 0x0d
+             db "    Police    - 999", 0x0d
+             db " Ambulance    - 999", 0x0d
+             db " Fire Service - 999", 0x0d
+             db " Paw Patrol   - 999", 0x0d
+             db 0x0d
              db "Too bad there are no instructions on powering the main light, although there is "
              db "an advert for a portable diesel generator being used as a bookmark.$"
 
 item_9_name: db "DESK"
-item_9_long: db "The desk is made of solid wood, unlike everything else in the room.", 0x0a, 0x0d, "$"
+item_9_long: db "The desk is made of solid wood, unlike everything else in the room.", 0x0d, "$"
 desk_has_meteor:
-        db 0x0a, 0x0d
-        db "Towards the back of the desk you notice a small glowing rock, possibly a meteor?", 0x0a, 0x0d, "$"
+        db 0x0d
+        db "Towards the back of the desk you notice a small glowing rock, possibly a meteor?", 0x0d, "$"
 
 
 item_10_name: db "TELEPHONE"
 item_10_desc: db "A telephone, wired to the wall.$"
-item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.  Perhaps you should try to CALL somebody?", 0x0a, 0x0d, "$"
+item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.  Perhaps you should try to CALL somebody?", 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
 item_11_closed: db "A trapdoor.$"
 item_11_open: db "An open trapdoor.$"
-item_11_desc_closed: db "You cannot see anything special about the trapdoor.", 0x0a, 0x0d
-              db "Perhaps you should open it to explore further?", 0x0a, 0x0d, "$"
-item_11_desc_open: db "An average looking trapdoor.", 0x0a, 0x0d, "$"
+item_11_desc_closed: db "You cannot see anything special about the trapdoor.", 0x0d
+              db "Perhaps you should open it to explore further?", 0x0d, "$"
+item_11_desc_open: db "An average looking trapdoor.", 0x0d, "$"
 
 
 item_13_name: db "METEOR"
@@ -3164,26 +3154,26 @@ item_14_name: db "ROOM"
 item_15_name: db "GRUE"
 
 item_16_name: db "BASKET"
-item_16_long: db "The dog-basket is a faded red colour, and covered with dog-hairs.", 0x0a, 0x0d, "$"
+item_16_long: db "The dog-basket is a faded red colour, and covered with dog-hairs.", 0x0d, "$"
 
 item_17_name: db "COAT-RACK"
-item_17_long: db "The coat-rack looks normal.", 0x0a, 0x0d, "$"
+item_17_long: db "The coat-rack looks normal.", 0x0d, "$"
 
 item_18_name: db "CHAIR"
-item_18_long: db "The chair is just a chair", 0x0a, 0x0d, "$"
+item_18_long: db "The chair is just a chair", 0x0d, "$"
 
 item_19_name: db "CHAIRS"
-item_19_long: db "The chairs look very comfortable, but also covered in slightly too much dog-hair.", 0x0a, 0x0d, "$"
+item_19_long: db "The chairs look very comfortable, but also covered in slightly too much dog-hair.", 0x0d, "$"
 
 item_20_name: db "BOOTS"
-item_20_long: db "The boots are black, and shiny.", 0x0a, 0x0d, 0x0a, 0x0d
-              db "They're probably made for walking?", 0x0a, 0x0d, "$"
+item_20_long: db "The boots are black, and shiny.", 0x0d, 0x0d
+              db "They're probably made for walking?", 0x0d, "$"
 
 item_21_name: db "JUNK"
-item_21_long: db "The junk seems too fragile to move around and examine.", 0x0a, 0x0d, "$"
+item_21_long: db "The junk seems too fragile to move around and examine.", 0x0d, "$"
 
 item_22_name: db "MACHINERY"
-item_22_long: db "The machinery doesn't seem very special.", 0x0a, 0x0d, "$"
+item_22_long: db "The machinery doesn't seem very special.", 0x0d, "$"
 
 ; }}
 
