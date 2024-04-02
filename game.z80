@@ -2926,7 +2926,7 @@ SLEEP_START_MSG:
         db 0x0a, 0x0d, "You lay down and take a small nap.", 0x0a, 0x0d
         db "$"
 SLEEP_END_MSG:
-        db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat,", 0x0a, 0x0d
+        db 0x0a, 0x0d, "You jerk awake, unsure of how much time has passed or how much closer the boat, "
         db "and yourself, are to certain doom.", 0x0a, 0x0d
         db "$"
 WAIT_CMD_MSG:
@@ -3144,7 +3144,7 @@ desk_has_meteor:
 
 item_10_name: db "TELEPHONE"
 item_10_desc: db "A telephone, wired to the wall.$"
-item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.", 0x0a, 0x0d, "$"
+item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.  Perhaps you should try to CALL somebody?", 0x0a, 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
 item_11_closed: db "A trapdoor.$"
@@ -3232,6 +3232,8 @@ command_table:
         DEFB 3, 'USE', 0
           DEFW use_function
         ;; synonyms
+        DEFB 5, 'CLEAR', 0
+          DEFW bios_clear_screen
         DEFB 2, 'GO', 1
           DEFW go_function
         DEFB 4, 'TAKE', 1
@@ -3284,6 +3286,8 @@ command_table:
 ;  LENGTH "NAME HERE" Ptr-To-Response
 ;
 people_table:
+        DEFB 3, '112'
+             DEFW call_911_msg
         DEFB 3, '911'
              DEFW call_911_msg
         DEFB 3, '999'
