@@ -62,7 +62,7 @@ MAX_GRUE_EXPOSURE: EQU 3
 ; a collection of dedicated handler-functions.
 ;
 ; Here we define some state attributes for a couple of special objects
-; which eases maintainance.
+; which eases maintenance.
 ;
 ; 1. Torch may be lit or unlit.
 TORCH_STATE_UNLIT:      EQU 0
@@ -332,7 +332,7 @@ ship_warning_over:
         ;    "USE THE TORCH"    -> "USE TORCH"
         ;    "EXAMINE THE BOOK" -> "EXAMINE BOOK"
         ;
-        ; Not ideal, but more useable
+        ; Not ideal, but more usable
         call filter_input_buffer
 
         ; Remove leading whitespace, by shifting input down
@@ -563,7 +563,7 @@ filter_input_buffer:
 filter_input_buffer_on:
         ld hl, INPUT_BUFFER+1
         ld a, (hl)
-        ld b, a                ; b contains the number of chacters
+        ld b, a                ; b contains the number of characters
         inc hl                 ; hl points to the text the user entered
 
 compare_loop_on:
@@ -606,7 +606,7 @@ filter_input_buffer_the:
 
         ld hl, INPUT_BUFFER+1
         ld a, (hl)
-        ld b, a                ; b contains the number of chacters
+        ld b, a                ; b contains the number of characters
         inc hl                 ; hl points to the text the user entered
 
 compare_loop_the:
@@ -941,7 +941,7 @@ gibn_item_available:
         ; and we can return our IX register (which points to the
         ; start of the object in the item-table).
         ;
-        ; If the name doesn't match we loop around to exmaine the
+        ; If the name doesn't match we loop around to examine the
         ; next item in the table.
         ld hl, TMP_BUFFER ; Get the length from our buffer
         ld b, (hl)
@@ -1029,7 +1029,7 @@ player_has_objects_loop:
         ; Get the location of the object in A.
         ld a,(IX+ITEM_TABLE_LOCATION_OFFSET)
 
-        ; If the location is the player's posession we're carrying something,
+        ; If the location is the player's possession we're carrying something,
         ; it doesn't matter what.
         cp ITEM_CARRIED
         jr nz, player_not_carrying_loop
@@ -1510,11 +1510,11 @@ get_found_it:
 
 take_as_normal:
 
-        ; Get the collectable property of the object, using
+        ; Get the collectible property of the object, using
         ; the index register.
-        ld a, (IX+ITEM_TABLE_COLLECTABLE_OFFSET)
+        ld a, (IX+ITEM_TABLE_COLLECTIBLE_OFFSET)
 
-        ; is this item collectable?
+        ; is this item collectible?
         cp 1
         jr z, get_found_it_take
 
@@ -2072,7 +2072,7 @@ bios_char_display:
         call bios_await_keypress
         push af
 
-        ; show explaination
+        ; show explanation
         ld de,you_pressed
         call bios_output_string
 
@@ -3423,7 +3423,7 @@ item_use_ptr:
         DEFW use_generator_fn ; handler
 item_state:
         DEFB 0            ; Item state
-item_collectable:
+item_collectible:
         DEFB 1            ; this item can be picked up
 item_location:
         DEFB 0x03         ; basement
@@ -3449,7 +3449,7 @@ ITEM_TABLE_TAKE_OFFSET:            EQU item_take_ptr - items
 ITEM_TABLE_DROP_OFFSET:            EQU item_drop_ptr - items
 ITEM_TABLE_EXAMINE_OFFSET:         EQU item_examine_ptr - items
 ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
-ITEM_TABLE_COLLECTABLE_OFFSET:     EQU item_collectable - items
+ITEM_TABLE_COLLECTIBLE_OFFSET:     EQU item_collectible - items
 ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
 
