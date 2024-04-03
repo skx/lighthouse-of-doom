@@ -169,7 +169,7 @@ enc_loop:
         or e
         jr nz,enc_loop     ; no, then repeat
 
-        jp enc_end         ; Jump over our marker to the start of the game.
+        jr enc_end         ; Jump over our marker to the start of the game.
 
         ;
         ; Everything after here will be encrypted.
@@ -249,7 +249,7 @@ game_loop:
         ld hl, TURN_COUNT
         ld a, (hl)
         cp MAX_TURN_LIMIT
-        jp c,game_loop_continue
+        jr c,game_loop_continue
 
         ld hl, PLAYER_DEAD_FLAG
         inc (hl)
@@ -266,7 +266,7 @@ game_loop_continue:
         ld hl, PLAYER_DEAD_FLAG
         ld a, (hl)
         cp 1
-        jp nz,not_dead
+        jr nz,not_dead
 
         ; The player is dead.  Oops.
         ld de, PLAYER_DEAD_MESSAGE
@@ -279,7 +279,7 @@ not_dead:
         ld hl, PLAYER_WON_FLAG
         ld a, (hl)
         cp 1
-        jp nz, not_won
+        jr nz, not_won
 
         ; The player won.  Yay!
         ld de, PLAYER_WON_MESSAGE
@@ -291,7 +291,7 @@ not_won:
 
         ; Erase our input buffer.
         ld hl, INPUT_BUFFER+2
-        ld b, 0xff
+        ld b, MAX_INPUT_LENGTH
         call erase_buffer
 
         ; Read a line of input from the player.
@@ -309,7 +309,7 @@ not_won:
         call bios_output_string
         call show_dots
         call bios_clear_screen
-        jp ship_warning_over
+        jr ship_warning_over
 
 no_ship_warning:
         inc (hl)                ; increase our count
@@ -346,7 +346,7 @@ ship_warning_over:
 
         call find_command
         cp 255
-        jp z, no_handler
+        jr z, no_handler
         push hl
 
         ; Valid command - increase turn count
@@ -396,7 +396,7 @@ include "prn.z80"
 CompareStringsWithLength:
     ld a,(de)
     cp (hl)
-    ret nz     ;nz means they are not equal
+    ret nz
     inc hl
     inc de
     djnz CompareStringsWithLength
@@ -510,7 +510,7 @@ string_to_uint16_loop:
         ld l,a
         jr nc,string_to_uint16_loop
         inc h
-        jp string_to_uint16_loop
+        jr string_to_uint16_loop
 
 
 ;
@@ -574,7 +574,7 @@ compare_loop_on:
         ld de, ON
 
         call CompareStringsWithLength
-        jp z, we_found_on
+        jr z, we_found_on
 
         pop hl
         pop bc
@@ -582,14 +582,14 @@ compare_loop_on:
         inc hl
         djnz compare_loop_on
 
-        ; Didn't find " THE " at any character position in the input-buffer.
+        ; Didn't find " ON " at any character position in the input-buffer.
         ret
 
 we_found_on:
         pop hl
         pop de
 
-        ; we have " THE " at the location HL points to
+        ; we have " ON " at the location HL points to
         ld a, " "
         ld (hl), a   ; " " -> " "
         inc hl
@@ -617,7 +617,7 @@ compare_loop_the:
         ld de, THE
 
         call CompareStringsWithLength
-        jp z, we_found_the
+        jr z, we_found_the
 
         pop hl
         pop bc
@@ -652,24 +652,21 @@ we_found_the:
 ;; The length is in INPUT_BUFFER+1
 ;;
 filter_input_leading_whitespace:
-
-        ; is the first character a space
-        ld hl, INPUT_BUFFER+2
-        ld a,(hl)
+        ; is the first character a space?
+        ld a,(INPUT_BUFFER+2)
         cp ' '
 
         ; nope?  We're done
         ret nz
 
-        ; get the length
-        dec hl
-        ld c,(hl)
-        inc hl
-        inc hl
+        ; get the length of the input into BC
+        ld a,(INPUT_BUFFER+1)
+        xor b
+        ld c, a
 
-        ; OK move it down
+        ; Move the buffer down one byte.
+        ld hl, INPUT_BUFFER+3
         ld de, INPUT_BUFFER+2
-        ld b, 0
         ldir
 
         ; repeat until no more leading spaces are found
@@ -690,20 +687,15 @@ play_again:
 
         call bios_await_keypress
         cp 'y'
-        jr z, play_again_yes
+        jp z, game_start
         cp 'Y'
-        jr z, play_again_yes
+        jp z, game_start
         cp 'n'
         jr z, play_again_no
         cp 'N'
         jr z, play_again_no
         call bios_clear_screen
         jr play_again
-
-
-; User chose "Y" to "play again?"
-play_again_yes:
-        jp game_start
 
 ; User chose "N" to "play again?"
 play_again_no:
@@ -762,7 +754,7 @@ cont:
 
         push hl
         call CompareStringsWithLength
-        jp z,find_command_found
+        jr z,find_command_found
         pop hl
 
         ; ok we didn't find a match with this command-table entry.
@@ -779,7 +771,7 @@ find_command_skip:
         inc de                 ; bump past the hidden-flag
         inc de                 ; bump past the addr1-byte
         inc de                 ; bump past the addr2-byte
-        jp  find_command_again ; loop back to try the next table entry.
+        jr find_command_again ; loop back to try the next table entry.
 
 find_command_found:
         ; drop hl
@@ -957,7 +949,7 @@ gibn_item_available:
                           ; DE points to the name of the current item.
                           ; B contains the length
         call CompareStringsWithLength
-        jp z, gibn_found_it
+        jr z, gibn_found_it
 
         pop bc
         jr gibn_continue
@@ -994,8 +986,7 @@ maybe_grue_death:
 
         ; Once we've found the item IX will point to the entry
         ;
-        ; Get the item state using that index register,
-        ; after increasing it.
+        ; Get the item state using that index register, after increasing it.
         inc  (IX + ITEM_TABLE_STATE_OFFSET)
         ld a,(IX + ITEM_TABLE_STATE_OFFSET)
 
@@ -1071,21 +1062,21 @@ input_second_term:
 input_second_term_loop1:
         ld a,(hl)
         cp 0
-        jp z,input_second_term_end
+        jr z,input_second_term_end
         cp ' '
-        jp z, input_second_term_found_space
+        jr z, input_second_term_found_space
         inc hl
-        jp input_second_term_loop1
+        jr input_second_term_loop1
 
         ; At this point HL points to " "
 input_second_term_found_space:
         ld a,(hl)
         cp 0
-        jp z,input_second_term_end
+        jr z,input_second_term_end
         cp ' '
-        jp nz, input_second_term_found_word
+        jr nz, input_second_term_found_word
         inc hl
-        jp input_second_term_found_space
+        jr input_second_term_found_space
 
 input_second_term_found_word:
         ; HL points to the word
@@ -1223,7 +1214,7 @@ user_got_torch_but_not_lit:
 drop_function:
         call input_second_term
         cp 0
-        jp z, drop_object
+        jr z, drop_object
 
         ld de, DROP_WHAT_MSG
         call bios_output_string
@@ -1235,7 +1226,7 @@ drop_object:
 
         call get_item_by_name
         cp 0
-        jp z,drop_found_it
+        jr z,drop_found_it
 
         ; if we didn't find it in the current location or inventory
         ; then we're not carrying it.
@@ -1304,7 +1295,7 @@ drop_invoke_handler:
 examine_function:
         call input_second_term
         cp 0
-        jp z, examine_object
+        jr z, examine_object
 
         ld de, EXAMINE_WHAT_MSG
         call bios_output_string
@@ -1318,7 +1309,7 @@ examine_object:
 
         call get_item_by_name
         cp 0
-        jp z,examine_found_it
+        jr z,examine_found_it
 
         ld de, item_not_present_msg
         call bios_output_string
@@ -1365,7 +1356,7 @@ show_ext_desc:
 go_function:
         call input_second_term
         cp 0
-        jp z, go_somewhere
+        jr z, go_somewhere
 
 go_unknown:
         ld de, GO_WHERE_MSG
@@ -1377,19 +1368,13 @@ go_somewhere:
         ; GO "U" vs GO "D"
         ld a,(HL)
         cp 'U'
-        jr z, up_function_jmp
+        jp z, up_function
         cp 'D'
-        jr z, down_function_jmp
+        jp z, down_function
 
         ; not (u)p or (d)own - show error
         jr go_unknown
 
-        ; Relative jumps only allow the range +127/-127 bytes
-        ; so we've had to add absolute jumps here.
-down_function_jmp:
-        jp down_function
-up_function_jmp:
-        jp up_function
 
 
 ;
@@ -1411,7 +1396,7 @@ call_function:
 call_proceed:
         call input_second_term
         cp 0
-        jp z, call_person
+        jr z, call_person
 
         ; missing person
         ld de, CALL_WHO_MSG
@@ -1442,7 +1427,7 @@ cont_call:
 
         push hl
         call CompareStringsWithLength
-        jp z, found_person_to_call
+        jr z, found_person_to_call
         pop hl
 
         ; ok we didn't find
@@ -1457,7 +1442,7 @@ skip_string:
         djnz skip_string
         inc de ; addr1
         inc de ; addr2
-        jp next_person_test
+        jr next_person_test
 
 found_person_to_call:
         pop hl
@@ -1488,7 +1473,7 @@ skip_string2:
 get_function:
         call input_second_term
         cp 0
-        jp z, get_object
+        jr z, get_object
 
         ld de, GET_WHAT_MSG
         call bios_output_string
@@ -1500,7 +1485,7 @@ get_object:
 
         call get_item_by_name
         cp 0
-        jp z,get_found_it
+        jr z,get_found_it
 
         ld de, item_not_present_msg
         call bios_output_string
@@ -1564,7 +1549,7 @@ make_trapdoor_visible:
         ld hl, item_11_name
         call get_item_by_name
         cp 0
-        jp z, place_trapdoor
+        jr z, place_trapdoor
 
         ld de, failed_find_trapdoor_msg
         call bios_output_string
@@ -1631,7 +1616,7 @@ help_skip_this:
         inc de  ; skip hidden-flag
         inc de  ; skip addr1
         inc de  ; skip addr2
-        jp  help_function_again
+        jr  help_function_again
 
 
 
@@ -1641,7 +1626,7 @@ help_skip_this:
 inventory_function:
         call player_has_objects         ; is the player carrying:
         cp 0
-        jp z, inventory_show_items      ; Yes.  Go show
+        jr z, inventory_show_items      ; Yes.  Go show
 
         ld de,inventory_empty_message   ; Otherwise "Carrying nothing"
         call bios_output_string
@@ -1698,7 +1683,7 @@ inv_item_not_carried:
 wrap_function:
         call input_second_term
         cp 0
-        jp z, wrap_handle_argument
+        jr z, wrap_handle_argument
 show_wrap:
         ; show the message
         ld de, WRAP_IS_MSG
@@ -1740,7 +1725,7 @@ look_function:
         ld b, 7                       ;; strlen("LOOK_AT ")
         ld hl, INPUT_BUFFER+2
         call CompareStringsWithLength
-        jp nz,look_at_environment
+        jr nz,look_at_environment
 
         ; OK we have a sleazy hack here.
         ;
@@ -1803,7 +1788,7 @@ look_function_show:
         ld bc, INPUT_BUFFER+2
         ld a, (bc)
         cp 'L'
-        jp z,look_show_extended
+        jr z,look_show_extended
 
         ; otherwise if we've seen this room don't show the
         ; extended description or objects.
@@ -2159,7 +2144,7 @@ turns_function:
 use_function:
         call input_second_term
         cp 0
-        jp z, use_object
+        jr z, use_object
 
         ld de, USE_WHAT_MSG
         call bios_output_string
@@ -2172,7 +2157,7 @@ use_object:
         ; find the object
         call get_item_by_name
         cp 0
-        jp z, use_found_object
+        jr z, use_found_object
 
         ; the object was not found
         ld de, item_not_present_msg
@@ -2564,7 +2549,7 @@ use_torch_fn:
         call get_item_by_name
 
         cp 0
-        jp z,use_torch_found_t
+        jr z,use_torch_found_t
 
         ld de, failed_find_torch_msg
         call bios_output_string
@@ -2743,7 +2728,7 @@ use_generator_fn:
         call get_item_by_name
 
         cp 0
-        jp z,use_generator_found_t
+        jr z,use_generator_found_t
 
         ld de, failed_find_generator_msg
         call bios_output_string
