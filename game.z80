@@ -2636,6 +2636,19 @@ torch_was_on:
         ; show the message
         ld de, TORCH_OFF_MSG
         call bios_output_string
+
+        ; If you're in the normal basement we'll warp you to the dark-place.
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        cp 3
+        ret nz
+        ld (hl),4
+
+        ld de, NOW_YOU_ARE_BLIND
+        call bios_output_string
+
+        ; show the location
+        FAKE_LOOK
         ret
 
 
@@ -2979,6 +2992,8 @@ ship_closer_msg:
         db "Hurry up, or you'll all be dead!", 0x0d, "$"
 NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0d, "$"
+NOW_YOU_ARE_BLIND:
+        db "Now you cannot see anything in front of you.", 0x0d, "$"
 THE:
         db " THE "
 ON:
