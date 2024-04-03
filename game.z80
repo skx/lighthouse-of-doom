@@ -47,6 +47,9 @@
 ; Game over if you don't win in this many turns
 MAX_TURN_LIMIT: EQU 100
 
+; How many turns before the ship warning
+REMINDER_TURN_COUNT: EQU 10
+
 ; Maximum number of turns you can survive being near a grue
 MAX_GRUE_EXPOSURE: EQU 3
 
@@ -300,19 +303,16 @@ not_won:
 
         ; Every ten turns we show a message about the ship.
         ld hl, SHIP_WARNING
-        ld a, (hl)              ; get the value
-        cp 10                   ; ten turns?
-        jr nz, no_ship_warning  ; nope?  Do nothing
+        dec (hl)                  ; decrease
+        jr nz, ship_warning_over  ; nope?  Do nothing
 
-        ld (hl), 0              ; reset the count
-        ld de, ship_closer_msg  ; show the message
+        ld (hl), REMINDER_TURN_COUNT ; reset the count
+        ld de, ship_closer_msg       ; show the message
         call bios_output_string
         call show_dots
         call bios_clear_screen
         jr ship_warning_over
 
-no_ship_warning:
-        inc (hl)                ; increase our count
 ship_warning_over:
         ; If the input was zero-length (i.e. User pressed return) ignore it.
         ld hl, INPUT_BUFFER+1
@@ -2785,7 +2785,7 @@ PLAYER_WON_FLAG:
 MAGIC_COUNT:
         db 0         ; state for magic-function
 SHIP_WARNING:
-        db 0         ; State for showing a "ship closer" message.
+        db REMINDER_TURN_COUNT   ; State for showing a "ship closer" message.
 ; }}
 
 
