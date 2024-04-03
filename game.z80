@@ -36,7 +36,7 @@
 ;     string.  e.g. User types "EXAMINE" we run "examine_function"
 ;
 ;   * All object-specific functions have a _fn suffix.
-;     e.g. Custom code runs when you "GET RUG" is get_rug_fn
+;     e.g. Custom code runs when you "TAKE RUG" is take_rug_fn
 ;
 ; If you're using Emacs, or similar editor, you should be able to fold
 ; or collapse sections of the code via the markers "; {" and "; }"
@@ -2379,6 +2379,7 @@ examine_rug_fn:
 
         ; The rug must be in your possession, just show the extended
         ; description.
+just_show_rug_details:
         ld e, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
         ld d, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
         call bios_output_string
@@ -2386,7 +2387,14 @@ examine_rug_fn:
         ret
 
 rug_on_ground:
+        ;; If we're in the ground-floor we can show more details
+        ;; if we're not we'll just show the overview
+        ld hl, CURRENT_LOCATION
+        ld a,(hl)
+        cp 2
+        jr nz, just_show_rug_details
 
+        ;; We're in the ground floor so we can do the reveal
         ld de, rug_detail_msg
         call bios_output_string
         call make_trapdoor_visible
