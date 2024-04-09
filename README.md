@@ -138,6 +138,10 @@ Running `make` will generate the default targets, if you wish to build only indi
 * `make lighthouse` will build the C-game for Linux
 * `make release` will build both versions of the CP/M and ZX Spectrum release.
 
+If you have a working golang system you can run the game under this trivial CP/M emulator:
+
+* https://github.com/skx/go-cpm
+
 
 
 ## Downloading It
