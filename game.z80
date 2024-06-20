@@ -338,6 +338,9 @@ ship_warning_over:
         ; Remove leading whitespace, by shifting input down
         call filter_input_leading_whitespace
 
+        ; Remove trailing whitespace, by replacing with nulls.
+        call filter_input_trailing_whitespace
+
         ; Take the input from the user, and see if we have a registered
         ; command with that name.  If we do we can invoke it, but if not we've
         ; been given something we don't understand.
@@ -671,6 +674,34 @@ filter_input_leading_whitespace:
 
         ; repeat until no more leading spaces are found
         jr filter_input_leading_whitespace
+
+;; INPUT_BUFFER+2 contains the user input
+;; The length is in INPUT_BUFFER+1
+;;
+filter_input_trailing_whitespace:
+
+        ;; Get the input length in BC
+        xor b
+        ld a,(INPUT_BUFFER+1)
+        ld c,a
+
+        ;; Add to the start of the buffer, because
+        ;; we will process the text in reverse.
+        ld hl, INPUT_BUFFER+1
+        add hl,bc
+
+overwrite_space_loop:
+        ;; get the charactor
+        ld a, (hl)
+
+        ;; is it a space?  If not return
+        cp ' '
+        ret nz
+
+        ;; overwrite with a zero, and work backwards
+        ld (hl),0
+        dec hl
+        jr overwrite_space_loop
 
 ;********************************************************************
 ; Utility Functions For Game
