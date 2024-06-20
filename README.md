@@ -140,7 +140,7 @@ Running `make` will generate the default targets, if you wish to build only indi
 
 If you have a working golang system you can run the game under this trivial CP/M emulator:
 
-* https://github.com/skx/go-cpm
+* https://github.com/skx/cpmulator
 
 
 
