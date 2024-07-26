@@ -2115,60 +2115,6 @@ turns_function:
         ret
 
 
-
-;
-; Command-Handler USE
-;
-; Use the named object, if there is a handler defined for it.
-use_function:
-        call input_second_term
-        cp 0
-        jr z, use_object
-
-        ld de, USE_WHAT_MSG
-        call bios_output_string
-        ret
-
-use_object:
-        ; store object in HL
-        call input_second_term
-
-        ; find the object
-        call get_item_by_name
-        cp 0
-        jr z, use_found_object
-
-        ; the object was not found
-        ld de, item_not_present_msg
-        call bios_output_string
-        ret
-
-use_found_object:
-
-        ; IX points to the start of the entry for the object.
-        ;
-        ; Find the name of the custom use-handler, if any, using
-        ; the index-register.
-        ld l, (IX+ITEM_TABLE_USE_OFFSET)
-        ld h, (IX+ITEM_TABLE_USE_OFFSET+1)
-
-        ; is the use-handler empty?
-        ld a, h
-        or l
-        jr z, use_is_futile
-
-        ; jump to the use-handler, the ret at the
-        ; end of that function will return from this handler
-        jp JP_HL
-
-use_is_futile:
-        ld de, use_generic
-        call bios_output_string
-        ret
-
-
-
-
 ;
 ; Command-Handler UP
 ;
@@ -2921,8 +2867,6 @@ DROP_WHAT_MSG:
         db 0x0d, "Drop what? Please try again.", 0x0d, "$"
 WRAP_IS_MSG:
         db 0x0d, "Wrapping is set to $"
-USE_WHAT_MSG:
-        db 0x0d, "Use what? Please try again.", 0x0d, "$"
 cant_take_that_msg:
         db 0x0d, "You can't take that.", 0x0d, "$"
 you_drop_it:
@@ -3252,10 +3196,8 @@ command_table:
           DEFW turns_function
         DEFB 2, 'UP', 0
           DEFW up_function
-        DEFB 3, 'USE', 0
-          DEFW use_function
         ;; synonyms
-        DEFB 5, 'CLEAR', 0
+        DEFB 5, 'CLEAR', 1
           DEFW bios_clear_screen
         DEFB 2, 'GO', 1
           DEFW go_function
@@ -3311,9 +3253,20 @@ trapdoor_actions:
       DEFW toggle_trapdoor_function
      DEFB 0
 
+generator_actions:
+     DEFB 5, 'START', 0
+      DEFW use_generator_fn
+     DEFB 3, 'USE', 0
+      DEFW use_generator_fn
+     DEFB 6, 'IGNITE', 0
+      DEFW use_generator_fn
+     DEFB 0
+
 torch_actions:
      DEFB 5, 'LIGHT', 0
-      DEFW toggle_torch_fn
+     DEFW toggle_torch_fn
+     DEFB 6, 'IGNITE', 0
+     DEFW toggle_torch_fn
      DEFB 3, 'USE', 0
       DEFW toggle_torch_fn
      DEFB 7, 'TURN ON', 0
@@ -3436,8 +3389,6 @@ item_drop_ptr:
         DEFB 0,0          ; No drop function
 item_examine_ptr:
         DEFB 0,0          ; No examine function
-item_use_ptr:
-        DEFW use_generator_fn ; handler
 item_state:
         DEFB 0            ; Item state
 item_collectible:
@@ -3445,7 +3396,7 @@ item_collectible:
 item_location:
         DEFB 0x03         ; basement
 item_custom_action:
-        DEFB 0,0          ; no custom actions
+        DEFW generator_actions  ; custom actions
 
 
 ;
@@ -3467,7 +3418,6 @@ ITEM_TABLE_EXT_DESCRIPTION_OFFSET: EQU item_ext_description_ptr - items
 ITEM_TABLE_TAKE_OFFSET:            EQU item_take_ptr - items
 ITEM_TABLE_DROP_OFFSET:            EQU item_drop_ptr - items
 ITEM_TABLE_EXAMINE_OFFSET:         EQU item_examine_ptr - items
-ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
 ITEM_TABLE_COLLECTIBLE_OFFSET:     EQU item_collectible - items
 ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
@@ -3485,7 +3435,6 @@ item_first_edesc:
         DEFB 0,0            ; No take function
         DEFW drop_mirror_fn ; custom drop function
         DEFB 0,0            ; no custom examine function
-        DEFB 0,0            ; No use function
         DEFB MIRROR_OK      ; item state
         DEFB 1              ; this item can be picked up
         DEFB 0x01           ; middle-floor
@@ -3503,7 +3452,6 @@ torch_item_long:
         DEFB 0,0                ; No take function
         DEFB 0,0                ; No drop function
         DEFB 0,0                ; No examine function
-        DEFB 0,0                ; No use function
         DEFB TORCH_STATE_UNLIT  ; item state
         DEFB 1                  ; this item can be picked up
         DEFB 0x00               ; top-floor
@@ -3515,7 +3463,6 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
@@ -3527,7 +3474,6 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
@@ -3539,7 +3485,6 @@ torch_item_long:
         DEFW take_rug_fn     ; Custom take-function
         DEFB 0,0             ; No drop function
         DEFW examine_rug_fn  ; custom examine function
-        DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 1               ; this item can be picked up
         DEFB 0x02            ; ground-floor
@@ -3551,7 +3496,6 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
@@ -3563,7 +3507,6 @@ torch_item_long:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFW examine_desk_fn  ; custom examine function
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
@@ -3575,7 +3518,6 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; no custom examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
@@ -3592,7 +3534,6 @@ trapdoor_edesc:
         DEFB 0,0                      ; No take function
         DEFB 0,0                      ; No drop function
         DEFB 0,0                      ; no custom examine function
-        DEFB 0,0                      ; no use function
         DEFB TRAPDOOR_STATE_INVISIBLE ; item state
         DEFB 0                        ; this item cannot be picked up
         DEFB ITEM_INVISIBLE           ; hidden until the rug is moved
@@ -3604,7 +3545,6 @@ trapdoor_edesc:
         DEFW take_meteor_fn ; Custom take function
         DEFB 0,0            ; No drop function
         DEFB 0,0            ; no custom examine function
-        DEFB 0,0            ; No use function
         DEFB 0              ; item state
         DEFB 0              ; this item cannot be picked up
         DEFB ITEM_INVISIBLE ; hidden until the desk is examined
@@ -3616,7 +3556,6 @@ trapdoor_edesc:
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
         DEFW examine_room_fn ; EXAMINE ROOM -> custom function
-        DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
@@ -3628,7 +3567,6 @@ trapdoor_edesc:
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
         DEFB 0,0             ; No custom examine function
-        DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
@@ -3640,7 +3578,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
@@ -3652,7 +3589,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
@@ -3664,7 +3600,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
@@ -3676,7 +3611,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
@@ -3688,7 +3622,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
@@ -3700,7 +3633,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
@@ -3712,7 +3644,6 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
