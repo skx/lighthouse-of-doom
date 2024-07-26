@@ -3256,11 +3256,13 @@ item_7_long: db "The rug is made of coarse wool, roughly woven, but there's noth
 
 item_8_name: db "BOOK"
 item_8_desc: db "A small black book.$"
-item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0d, 0x0d
-             db "    Police    - 999", 0x0d
-             db " Ambulance    - 999", 0x0d
+item_8_long: db "This seems to be a book of phone numbers.", 0x0d, "$"
+item_8_read: db 0x0d, "The little black book seems to contain names and phone numbers:", 0x0d, 0x0d
+             db "       Police - 999", 0x0d
+             db "    Ambulance - 999", 0x0d
              db " Fire Service - 999", 0x0d
-             db " Paw Patrol   - 999", 0x0d
+             db "   Paw Patrol - 999", 0x0d
+             db "        Steve - ???", 0x0d
              db 0x0d
              db "Too bad there are no instructions on powering the main light, although there is "
              db "an advert for a portable diesel generator being used as a bookmark.$"
@@ -3424,7 +3426,7 @@ rug_actions:
 
 ;; Custom function "READ BOOK"
 read_book_function:
-     ld de, item_8_long
+     ld de, item_8_read
      call bios_output_string
      ret
 
