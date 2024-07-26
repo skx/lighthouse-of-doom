@@ -275,6 +275,7 @@ game_loop_continue:
         ld de, PLAYER_DEAD_MESSAGE
         call bios_output_string
         call turns_function
+jr_play_again:
         jp play_again
 
 not_dead:
@@ -288,7 +289,7 @@ not_dead:
         ld de, PLAYER_WON_MESSAGE
         call bios_output_string
         call turns_function
-        jp play_again
+        jr jr_play_again
 
 not_won:
 
@@ -311,7 +312,7 @@ not_won:
         call bios_output_string
         call show_dots
         call bios_clear_screen
-        jr ship_warning_over
+
 
 ship_warning_over:
         ; If the input was zero-length (i.e. User pressed return) ignore it.
@@ -325,16 +326,6 @@ ship_warning_over:
         inc hl
         call uppercase_buffer
 
-        ; Strip out " THE " from any input
-        ;
-        ; This means input is fixed for simple case:
-        ;
-        ;    "USE THE TORCH"    -> "USE TORCH"
-        ;    "EXAMINE THE BOOK" -> "EXAMINE BOOK"
-        ;
-        ; Not ideal, but more usable
-        call filter_input_buffer
-
         ; Remove leading whitespace, by shifting input down
         call filter_input_leading_whitespace
 
@@ -346,25 +337,79 @@ ship_warning_over:
         ; been given something we don't understand.
         ld hl, INPUT_BUFFER+2
 
+        ; We have two kinds of commands:
+        ;  1.  Global
+        ;  2.  Per-Item
+        ;
+        ; Per-item command are processed before the global ones,
+        ; so that they can be invoked first.
+        ;
+        call input_second_term
 
+        ; did that fail?
+        cp 0
+        jr nz, process_global_command
+
+        ; ok find the item, if that failed then
+        ; again we continue with the global item.
+        call get_item_by_name
+        cp 0
+        jr nz, process_global_command
+
+        ; now we should find IX points to the item
+        ; is there a global command handler?
+        ld e,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET)
+        ld d,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET+1)
+
+        ; DE points to the table.  If it is null we have
+        ; no per-item table for this object
+        ld a,d
+        or e
+        jr z, process_global_command
+
+        ; At this point DE points to the table of per-item
+        ; commands, and HL points to the object.
+        ;
+        ; We don't really want the object any more, instead
+        ; we want to look at the verb at the start of our
+        ; input buffer.
+        ld hl, INPUT_BUFFER+2
+        call find_command_for_custom_table
+        cp 255
+        jr z, process_global_command
+
+        ; OK we found an item in the custom handler
+        ; we're gonna call it.
+        call JP_HL
+
+        ; since we found a custom command skip the global
+        ; handling, and proceed to run our regular actions
+        jr regular_turn_actions
+
+
+process_global_command:
+        ; Otherwise we look for a global command
+        ld hl, INPUT_BUFFER+2
         call find_command
         cp 255
         jr z, no_handler
         push hl
 
-        ; Valid command - increase turn count
-        ld hl, TURN_COUNT
-        inc (hl)
-
         ; Call the handler
         pop hl
         call JP_HL
+
+regular_turn_actions:
+
+        ; Valid command - increase turn count
+        ld hl, TURN_COUNT
+        inc (hl)
 
         ; Did we get eaten?
         call maybe_grue_death
 
         ; And restart the command-loop
-        jp game_loop
+        jr jr_game_loop
 
 
 no_handler:
@@ -376,6 +421,7 @@ no_handler:
         call maybe_grue_death
 
         ; Return to the start of our game-loop.
+jr_game_loop:
         jp game_loop
 
 ; }}
@@ -495,7 +541,6 @@ show_a_register:
 ;     BC
 ;       if the string is non-empty, BC is HL/10
 string_to_uint16:
-atoui_16:
         ld hl,0
 string_to_uint16_loop:
         ld a,(de)
@@ -549,106 +594,6 @@ uppercase_ok:
         djnz uppercase_buffer
         ret
 
-
-
-;
-; Helper function, filter our input buffer, by removing some words
-;
-filter_input_buffer:
-        call filter_input_buffer_on
-        call filter_input_buffer_the
-        ret
-
-
-;
-; Helper function.  Remove " ON " from any input
-;
-filter_input_buffer_on:
-        ld hl, INPUT_BUFFER+1
-        ld a, (hl)
-        ld b, a                ; b contains the number of characters
-        inc hl                 ; hl points to the text the user entered
-
-compare_loop_on:
-        push bc    ; preserve count
-        push hl    ; preserve starting char
-
-        ld b, 4  ; strlen(" ON " )
-        ld de, ON
-
-        call CompareStringsWithLength
-        jr z, we_found_on
-
-        pop hl
-        pop bc
-
-        inc hl
-        djnz compare_loop_on
-
-        ; Didn't find " ON " at any character position in the input-buffer.
-        ret
-
-we_found_on:
-        pop hl
-        pop de
-
-        ; we have " ON " at the location HL points to
-        ld a, " "
-        ld (hl), a   ; " " -> " "
-        inc hl
-        ld (hl), a   ; "O" -> " "
-        inc hl
-        ld (hl), a   ; "N" -> " "
-        ret
-
-
-;
-; Helper function.  Remove " THE " from any input.
-;
-filter_input_buffer_the:
-
-        ld hl, INPUT_BUFFER+1
-        ld a, (hl)
-        ld b, a                ; b contains the number of characters
-        inc hl                 ; hl points to the text the user entered
-
-compare_loop_the:
-        push bc    ; preserve count
-        push hl    ; preserve starting char
-
-        ld b, 5  ; strlen(" THE " )
-        ld de, THE
-
-        call CompareStringsWithLength
-        jr z, we_found_the
-
-        pop hl
-        pop bc
-
-        inc hl
-        djnz compare_loop_the
-
-        ; Didn't find " THE " at any character position in the input-buffer.
-        ret
-
-we_found_the:
-        pop hl
-        pop de
-
-        ; we have " THE " at the location HL points to
-        ld a, " "
-        ld (hl), a   ; " " -> " "
-        inc hl
-        ld (hl), a   ; "T" -> " "
-        inc hl
-        ld (hl), a   ; "H" -> " "
-        inc hl
-        ld (hl), a   ; "E" -> " "
-        inc hl
-        ld (hl), a   ; " " -> " "
-        inc hl
-        ret
-; }}
 
 
 ;; INPUT_BUFFER+2 contains the user input
@@ -755,7 +700,7 @@ ENDIF
 ; or A contains 255 on failure.
 find_command:
         ld de,command_table
-
+find_command_for_custom_table:
         ;
         ; Entries are arranged like so:
         ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
@@ -1086,37 +1031,39 @@ player_not_carrying_loop:
 ; e.g. The user enters "GET TORCH", "EXAMINE BOOK", etc, we want to
 ; get the start of second-word "TORCH", "BOOK"
 ;
+; But the second term is a bit "vague", because we want to allow
+;   TURN ON TORCH
+;
+; Really the second word in this sense is TORCH, so what we do is
+; start at the back of the input buffer and count backwards until
+; we find the first space.
+;
 input_second_term:
-        ld hl, INPUT_BUFFER+2
+        ld hl, INPUT_BUFFER+1
+        ld d, 0
+        ld e, (hl)              ; get the length of entered text in DE
+        inc hl
+        add hl, de              ; Add length to start of text
 
-        ; start by incrementing the pointer until we find a space
+        ld b, e
+        ld c, 0                 ; prepare to loop backwards for that length
+
 input_second_term_loop1:
         ld a,(hl)
-        cp 0
-        jr z,input_second_term_end
         cp ' '
-        jr z, input_second_term_found_space
-        inc hl
-        jr input_second_term_loop1
+        jr z, input_second_term_found_word
+        dec hl
+        djnz input_second_term_loop1
 
-        ; At this point HL points to " "
-input_second_term_found_space:
-        ld a,(hl)
-        cp 0
-        jr z,input_second_term_end
-        cp ' '
-        jr nz, input_second_term_found_word
-        inc hl
-        jr input_second_term_found_space
+        ; failure
+        ld a, 0xff
+        ret
 
 input_second_term_found_word:
-        ; HL points to the word
+        inc hl    ; we found a space, so increment once to point to the item
         xor a
         ret
 
-input_second_term_end:
-        ld a, 0xff
-        ret
 ; }}
 
 
@@ -1801,7 +1748,6 @@ look_at_environment:
         ld de, location_table ; add to base of location table
         add hl,de
 
-look_function_show:
         ; ok we point to the table - show the short version
         ld e, (hl)
         inc hl
@@ -2085,7 +2031,6 @@ pause_for_key:
         ld de, press_key_continue
         call bios_output_string
         call bios_await_keypress
-bios_function_indirect:
         jr bios_function
 
 
@@ -2165,60 +2110,6 @@ turns_function:
         ld de, PLAYER_TURN_COUNT_END
         call bios_output_string
         ret
-
-
-
-;
-; Command-Handler USE
-;
-; Use the named object, if there is a handler defined for it.
-use_function:
-        call input_second_term
-        cp 0
-        jr z, use_object
-
-        ld de, USE_WHAT_MSG
-        call bios_output_string
-        ret
-
-use_object:
-        ; store object in HL
-        call input_second_term
-
-        ; find the object
-        call get_item_by_name
-        cp 0
-        jr z, use_found_object
-
-        ; the object was not found
-        ld de, item_not_present_msg
-        call bios_output_string
-        ret
-
-use_found_object:
-
-        ; IX points to the start of the entry for the object.
-        ;
-        ; Find the name of the custom use-handler, if any, using
-        ; the index-register.
-        ld l, (IX+ITEM_TABLE_USE_OFFSET)
-        ld h, (IX+ITEM_TABLE_USE_OFFSET+1)
-
-        ; is the use-handler empty?
-        ld a, h
-        or l
-        jr z, use_is_futile
-
-        ; jump to the use-handler, the ret at the
-        ; end of that function will return from this handler
-        jp JP_HL
-
-use_is_futile:
-        ld de, use_generic
-        call bios_output_string
-        ret
-
-
 
 
 ;
@@ -2546,35 +2437,11 @@ get_rug_show_inv:
         ret
 
 
-; When you USE the book it shows you contents
-;
-; This is invoked by:
-;
-;   READ [THE] BOOK
-;   OPEN [THE] BOOK
-;   USE  [THE] BOOK
-use_book_fn:
-
-        call show_newline
-
-        ; find the book
-        ld hl, item_8_name
-        call get_item_by_name
-
-        ; Get the extended description
-        ld e,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
-        ld d,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
-
-        ; show it
-        call bios_output_string
-        ret
-
-
 ;  When you USE the TORCH it lights.
 ;
 ;  This means updating the item-state to have the LIT attribute
 ;
-use_torch_fn:
+toggle_torch_fn:
         ; find the torch
         ld hl, item_3_name
         call get_item_by_name
@@ -2680,7 +2547,7 @@ torch_was_on:
 ;
 ;  Find the trapdoor, and update the state to be "OPEN".
 ;
-use_trapdoor_fn:
+toggle_trapdoor_function:
         ; find the trapdoor
         ld hl, item_11_name
         call get_item_by_name
@@ -2896,6 +2763,8 @@ failed_find_trapdoor_msg:
 rug_detail_msg:
         db 0x0d, "You examine the rug, which shows nothing special. "
         db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0d, "$"
+rug_moved_message:
+        db 0x0d, "You move the rug, which reveals a trapdoor which had previously been hidden.", 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0d, "$"
 TRAPDOOR_CLOSED_MSG:
@@ -2971,8 +2840,6 @@ DROP_WHAT_MSG:
         db 0x0d, "Drop what? Please try again.", 0x0d, "$"
 WRAP_IS_MSG:
         db 0x0d, "Wrapping is set to $"
-USE_WHAT_MSG:
-        db 0x0d, "Use what? Please try again.", 0x0d, "$"
 cant_take_that_msg:
         db 0x0d, "You can't take that.", 0x0d, "$"
 you_drop_it:
@@ -2983,8 +2850,6 @@ you_carrying_message:
         db 0x0d, "You are carrying:", 0x0d, "$"
 you_see_message:
         db 0x0d, "You see:", 0x0d, "$"
-use_generic:
-        db 0x0d, "Nothing seems to happen.", 0x0d, "$"
 item_not_present_msg:
         db  0x0d, "I can't see that here!", 0x0d, "$"
 not_carrying_item_msg:
@@ -3018,10 +2883,6 @@ NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0d, "$"
 NOW_YOU_ARE_BLIND:
         db "Now you cannot see anything in front of you.", 0x0d, "$"
-THE:
-        db " THE "
-ON:
-        db " ON "
 usage_message:
         db 0x0d
         db "        .n.         "
@@ -3197,11 +3058,13 @@ item_7_long: db "The rug is made of coarse wool, roughly woven, but there's noth
 
 item_8_name: db "BOOK"
 item_8_desc: db "A small black book.$"
-item_8_long: db "The little black book seems to contain names and phone numbers:", 0x0d, 0x0d
-             db "    Police    - 999", 0x0d
-             db " Ambulance    - 999", 0x0d
+item_8_long: db "This seems to be a book of phone numbers.", 0x0d, "$"
+item_8_read: db 0x0d, "The little black book seems to contain names and phone numbers:", 0x0d, 0x0d
+             db "       Police - 999", 0x0d
+             db "    Ambulance - 999", 0x0d
              db " Fire Service - 999", 0x0d
-             db " Paw Patrol   - 999", 0x0d
+             db "   Paw Patrol - 999", 0x0d
+             db "        Steve - ???", 0x0d
              db 0x0d
              db "Too bad there are no instructions on powering the main light, although there is "
              db "an advert for a portable diesel generator being used as a bookmark.$"
@@ -3214,7 +3077,6 @@ desk_has_meteor:
 
 
 item_10_name: db "TELEPHONE"
-item_10_desc: db "A telephone, wired to the wall.$"
 item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.  Perhaps you should try to CALL somebody?", 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
@@ -3300,10 +3162,8 @@ command_table:
           DEFW turns_function
         DEFB 2, 'UP', 0
           DEFW up_function
-        DEFB 3, 'USE', 0
-          DEFW use_function
         ;; synonyms
-        DEFB 5, 'CLEAR', 0
+        DEFB 5, 'CLEAR', 1
           DEFW bios_clear_screen
         DEFB 2, 'GO', 1
           DEFW go_function
@@ -3311,18 +3171,6 @@ command_table:
           DEFW get_function
         DEFB 6, 'PICKUP', 1
           DEFW get_function
-        DEFB 4, 'OPEN', 1     ; open trapdoor
-          DEFW use_function
-        DEFB 5, 'CLOSE', 1    ; close trapdoor
-          DEFW use_function
-        DEFB 4, 'READ', 1     ; read book
-          DEFW use_function
-        DEFB 5, 'LIGHT', 1
-          DEFW use_function
-        DEFB 6, 'SWITCH', 1   ; switch on generator, etc
-          DEFW use_function
-        DEFB 4, 'TURN', 1     ; turn on torch, etc.
-          DEFW use_function
         ;; easter-eges
         DEFB 4, 'CALL', 1
           DEFW call_function
@@ -3350,6 +3198,61 @@ command_table:
         ;; end of table
         DEFB 0
 
+
+;;
+;; Per-Item actions table
+;;
+book_actions:
+     DEFB 4, 'READ', 0
+      DEFW read_book_function
+     DEFB 0
+
+rug_actions:
+     DEFB 4, 'MOVE', 0
+      DEFW move_rug_function
+     DEFB 0
+
+trapdoor_actions:
+     DEFB 4, 'OPEN', 0
+      DEFW toggle_trapdoor_function
+     DEFB 5, 'CLOSE', 0
+      DEFW toggle_trapdoor_function
+     DEFB 0
+
+generator_actions:
+     DEFB 5, 'START', 0
+      DEFW use_generator_fn
+     DEFB 3, 'USE', 0
+      DEFW use_generator_fn
+     DEFB 6, 'IGNITE', 0
+      DEFW use_generator_fn
+     DEFB 0
+
+torch_actions:
+     DEFB 5, 'LIGHT', 0
+     DEFW toggle_torch_fn
+     DEFB 6, 'IGNITE', 0
+     DEFW toggle_torch_fn
+     DEFB 3, 'USE', 0
+      DEFW toggle_torch_fn
+     DEFB 7, 'TURN ON', 0
+      DEFW toggle_torch_fn
+     DEFB 8, 'TURN OFF', 0
+      DEFW toggle_torch_fn
+     DEFB 0
+
+;; Custom function "READ BOOK"
+read_book_function:
+     ld de, item_8_read
+     call bios_output_string
+     ret
+
+;; Custom function "MOVE RUG"
+move_rug_function:
+     call make_trapdoor_visible
+     ld de, rug_moved_message
+     call bios_output_string
+     ret
 
 ;
 ; People table
@@ -3432,6 +3335,8 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;  10. A byte to contain the location of the object.
 ;       0xff == the player is carrying it.
 ;       0xfe == can be found but won't be displayed when a location is entered.
+;  11. A word pointing to a table of custom actions.
+;      WIP
 ;
 ; We might add further pointers in the future, to allow custom behaviour
 ; on a per-object basis.  Hopefully the use of calculated offsets relating
@@ -3450,14 +3355,14 @@ item_drop_ptr:
         DEFB 0,0          ; No drop function
 item_examine_ptr:
         DEFB 0,0          ; No examine function
-item_use_ptr:
-        DEFW use_generator_fn ; handler
 item_state:
         DEFB 0            ; Item state
 item_collectible:
         DEFB 1            ; this item can be picked up
 item_location:
         DEFB 0x03         ; basement
+item_custom_action:
+        DEFW generator_actions  ; custom actions
 
 
 ;
@@ -3479,10 +3384,10 @@ ITEM_TABLE_EXT_DESCRIPTION_OFFSET: EQU item_ext_description_ptr - items
 ITEM_TABLE_TAKE_OFFSET:            EQU item_take_ptr - items
 ITEM_TABLE_DROP_OFFSET:            EQU item_drop_ptr - items
 ITEM_TABLE_EXAMINE_OFFSET:         EQU item_examine_ptr - items
-ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
 ITEM_TABLE_COLLECTIBLE_OFFSET:     EQU item_collectible - items
 ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
+ITEM_TABLE_CUSTOM_ACTION_OFFSET:   EQU item_custom_action - items
 
         ; description of the mirror changes when it is dropped
         ; so we have labels here to update the strings that
@@ -3496,10 +3401,10 @@ item_first_edesc:
         DEFB 0,0            ; No take function
         DEFW drop_mirror_fn ; custom drop function
         DEFB 0,0            ; no custom examine function
-        DEFB 0,0            ; No use function
         DEFB MIRROR_OK      ; item state
         DEFB 1              ; this item can be picked up
         DEFB 0x01           ; middle-floor
+        DEFB 0,0            ; no custom actions
 
 
         ; description of the torch changes when it is lit/unlit
@@ -3513,10 +3418,10 @@ torch_item_long:
         DEFB 0,0                ; No take function
         DEFB 0,0                ; No drop function
         DEFB 0,0                ; No examine function
-        DEFW use_torch_fn       ; USE TORCH
         DEFB TORCH_STATE_UNLIT  ; item state
         DEFB 1                  ; this item can be picked up
         DEFB 0x00               ; top-floor
+        DEFW torch_actions      ; custom actions
 
         DEFW item_5_name  ; dog
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3524,10 +3429,10 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0            ; no custom actions
 
         DEFW item_6_name  ; painting
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3535,21 +3440,21 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0          ; no custom actions
 
         DEFW item_7_name  ; rug
         DEFW item_7_desc
         DEFW item_7_long
         DEFW take_rug_fn     ; Custom take-function
         DEFB 0,0             ; No drop function
-        DEFW examine_rug_fn  ; No examine function
-        DEFB 0,0             ; No use function
+        DEFW examine_rug_fn  ; custom examine function
         DEFB 0               ; item state
         DEFB 1               ; this item can be picked up
         DEFB 0x02            ; ground-floor
+        DEFW rug_actions     ; custom actions
 
         DEFW item_8_name  ; book
         DEFW item_8_desc
@@ -3557,10 +3462,10 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; No examine function
-        DEFW use_book_fn  ; Custom use function
         DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
+        DEFW book_actions ; custom actions
 
         DEFW item_9_name      ; desk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3568,10 +3473,10 @@ torch_item_long:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFW examine_desk_fn  ; custom examine function
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_10_name ; telephone
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3579,10 +3484,10 @@ torch_item_long:
         DEFB 0,0          ; No take function
         DEFB 0,0          ; No drop function
         DEFB 0,0          ; no custom examine function
-        DEFB 0,0          ; No use function
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0          ; no custom actions
 
         ; description of the trapdoor changes when it is opened/
         ; closed.  So we have labels here to update the strings
@@ -3595,10 +3500,10 @@ trapdoor_edesc:
         DEFB 0,0                      ; No take function
         DEFB 0,0                      ; No drop function
         DEFB 0,0                      ; no custom examine function
-        DEFW use_trapdoor_fn          ; open function
         DEFB TRAPDOOR_STATE_INVISIBLE ; item state
         DEFB 0                        ; this item cannot be picked up
         DEFB ITEM_INVISIBLE           ; hidden until the rug is moved
+        DEFW trapdoor_actions         ; custom actions
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
@@ -3606,10 +3511,10 @@ trapdoor_edesc:
         DEFW take_meteor_fn ; Custom take function
         DEFB 0,0            ; No drop function
         DEFB 0,0            ; no custom examine function
-        DEFB 0,0            ; No use function
         DEFB 0              ; item state
         DEFB 0              ; this item cannot be picked up
         DEFB ITEM_INVISIBLE ; hidden until the desk is examined
+        DEFB 0,0            ; no custom actions
 
         DEFW item_14_name    ; room
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3617,10 +3522,10 @@ trapdoor_edesc:
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
         DEFW examine_room_fn ; EXAMINE ROOM -> custom function
-        DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
+        DEFB 0,0             ; no custom actions
 
         DEFW item_15_name    ; grue
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3628,10 +3533,10 @@ trapdoor_edesc:
         DEFB 0,0             ; Custom take function
         DEFB 0,0             ; No drop function
         DEFB 0,0             ; No custom examine function
-        DEFB 0,0             ; No use function
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
+        DEFB 0,0             ; no custom actions
 
         DEFW item_16_name     ; dog-basket
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3639,10 +3544,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_17_name     ; coat-rack
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3650,10 +3555,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_18_name     ; chair
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3661,10 +3566,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_19_name     ; chairs
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3672,10 +3577,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_20_name     ; boots
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3683,10 +3588,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_21_name     ; junk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3694,10 +3599,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
+        DEFB 0,0              ; no custom actions
 
         DEFW item_22_name     ; machinery
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3705,10 +3610,10 @@ trapdoor_edesc:
         DEFB 0,0              ; No take function
         DEFB 0,0              ; No drop function
         DEFB 0,0              ; No custom examine function.
-        DEFB 0,0              ; No use function
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
+        DEFB 0,0              ; no custom actions
 
 item_last:
 
