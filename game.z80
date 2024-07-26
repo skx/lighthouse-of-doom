@@ -347,7 +347,44 @@ ship_warning_over:
         ; been given something we don't understand.
         ld hl, INPUT_BUFFER+2
 
+        ; We have two kinds of commands:
+        ;  1.  Global
+        ;  2.  Per-Item
+        ;
+        ; Per-item command are processed before the global ones,
+        ; so that they can be invoked first.
+        ;
+        call input_second_term
 
+        ; did that fail?
+        cp 0
+        jr nz, process_global_command
+
+        ; ok find the item, if that failed then
+        ; again we continue with the global item.
+        call get_item_by_name
+        cp 0
+        jr nz, process_global_command
+
+        ; now we should find IX points to the item
+        ; is there a global command handler?
+        ld d,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET)
+        ld e,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET+1)
+
+        ; DE points to the table.  If it is null we have
+        ; no per-item table for this object
+        ld a,d
+        or e
+        jr z, process_global_command
+
+        ; At this point DE points to the table of per-item
+        ; commands, and HL points to the object.
+        ld de, tmp_msg
+        call bios_output_string
+
+process_global_command:
+        ; Otherwise we look for a global command
+        ld hl, INPUT_BUFFER+2
         call find_command
         cp 255
         jr z, no_handler
@@ -3317,8 +3354,6 @@ command_table:
           DEFW use_function
         DEFB 5, 'CLOSE', 1    ; close trapdoor
           DEFW use_function
-        DEFB 4, 'READ', 1     ; read book
-          DEFW use_function
         DEFB 5, 'LIGHT', 1
           DEFW use_function
         DEFB 6, 'SWITCH', 1   ; switch on generator, etc
@@ -3351,6 +3386,24 @@ command_table:
           DEFW inventory_function
         ;; end of table
         DEFB 0
+
+
+;;
+;; Per-Item actions table
+;;
+book_actions:
+     DEFB 4, 'READ'
+     DEFW read_book_function
+     DEFB 0
+
+tmp_msg:
+     DB "There is a custom function!$"
+
+;; Custom function "READ BOOK"
+read_book_function:
+     ld de, item_8_long
+     call bios_output_string
+     ret
 
 
 ;
@@ -3573,7 +3626,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
-        DEFB 0,0          ; no custom actions
+        DEFW book_actions ; no custom actions
 
         DEFW item_9_name      ; desk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
