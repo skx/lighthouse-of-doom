@@ -2739,6 +2739,9 @@ NEWLINE:
         db 0x0d, "$"
 TAB:
         db "     $"
+kill_dog:
+        db 0x0d, "We've all been there, we've all had that thought, but that's not the answer.", 0x0d
+        db "I'm sorry, I really am, but nobody ever dies in Paw Patrol, sadly.", 0x0d, "$"
 invalid_msg:
         db 0x0d, "I did not understand your input.", 0x0d, 0x0d
         db "Enter 'HELP' to see some of our commands.", 0x0d, "$"
@@ -3224,6 +3227,11 @@ book_actions:
       DEFW read_book_function
      DEFB 0
 
+dog_actions:
+     DEFB 4, 'KILL', 0
+      DEFW kill_dog_function
+     DEFB 0
+
 rug_actions:
      DEFB 4, 'MOVE', 0
       DEFW move_rug_function
@@ -3261,6 +3269,12 @@ torch_actions:
 ;; Custom function "READ BOOK"
 read_book_function:
      ld de, item_8_read
+     call bios_output_string
+     ret
+
+;; Custom function "KILL DOG"
+kill_dog_function:
+     ld de, kill_dog
      call bios_output_string
      ret
 
@@ -3449,7 +3463,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
-        DEFB 0,0            ; no custom actions
+        DEFW dog_actions  ; no custom actions
 
         DEFW item_6_name  ; painting
         DEFB 0,0          ; NO DESCRIPTION - hidden item
