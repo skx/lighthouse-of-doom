@@ -366,10 +366,11 @@ ship_warning_over:
         cp 0
         jr nz, process_global_command
 
+
         ; now we should find IX points to the item
         ; is there a global command handler?
-        ld d,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET)
-        ld e,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET+1)
+        ld e,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET)
+        ld d,(IX + ITEM_TABLE_CUSTOM_ACTION_OFFSET+1)
 
         ; DE points to the table.  If it is null we have
         ; no per-item table for this object
@@ -379,8 +380,23 @@ ship_warning_over:
 
         ; At this point DE points to the table of per-item
         ; commands, and HL points to the object.
-        ld de, tmp_msg
-        call bios_output_string
+        ;
+        ; We don't really want the object any more, instead
+        ; we want to look at the verb at the start of our
+        ; input buffer.
+        ld hl, INPUT_BUFFER+2
+        call find_command_for_custom_table
+        cp 255
+        jr z, process_global_command
+
+        ; OK we found an item in the custom handler
+        ; we're gonna call it.
+        call JP_HL
+
+        ; since we found a custom command skip the global
+        ; handling, and proceed to run our regular actions
+        jr regular_turn_actions
+
 
 process_global_command:
         ; Otherwise we look for a global command
@@ -390,13 +406,15 @@ process_global_command:
         jr z, no_handler
         push hl
 
-        ; Valid command - increase turn count
-        ld hl, TURN_COUNT
-        inc (hl)
-
         ; Call the handler
         pop hl
         call JP_HL
+
+regular_turn_actions:
+
+        ; Valid command - increase turn count
+        ld hl, TURN_COUNT
+        inc (hl)
 
         ; Did we get eaten?
         call maybe_grue_death
@@ -794,7 +812,7 @@ ENDIF
 ; or A contains 255 on failure.
 find_command:
         ld de,command_table
-
+find_command_for_custom_table:
         ;
         ; Entries are arranged like so:
         ;   $LENGTH "ASCII" $HIDDEN ADDR1 ADDR2
@@ -2935,6 +2953,8 @@ failed_find_trapdoor_msg:
 rug_detail_msg:
         db 0x0d, "You examine the rug, which shows nothing special. "
         db "But while looking at the ground you notice that the rug covered a trapdoor.", 0x0d, "$"
+rug_moved_message:
+        db 0x0d, "You move the rug, which reveals a trapdoor which had previously been hidden.", 0x0d, "$"
 TRAPDOOR_OPEN_MSG:
         db 0x0d, "The trapdoor opens, showing a murky set of steps leading downwards into shadow.", 0x0d, "$"
 TRAPDOOR_CLOSED_MSG:
@@ -3392,12 +3412,15 @@ command_table:
 ;; Per-Item actions table
 ;;
 book_actions:
-     DEFB 4, 'READ'
-     DEFW read_book_function
+     DEFB 4, 'READ', 0
+      DEFW read_book_function
      DEFB 0
 
-tmp_msg:
-     DB "There is a custom function!$"
+rug_actions:
+     DEFB 4, 'MOVE', 0
+      DEFW move_rug_function
+     DEFB 0
+
 
 ;; Custom function "READ BOOK"
 read_book_function:
@@ -3405,6 +3428,12 @@ read_book_function:
      call bios_output_string
      ret
 
+;; Custom function "MOVE RUG"
+move_rug_function:
+     call make_trapdoor_visible
+     ld de, rug_moved_message
+     call bios_output_string
+     ret
 
 ;
 ; People table
@@ -3614,7 +3643,7 @@ torch_item_long:
         DEFB 0               ; item state
         DEFB 1               ; this item can be picked up
         DEFB 0x02            ; ground-floor
-        DEFB 0,0             ; no custom actions
+        DEFW rug_actions     ; custom actions
 
         DEFW item_8_name  ; book
         DEFW item_8_desc
@@ -3626,7 +3655,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
-        DEFW book_actions ; no custom actions
+        DEFW book_actions ; custom actions
 
         DEFW item_9_name      ; desk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
