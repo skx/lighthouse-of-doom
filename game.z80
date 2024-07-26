@@ -1314,6 +1314,23 @@ examine_found_it:
 
 
 show_ext_desc:
+
+        ; OK at this point:
+        ;   A) The item has been found.
+        ;   B) There is no custom function.
+        ; However the item might have been found because it is invisible
+        ;
+        ; If the item is invisible we cannot examine it
+        ld a,(IX+ITEM_TABLE_LOCATION_OFFSET)
+        cp ITEM_INVISIBLE
+        jr nz, describe_item_real
+
+        ld de, item_not_present_msg
+        call bios_output_string
+        ret
+
+describe_item_real:
+
         ; get the location of the extended-description pointer
         ld e, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
         ld d, (IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
@@ -2337,7 +2354,7 @@ meteor_hidden:
 
         ; Update the state of the desk to show we've examined it
         ld (IX+ITEM_TABLE_STATE_OFFSET), 1
-
+        ld (IX+ITEM_TABLE_LOCATION_OFFSET), 1
         ; desk description
         ld de, item_9_long
         call bios_output_string
@@ -2982,7 +2999,7 @@ ENDIF
 location_1_short:
         db "the middle floor of the lighthouse.", 0x0d, 0x0d, "$"
 location_1_long:
-        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, as well as various odds and ends. "
+        db "This seems to be a relaxation-room, you see some comfy chairs, a work-desk, a telephone and various odds and ends. "
         db "An impressive painting hangs over the desk, and a dog sleeps in a basket "
         db "to the side of it.", 0x0d
         db "$"
@@ -3049,7 +3066,7 @@ item_5_long:  db "The dog seems to be sleeping quite deeply.  As you examine him
               db "$"
 
 item_6_name:  db "PAINTING"
-item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a group of dogs.$"
+item_6_long:  db "The painting shows a teenager with spiky hair, surrounded by a group of dogs.  They all look like good pups.$"
 
 item_7_name: db "RUG"
 item_7_desc: db "A small rug.$"
