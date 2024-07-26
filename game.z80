@@ -275,6 +275,7 @@ game_loop_continue:
         ld de, PLAYER_DEAD_MESSAGE
         call bios_output_string
         call turns_function
+jr_play_again:
         jp play_again
 
 not_dead:
@@ -288,7 +289,7 @@ not_dead:
         ld de, PLAYER_WON_MESSAGE
         call bios_output_string
         call turns_function
-        jp play_again
+        jr jr_play_again
 
 not_won:
 
@@ -311,7 +312,7 @@ not_won:
         call bios_output_string
         call show_dots
         call bios_clear_screen
-        jr ship_warning_over
+
 
 ship_warning_over:
         ; If the input was zero-length (i.e. User pressed return) ignore it.
@@ -364,7 +365,7 @@ ship_warning_over:
         call maybe_grue_death
 
         ; And restart the command-loop
-        jp game_loop
+        jr jr_game_loop
 
 
 no_handler:
@@ -376,6 +377,7 @@ no_handler:
         call maybe_grue_death
 
         ; Return to the start of our game-loop.
+jr_game_loop:
         jp game_loop
 
 ; }}
@@ -3432,6 +3434,8 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;  10. A byte to contain the location of the object.
 ;       0xff == the player is carrying it.
 ;       0xfe == can be found but won't be displayed when a location is entered.
+;  11. A word pointing to a table of custom actions.
+;      WIP
 ;
 ; We might add further pointers in the future, to allow custom behaviour
 ; on a per-object basis.  Hopefully the use of calculated offsets relating
@@ -3458,6 +3462,8 @@ item_collectible:
         DEFB 1            ; this item can be picked up
 item_location:
         DEFB 0x03         ; basement
+item_custom_action:
+        DEFB 0,0          ; no custom actions
 
 
 ;
@@ -3483,6 +3489,7 @@ ITEM_TABLE_USE_OFFSET:             EQU item_use_ptr - items
 ITEM_TABLE_COLLECTIBLE_OFFSET:     EQU item_collectible - items
 ITEM_TABLE_STATE_OFFSET:           EQU item_state - items
 ITEM_TABLE_LOCATION_OFFSET:        EQU item_location - items
+ITEM_TABLE_CUSTOM_ACTION_OFFSET:   EQU item_custom_action - items
 
         ; description of the mirror changes when it is dropped
         ; so we have labels here to update the strings that
@@ -3500,6 +3507,7 @@ item_first_edesc:
         DEFB MIRROR_OK      ; item state
         DEFB 1              ; this item can be picked up
         DEFB 0x01           ; middle-floor
+        DEFB 0,0            ; no custom actions
 
 
         ; description of the torch changes when it is lit/unlit
@@ -3517,6 +3525,7 @@ torch_item_long:
         DEFB TORCH_STATE_UNLIT  ; item state
         DEFB 1                  ; this item can be picked up
         DEFB 0x00               ; top-floor
+        DEFB 0,0            ; no custom actions
 
         DEFW item_5_name  ; dog
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3528,6 +3537,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0            ; no custom actions
 
         DEFW item_6_name  ; painting
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3539,6 +3549,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0          ; no custom actions
 
         DEFW item_7_name  ; rug
         DEFW item_7_desc
@@ -3550,6 +3561,7 @@ torch_item_long:
         DEFB 0               ; item state
         DEFB 1               ; this item can be picked up
         DEFB 0x02            ; ground-floor
+        DEFB 0,0             ; no custom actions
 
         DEFW item_8_name  ; book
         DEFW item_8_desc
@@ -3561,6 +3573,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 1            ; this item can be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0          ; no custom actions
 
         DEFW item_9_name      ; desk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3572,6 +3585,7 @@ torch_item_long:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_10_name ; telephone
         DEFB 0,0          ; NO DESCRIPTION - hidden item
@@ -3583,6 +3597,7 @@ torch_item_long:
         DEFB 0            ; item state
         DEFB 0            ; this item cannot be picked up
         DEFB 0x01         ; middle-floor
+        DEFB 0,0          ; no custom actions
 
         ; description of the trapdoor changes when it is opened/
         ; closed.  So we have labels here to update the strings
@@ -3599,6 +3614,7 @@ trapdoor_edesc:
         DEFB TRAPDOOR_STATE_INVISIBLE ; item state
         DEFB 0                        ; this item cannot be picked up
         DEFB ITEM_INVISIBLE           ; hidden until the rug is moved
+        DEFB 0,0                      ; no custom actions
 
         DEFW item_13_name ; meteor
         DEFW item_13_desc
@@ -3610,6 +3626,7 @@ trapdoor_edesc:
         DEFB 0              ; item state
         DEFB 0              ; this item cannot be picked up
         DEFB ITEM_INVISIBLE ; hidden until the desk is examined
+        DEFB 0,0            ; no custom actions
 
         DEFW item_14_name    ; room
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3621,6 +3638,7 @@ trapdoor_edesc:
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
+        DEFB 0,0             ; no custom actions
 
         DEFW item_15_name    ; grue
         DEFB 0,0             ; NO DESCRIPTION - hidden item
@@ -3632,6 +3650,7 @@ trapdoor_edesc:
         DEFB 0               ; item state
         DEFB 0               ; this item cannot be picked up
         DEFB ITEM_INVISIBLE  ; hidden.
+        DEFB 0,0             ; no custom actions
 
         DEFW item_16_name     ; dog-basket
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3643,6 +3662,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_17_name     ; coat-rack
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3654,6 +3674,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_18_name     ; chair
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3665,6 +3686,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_19_name     ; chairs
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3676,6 +3698,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x01             ; middle-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_20_name     ; boots
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3687,6 +3710,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x02             ; ground-floor
+        DEFB 0,0              ; no custom actions
 
         DEFW item_21_name     ; junk
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3698,6 +3722,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
+        DEFB 0,0              ; no custom actions
 
         DEFW item_22_name     ; machinery
         DEFB 0,0              ; NO DESCRIPTION - hidden item
@@ -3709,6 +3734,7 @@ trapdoor_edesc:
         DEFB 0                ; item state
         DEFB 0                ; this item cannot be picked up
         DEFB 0x03             ; basement
+        DEFB 0,0              ; no custom actions
 
 item_last:
 
