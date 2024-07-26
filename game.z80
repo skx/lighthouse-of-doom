@@ -541,7 +541,6 @@ show_a_register:
 ;     BC
 ;       if the string is non-empty, BC is HL/10
 string_to_uint16:
-atoui_16:
         ld hl,0
 string_to_uint16_loop:
         ld a,(de)
@@ -1749,7 +1748,6 @@ look_at_environment:
         ld de, location_table ; add to base of location table
         add hl,de
 
-look_function_show:
         ; ok we point to the table - show the short version
         ld e, (hl)
         inc hl
@@ -2033,7 +2031,6 @@ pause_for_key:
         ld de, press_key_continue
         call bios_output_string
         call bios_await_keypress
-bios_function_indirect:
         jr bios_function
 
 
@@ -2437,30 +2434,6 @@ take_rug_fn:
 
 get_rug_show_inv:
         call inventory_function
-        ret
-
-
-; When you USE the book it shows you contents
-;
-; This is invoked by:
-;
-;   READ [THE] BOOK
-;   OPEN [THE] BOOK
-;   USE  [THE] BOOK
-use_book_fn:
-
-        call show_newline
-
-        ; find the book
-        ld hl, item_8_name
-        call get_item_by_name
-
-        ; Get the extended description
-        ld e,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET)
-        ld d,(IX+ITEM_TABLE_EXT_DESCRIPTION_OFFSET+1)
-
-        ; show it
-        call bios_output_string
         ret
 
 
@@ -2877,8 +2850,6 @@ you_carrying_message:
         db 0x0d, "You are carrying:", 0x0d, "$"
 you_see_message:
         db 0x0d, "You see:", 0x0d, "$"
-use_generic:
-        db 0x0d, "Nothing seems to happen.", 0x0d, "$"
 item_not_present_msg:
         db  0x0d, "I can't see that here!", 0x0d, "$"
 not_carrying_item_msg:
@@ -2912,10 +2883,6 @@ NOW_YOU_SEE:
         db "Now you can see where you are:", 0x0d, "$"
 NOW_YOU_ARE_BLIND:
         db "Now you cannot see anything in front of you.", 0x0d, "$"
-THE:
-        db " THE "
-ON:
-        db " ON "
 usage_message:
         db 0x0d
         db "        .n.         "
@@ -3110,7 +3077,6 @@ desk_has_meteor:
 
 
 item_10_name: db "TELEPHONE"
-item_10_desc: db "A telephone, wired to the wall.$"
 item_10_long: db "The telephone is an average telephone, which looks like it was made in the 80s.  Perhaps you should try to CALL somebody?", 0x0d, "$"
 
 item_11_name: db "TRAPDOOR"
