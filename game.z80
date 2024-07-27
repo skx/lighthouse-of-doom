@@ -3220,7 +3220,15 @@ command_table:
 
 
 ;;
-;; Per-Item actions table
+;; We now have a set of tables for per-item actions.
+;;
+;; Given an object such as "BOOK", "TORCH", etc, we allow custom verbs
+;; to be applied to those objects.  So we can allow "READ BOOK", but not
+;; "READ TORCH".
+;;
+;; These tables use an identical format to the command-table above, even
+;; with the "hidden" flag - here it is ignored - just so we can reuse the
+;; search/lookup code for working with the tables.
 ;;
 book_actions:
      DEFB 4, 'READ', 0
@@ -3230,6 +3238,15 @@ book_actions:
 dog_actions:
      DEFB 4, 'KILL', 0
       DEFW kill_dog_function
+     DEFB 0
+
+generator_actions:
+     DEFB 5, 'START', 0
+      DEFW use_generator_fn
+     DEFB 3, 'USE', 0
+      DEFW use_generator_fn
+     DEFB 6, 'IGNITE', 0
+      DEFW use_generator_fn
      DEFB 0
 
 rug_actions:
@@ -3244,15 +3261,6 @@ trapdoor_actions:
       DEFW toggle_trapdoor_function
      DEFB 0
 
-generator_actions:
-     DEFB 5, 'START', 0
-      DEFW use_generator_fn
-     DEFB 3, 'USE', 0
-      DEFW use_generator_fn
-     DEFB 6, 'IGNITE', 0
-      DEFW use_generator_fn
-     DEFB 0
-
 torch_actions:
      DEFB 5, 'LIGHT', 0
      DEFW toggle_torch_fn
@@ -3265,6 +3273,12 @@ torch_actions:
      DEFB 8, 'TURN OFF', 0
       DEFW toggle_torch_fn
      DEFB 0
+
+
+;;
+;; Now we have the custom functions defined, which are referenced in the
+;; item-specific command tables above:
+;;
 
 ;; Custom function "READ BOOK"
 read_book_function:
@@ -3360,18 +3374,12 @@ LOCATION_ENTRY_LENGTH: EQU location_first - location_table
 ;   5. A pointer to a drop-function.
 ;   6. A pointer to an examine-function.
 ;        If this is null then the extended description will be shown.
-;   7. A pointer to a use-function.
-;   8. A byte used for item-state.
-;   9. A byte to specify whether this can be taken.
-;  10. A byte to contain the location of the object.
+;   7. A byte used for item-state.
+;   8. A byte to specify whether this can be taken.
+;   9. A byte to contain the location of the object.
 ;       0xff == the player is carrying it.
 ;       0xfe == can be found but won't be displayed when a location is entered.
-;  11. A word pointing to a table of custom actions.
-;      WIP
-;
-; We might add further pointers in the future, to allow custom behaviour
-; on a per-object basis.  Hopefully the use of calculated offsets relating
-; to the item-structure will make that a painless process.
+;  10. A word pointing to a table of custom actions.
 ;
 items:
 item_name:
